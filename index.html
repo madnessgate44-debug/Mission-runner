@@ -36,7 +36,6 @@
       -webkit-font-smoothing: antialiased;
     }
 
-    /* ── HEADER ── */
     .header {
       padding: 1em 1.2em;
       background: var(--bg);
@@ -83,7 +82,6 @@
 
     .update-banner.show { display: block; }
 
-    /* ── TABS ── */
     .tab-bar {
       position: sticky;
       top: 52px;
@@ -125,11 +123,9 @@
 
     .tab-icon { font-size: 1.2em; }
 
-    /* ── PANELS ── */
     .panel { display: none; padding: 1em 1.2em; flex-direction: column; gap: 1em; }
     .panel.active { display: flex; }
 
-    /* ── CARDS ── */
     .card {
       background: var(--card);
       border-radius: var(--radius);
@@ -1058,7 +1054,7 @@ async function checkForUpdates() {
   try {
     const res = await fetch('https://api.github.com/repos/madnessgate44-debug/Mission-runner/releases/latest');
     const data = await res.json();
-    const latest = data.tag_name; // e.g. "v8.2"
+    const latest = data.tag_name;
     if (latest && latest !== 'v8.1') {
       document.getElementById('updateBanner').classList.add('show');
       document.getElementById('updateBanner').textContent = '⬆️ New version '+latest+' available — tap to update';
