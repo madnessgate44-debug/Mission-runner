@@ -1,1 +1,25 @@
+name: Cloud Brain
+on:
+  repository_dispatch:
+    types: [mission]
 
+jobs:
+  execute:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Run Mission
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PAYLOAD: ${{ toJson(github.event.client_payload) }}
+        run: node scripts/mission.js
+      - name: Commit
+        run: |
+          git config user.name "Mission Runner"
+          git config user.email "runner@mission.app"
+          git add -A
+          git diff --staged --quiet || git commit -m "Mission: ${{ github.event.client_payload.task }}"
+          git push
