@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#ffffff">
+  <title>Mission Runner</title>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    :root {
+      --bg: #ffffff;
+      --surface: #f5f5f7;
+      --card: #ffffff;
+      --border: #e0e0e6;
+      --accent: #007aff;
+      --accent2: #ff3b30;
+      --accent3: #ffcc00;
+      --green: #34c759;
+      --text: #1c1c1e;
+      --muted: #8e8e93;
+      --shadow: 0 2px 12px rgba(0,0,0,0.06);
+      --radius: 16px;
+      --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: 80px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .header {
+      padding: 1em 1.2em;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(12px);
+      background: rgba(255,255,255,0.85);
+    }
+
+    .logo {
+      font-size: 1.3em;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.3px;
+    }
+
+    .logo span { color: var(--accent); }
+
+    .version-pill {
+      font-size: 0.7em;
+      font-weight: 600;
+      background: var(--accent3);
+      color: #000;
+      padding: 0.25em 0.7em;
+      border-radius: 20px;
+      letter-spacing: 0.3px;
+    }
+
+    .update-banner {
+      display: none;
+      padding: 0.6em 1.2em;
+      background: var(--accent);
+      color: #fff;
+      text-align: center;
+      font-weight: 600;
+      font-size: 0.9em;
+      cursor: pointer;
+    }
+
+    .update-banner.show { display: block; }
+
+    .tab-bar {
+      position: sticky;
+      top: 52px;
+      display: flex;
+      gap: 0.4em;
+      padding: 0.6em 1em;
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      z-index: 99;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .tab-bar::-webkit-scrollbar { display: none; }
+
+    .tab {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 0.4em;
+      padding: 0.55em 1em;
+      border-radius: 20px;
+      font-weight: 600;
+      font-size: 0.85em;
+      color: var(--muted);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+
+    .tab.active {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(0,122,255,0.25);
+    }
+
+    .tab-icon { font-size: 1.2em; }
+
+    .panel { display: none; padding: 1em 1.2em; flex-direction: column; gap: 1em; }
+    .panel.active { display: flex; }
+
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 1.1em;
+      display: flex;
+      flex-direction: column;
+      gap: 0.8em;
+      border: 1px solid var(--border);
+    }
+
+    .card-label {
+      font-size: 0.7em;
+      font-weight: 600;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+    }
+
+    .card-title {
+      font-size: 1em;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    textarea, input[type="text"] {
+      width: 100%;
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.8em;
+      font-size: 0.9em;
+      font-family: var(--font);
+      resize: vertical;
+      line-height: 1.5;
+      transition: border-color 0.2s;
+    }
+
+    textarea:focus, input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(0,122,255,0.1);
+    }
+
+    textarea::placeholder, input::placeholder { color: var(--muted); }
+
+    .btn {
+      font-weight: 600;
+      font-size: 0.9em;
+      padding: 0.85em 1em;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.3em;
+      width: 100%;
+      transition: all 0.15s;
+    }
+
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.5; pointer-events: none; }
+
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-success { background: var(--green); color: #fff; }
+    .btn-ghost { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+    .btn-gold { background: var(--accent3); color: #000; }
+    .btn-danger { background: var(--accent2); color: #fff; }
+
+    .btn-row { display: flex; gap: 0.5em; }
+    .btn-row .btn { flex: 1; }
+
+    .paste-btn {
+      font-size: 0.8em;
+      color: var(--accent);
+      background: none;
+      border: none;
+      cursor: pointer;
+      text-align: right;
+      width: 100%;
+    }
+
+    .steps-output { display: none; flex-direction: column; gap: 0.5em; }
+    .steps-output.show { display: flex; }
+
+    .step-item {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 0.8em;
+      display: flex;
+      align-items: flex-start;
+      gap: 0.7em;
+      border-left: 4px solid var(--accent);
+    }
+
+    .step-item.done { border-left-color: var(--green); opacity: 0.6; }
+    .step-item.running { border-left-color: var(--accent3); }
+
+    .step-num {
+      font-weight: 700;
+      font-size: 0.8em;
+      color: var(--accent);
+      background: rgba(0,122,255,0.1);
+      padding: 0.2em 0.5em;
+      border-radius: 6px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .step-text { font-size: 0.9em; line-height: 1.4; color: var(--text); flex: 1; }
+    .step-action { font-size: 0.7em; color: var(--muted); flex-shrink: 0; margin-top: 3px; }
+
+    .toast {
+      position: fixed;
+      bottom: 1.5em;
+      left: 50%;
+      transform: translateX(-50%) translateY(120px);
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 0.8em 1.3em;
+      font-weight: 600;
+      font-size: 0.9em;
+      z-index: 9999;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+      transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+      white-space: nowrap;
+      max-width: 90vw;
+    }
+
+    .toast.show { transform: translateX(-50%) translateY(0); }
+    .toast.success { border-left: 4px solid var(--green); }
+    .toast.error { border-left: 4px solid var(--accent2); }
+    .toast.info { border-left: 4px solid var(--accent); }
+
+    .log-panel {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 0.8em;
+      max-height: 140px;
+      overflow-y: auto;
+      font-size: 0.75em;
+      color: var(--muted);
+      line-height: 1.6;
+      font-family: 'SF Mono', monospace;
+    }
+
+    .log-line { padding: 2px 0; }
+    .log-line.ok { color: var(--green); }
+    .log-line.err { color: var(--accent2); }
+    .log-line.info { color: var(--accent); }
+
+    .alert-card {
+      display: none;
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 1em;
+      gap: 0.7em;
+      flex-direction: column;
+      border-left: 4px solid var(--accent);
+      animation: slideIn 0.3s ease;
+    }
+
+    .alert-card.show { display: flex; }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .alert-header { display: flex; align-items: center; justify-content: space-between; }
+    .alert-title { font-weight: 700; font-size: 0.9em; color: var(--text); }
+    .alert-preview { font-size: 0.8em; color: var(--muted); line-height: 1.5; }
+
+    .progress-wrap {
+      display: none;
+      background: var(--surface);
+      border-radius: 6px;
+      height: 6px;
+      overflow: hidden;
+    }
+
+    .progress-wrap.show { display: block; }
+
+    .progress-bar {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 6px;
+      transition: width 0.3s ease;
+      width: 0%;
+    }
+
+    .divider {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.8em;
+      position: relative;
+      margin: 0.5em 0;
+    }
+
+    .divider::before, .divider::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      width: 35%;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .divider::before { left: 0; }
+    .divider::after { right: 0; }
+
+    .copy-btn {
+      font-size: 0.75em;
+      color: var(--accent);
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.3em 0.7em;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .footer {
+      padding: 1.5em 1em;
+      text-align: center;
+      font-size: 0.75em;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+      margin-top: auto;
+    }
+
+    .camera-preview {
+      width: 100%;
+      border-radius: 12px;
+      background: #000;
+      display: none;
+      max-height: 220px;
+      object-fit: contain;
+    }
+
+    .camera-preview.show { display: block; }
+
+    .loading-dots {
+      display: none;
+      align-items: center;
+      gap: 0.5em;
+      font-size: 0.85em;
+      color: var(--accent);
+      font-weight: 500;
+    }
+
+    .loading-dots.show { display: flex; }
+
+    .dot-anim span {
+      display: inline-block;
+      width: 4px; height: 4px;
+      background: var(--accent);
+      border-radius: 50%;
+      animation: dot 1.2s infinite;
+      margin: 0 1px;
+    }
+
+    .dot-anim span:nth-child(2) { animation-delay: 0.2s; }
+    .dot-anim span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes dot {
+      0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+      40% { transform: scale(1); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<div class="update-banner" id="updateBanner" onclick="location.reload(true)">
+  ⬆️ New version available — tap to update
+</div>
+
+<div class="header">
+  <div class="logo">Mission<span>Runner</span></div>
+  <div class="version-pill" id="versionDisplay">v8.1</div>
+</div>
+
+<div class="tab-bar">
+  <button class="tab active" onclick="switchTab('agent')">
+    <span class="tab-icon">🤖</span> Agent
+  </button>
+  <button class="tab" onclick="switchTab('mission')">
+    <span class="tab-icon">📁</span> Mission
+  </button>
+  <button class="tab" onclick="switchTab('camera')">
+    <span class="tab-icon">📸</span> Camera
+  </button>
+  <button class="tab" onclick="switchTab('capture')">
+    <span class="tab-icon">💾</span> Capture
+  </button>
+  <button class="tab" onclick="switchTab('log')">
+    <span class="tab-icon">📋</span> Log
+  </button>
+</div>
+
+<!-- TAB: AGENT -->
+<div class="panel active" id="tab-agent">
+
+  <div class="alert-card" id="autoSaveCard">
+    <div class="alert-header">
+      <div class="alert-title">📥 Auto-Save Ready</div>
+      <span style="font-size:0.8em;color:var(--muted);" id="autoProjectLabel"></span>
+    </div>
+    <div class="alert-preview" id="autoPreview"></div>
+    <button class="btn btn-success" onclick="downloadAutoSave()">⬇️ Download Conversation</button>
+  </div>
+
+  <div class="alert-card" id="shareCard">
+    <div class="alert-header"><div class="alert-title">📤 Shared Content</div></div>
+    <div class="alert-preview" id="sharePreview"></div>
+    <input type="text" id="shareProject" placeholder="Project name" value="general">
+    <button class="btn btn-primary" onclick="downloadShared()">⬇️ Save Shared Content</button>
+  </div>
+
+  <div class="card">
+    <div class="card-label">Step Extractor</div>
+    <div class="card-title">Paste AI output — auto-parses missions & steps</div>
+    <button class="paste-btn" onclick="pasteFromClipboard('extractInput')">⌨️ Paste from clipboard</button>
+    <textarea id="extractInput" rows="5" placeholder="Paste conversation or AI code blocks..."></textarea>
+    <button class="btn btn-primary" onclick="extractSteps()">⚡ Extract & Parse</button>
+  </div>
+
+  <div class="card" id="stepsCard" style="display:none;">
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div class="card-label">Action Steps</div>
+      <button class="copy-btn" onclick="copyAllSteps()">Copy All</button>
+    </div>
+    <div class="steps-output show" id="stepsOutput"></div>
+    <div class="progress-wrap" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="clearSteps()">🗑️ Clear</button>
+      <button class="btn btn-gold" onclick="runAllSteps()">▶ Execute All</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-label">How It Works</div>
+    <div style="font-size:0.9em;color:var(--muted);line-height:1.7;">
+      1️⃣ Paste any AI output → app auto-detects mission JSON, action steps, or auto-save links.<br>
+      2️⃣ Missions go to the Mission tab, steps render here for execution.<br>
+      3️⃣ Use the 📸 Camera tab to scan another screen for text.
+    </div>
+  </div>
+</div>
+
+<!-- TAB: MISSION -->
+<div class="panel" id="tab-mission">
+  <div class="card">
+    <div class="card-label">Mission Executor</div>
+    <div class="card-title">Paste JSON → Creates files on your device</div>
+    <button class="paste-btn" onclick="pasteFromClipboard('missionInput')">⌨️ Paste from clipboard</button>
+    <textarea id="missionInput" rows="8" placeholder='{"project":"my-app","files":[{"path":"index.html","content":"..."}]}' oninput="validateJSON(this)"></textarea>
+    <div class="btn-row">
+      <button class="btn btn-ghost" onclick="loadDemoMission()">📦 Demo</button>
+      <button class="btn btn-ghost" onclick="clearMission()">🗑️ Clear</button>
+    </div>
+    <div class="progress-wrap" id="missionProgress"><div class="progress-bar" id="missionProgressBar"></div></div>
+    <button class="btn btn-primary" id="runMissionBtn" onclick="runMission()">▶ Run Mission</button>
+  </div>
+  <div class="card">
+    <div class="card-label">Cloud Brain</div>
+    <div class="card-title">Deploy, run code, clone templates</div>
+    <input type="text" id="cloudTask" placeholder="Task: deploy_site, run_script, clone_template">
+    <textarea id="cloudPayload" rows="3" placeholder='{"target":"sites/my-app","files":[...]}'></textarea>
+    <button class="btn btn-gold" onclick="triggerCloudBrain()">☁️ Trigger Cloud Task</button>
+  </div>
+</div>
+
+<!-- TAB: CAMERA -->
+<div class="panel" id="tab-camera">
+  <div class="card">
+    <div class="card-label">Camera Scanner</div>
+    <div class="card-title">Point at another screen to extract text</div>
+    <video id="cameraVideo" class="camera-preview" autoplay playsinline></video>
+    <canvas id="cameraCanvas" style="display:none;"></canvas>
+    <div class="loading-dots" id="ocrLoading">
+      <div class="dot-anim"><span></span><span></span><span></span></div> Reading text...
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="startCameraBtn" onclick="startCamera()">📷 Start Camera</button>
+      <button class="btn btn-ghost" id="captureCameraBtn" onclick="captureCamera()" disabled>📸 Capture & Read</button>
+    </div>
+    <button class="btn btn-gold" id="sendCameraBtn" onclick="sendCameraToExtractor()" disabled>📤 Send to Extractor</button>
+    <textarea id="cameraResult" rows="3" placeholder="OCR result will appear here..." readonly></textarea>
+  </div>
+</div>
+
+<!-- TAB: CAPTURE -->
+<div class="panel" id="tab-capture">
+  <div class="card">
+    <div class="card-label">Capture Conversation</div>
+    <input type="text" id="manualProject" placeholder="Project name (e.g. gahiz)">
+    <button class="paste-btn" onclick="pasteFromClipboard('manualConversation')">⌨️ Paste from clipboard</button>
+    <textarea id="manualConversation" rows="5" placeholder="Paste conversation..."></textarea>
+    <button class="btn btn-success" onclick="manualSave()">💾 Download as .md File</button>
+  </div>
+  <div class="divider">OR</div>
+  <div class="card">
+    <div class="card-label">Quick Note</div>
+    <textarea id="quickNote" rows="3" placeholder="Type a quick note..."></textarea>
+    <button class="btn btn-ghost" onclick="saveQuickNote()">📝 Save Note</button>
+  </div>
+</div>
+
+<!-- TAB: LOG -->
+<div class="panel" id="tab-log">
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div class="card-label">Activity Log</div>
+      <button class="copy-btn" onclick="clearLog()">Clear</button>
+    </div>
+    <div class="log-panel" id="logFull"></div>
+  </div>
+  <div class="card">
+    <div class="card-label">About</div>
+    <div style="font-size:0.8em;color:var(--muted);line-height:2;">
+      Version: <strong>8.1</strong><br>
+      Built for Gahiz & Content Factory<br>
+      Engine: AI-Agnostic (Offline + OCR)
+    </div>
+  </div>
+</div>
+
+<div class="footer">Mission Runner · Built for Ahmed</div>
+
+<!-- Tesseract OCR -->
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+<script>
+// ═══════════ GLOBALS ═══════════
+let pendingAutoSave = null;
+let pendingShareText = null;
+let extractedSteps = [];
+let cameraStream = null;
+let ocrWorker = null, ocrReady = false;
+
+// ═══════════ TABS ═══════════
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  const tabs = ['agent','mission','camera','capture','log'];
+  const idx = tabs.indexOf(name);
+  if (idx >= 0) {
+    document.querySelectorAll('.tab')[idx].classList.add('active');
+    document.getElementById('tab-' + name).classList.add('active');
+  }
+  if (name !== 'camera') stopCamera();
+}
+
+// ═══════════ TOAST ═══════════
+function toast(msg, type='info', dur=3000) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast show ' + type;
+  clearTimeout(t._timer); t._timer = setTimeout(() => t.className = 'toast', dur);
+}
+
+// ═══════════ LOG ═══════════
+function log(msg, type='') {
+  const now = new Date().toLocaleTimeString('en',{hour12:false});
+  const el = document.getElementById('logFull');
+  const line = document.createElement('div');
+  line.className = 'log-line ' + type;
+  line.textContent = `[${now}] ${msg}`;
+  el.appendChild(line); el.scrollTop = el.scrollHeight;
+}
+function clearLog() { document.getElementById('logFull').innerHTML = ''; }
+
+// ═══════════ CLIPBOARD ═══════════
+async function pasteFromClipboard(id) {
+  try {
+    const text = await navigator.clipboard.readText();
+    document.getElementById(id).value = text;
+    toast('✅ Pasted', 'success');
+    log('Pasted to #'+id);
+  } catch(e) { toast('⚠️ Paste manually', 'error'); }
+}
+
+// ═══════════ FORMAT DETECTION & EXTRACTION ═══════════
+function detectAndParse(text) {
+  // mission-json block
+  const missionMatch = text.match(/```mission-json\s*([\s\S]*?)```/);
+  if (missionMatch) {
+    try {
+      const mission = JSON.parse(missionMatch[1].trim());
+      if (mission.project && mission.files) {
+        document.getElementById('missionInput').value = JSON.stringify(mission, null, 2);
+        validateJSON(document.getElementById('missionInput'));
+        switchTab('mission');
+        toast('📁 Mission JSON detected — switched to Mission tab', 'info');
+        log('Parsed mission-json');
+        return { type:'mission', data:mission };
+      }
+    } catch(e) {}
+  }
+
+  // action-steps block
+  const stepsMatch = text.match(/```action-steps\s*([\s\S]*?)```/);
+  if (stepsMatch) {
+    try {
+      const steps = JSON.parse(stepsMatch[1].trim());
+      if (Array.isArray(steps) && steps.length > 0) {
+        extractedSteps = steps;
+        renderSteps(steps);
+        document.getElementById('stepsCard').style.display = 'flex';
+        toast(`✅ ${steps.length} steps extracted`, 'success');
+        log('Parsed action-steps');
+        return { type:'steps', data:steps };
+      }
+    } catch(e) {}
+  }
+
+  // auto-save-link block
+  const autoSaveMatch = text.match(/```auto-save-link\s*([\s\S]*?)```/);
+  if (autoSaveMatch) {
+    const url = autoSaveMatch[1].trim();
+    const params = new URLSearchParams(url.split('?')[1] || '');
+    const data = params.get('autosave');
+    if (data) {
+      try {
+        const decoded = JSON.parse(decodeURIComponent(atob(data)));
+        if (decoded.project && decoded.text) {
+          pendingAutoSave = decoded;
+          document.getElementById('autoProjectLabel').textContent = '📂 ' + decoded.project;
+          document.getElementById('autoPreview').textContent = decoded.text.slice(0,200)+'...';
+          document.getElementById('autoSaveCard').classList.add('show');
+          toast('📥 Auto-save ready', 'info');
+          log('Parsed auto-save-link');
+          return { type:'autosave', data:decoded };
+        }
+      } catch(e) {}
+    }
+  }
+
+  // Fallback offline extraction
+  const steps = parseStepsOffline(text);
+  if (steps.length > 0) {
+    extractedSteps = steps;
+    renderSteps(steps);
+    document.getElementById('stepsCard').style.display = 'flex';
+    toast(`✅ ${steps.length} steps found`, 'success');
+    log(`Extracted ${steps.length} steps offline`);
+    return { type:'steps', data:steps };
+  }
+
+  toast('⚠️ No recognizable format found', 'error');
+  return { type:'unknown' };
+}
+
+function extractSteps() {
+  const text = document.getElementById('extractInput').value.trim();
+  if (!text) { toast('⚠️ Paste something first', 'error'); return; }
+  detectAndParse(text);
+}
+
+function parseStepsOffline(text) {
+  const steps = []; let idx = 1;
+  const numRegex = /^(?:\d+[\.\)\-]|Step\s*\d+[\.\:\)\-])\s*(.+?)$/gmi;
+  let match;
+  while ((match = numRegex.exec(text)) !== null) {
+    const action = match[1].trim();
+    if (action.length>3) steps.push({ step: idx++, action, type: detectType(action), detail: extractDetail(action) });
+  }
+  if (!steps.length) {
+    const bulletRegex = /^[\-\*•]\s*(.+?)$/gmi;
+    while ((match = bulletRegex.exec(text)) !== null) {
+      const action = match[1].trim();
+      if (action.length>3) steps.push({ step: idx++, action, type: detectType(action), detail: extractDetail(action) });
+    }
+  }
+  if (!steps.length) {
+    const verbs = /\b(navigate|open|go to|download|copy|paste|click|tap|type|write|save|create|run|deploy|search|clone)\b/i;
+    const lines = text.split(/\n/);
+    for (const line of lines) {
+      if (verbs.test(line.trim()) && line.trim().length>5) {
+        steps.push({ step: idx++, action: line.trim(), type: detectType(line), detail: extractDetail(line) });
+      }
+    }
+  }
+  return steps;
+}
+
+function detectType(action) {
+  const a = action.toLowerCase();
+  if (/navigate|go to|open|visit|browse/.test(a) && /\.(com|org|io|net|dev|app)/.test(a)) return 'navigate';
+  if (/download/.test(a)) return 'download';
+  if (/copy/.test(a)) return 'copy';
+  if (/paste/.test(a)) return 'paste';
+  if (/click|tap/.test(a)) return 'click';
+  if (/type|write/.test(a)) return 'write';
+  if (/save/.test(a)) return 'save';
+  if (/run|execute|deploy/.test(a)) return 'cloud';
+  return 'other';
+}
+
+function extractDetail(action) {
+  const urlMatch = action.match(/https?:\/\/[^\s]+/);
+  if (urlMatch) return urlMatch[0];
+  const quoted = action.match(/["']([^"']+)["']/);
+  if (quoted) return quoted[1];
+  return action.slice(0,120);
+}
+
+function renderSteps(steps) {
+  const out = document.getElementById('stepsOutput');
+  out.innerHTML = '';
+  steps.forEach((s,i) => {
+    const div = document.createElement('div');
+    div.className = 'step-item'; div.id = 'step-'+i;
+    div.innerHTML = `<div class="step-num">${s.step||i+1}</div><div class="step-text">${s.action}</div><div class="step-action">${s.type||''}</div>`;
+    out.appendChild(div);
+  });
+  out.classList.add('show');
+}
+
+function clearSteps() {
+  extractedSteps = [];
+  document.getElementById('stepsOutput').innerHTML = '';
+  document.getElementById('stepsCard').style.display = 'none';
+  document.getElementById('extractInput').value = '';
+  document.getElementById('progressWrap').classList.remove('show');
+}
+
+function copyAllSteps() {
+  if (!extractedSteps.length) return;
+  const text = extractedSteps.map((s,i)=>`${i+1}. ${s.action}`).join('\n');
+  navigator.clipboard.writeText(text).then(()=>toast('✅ Copied','success'));
+}
+
+async function runAllSteps() {
+  if (!extractedSteps.length) return;
+  const wrap = document.getElementById('progressWrap');
+  const bar = document.getElementById('progressBar');
+  wrap.classList.add('show'); bar.style.width = '0%';
+  log('Running steps...');
+  for (let i=0; i<extractedSteps.length; i++) {
+    const s = extractedSteps[i];
+    const el = document.getElementById('step-'+i);
+    if (el) el.classList.add('running');
+    await executeStep(s, i);
+    if (el) { el.classList.remove('running'); el.classList.add('done'); }
+    bar.style.width = ((i+1)/extractedSteps.length*100)+'%';
+    await new Promise(r=>setTimeout(r,300));
+  }
+  toast('✅ All steps complete!','success');
+  log('All steps executed');
+}
+
+async function executeStep(step, idx) {
+  const type = (step.type||'').toLowerCase();
+  const detail = step.detail || step.action || '';
+  log(`Step ${idx+1}: ${step.action} [${type}]`);
+  if ((type==='navigate'||type==='open') && detail.includes('.')) {
+    window.open(detail.startsWith('http')?detail:'https://'+detail, '_blank');
+  } else if (type==='copy' && detail) {
+    try { await navigator.clipboard.writeText(detail); } catch(e) {}
+  } else if (type==='download' && detail) {
+    downloadFile(detail, 'step-'+idx+'.txt', 'text/plain');
+  } else if (type==='cloud') {
+    triggerCloudBrainTask(detail);
+  }
+}
+
+// ═══════════ MISSION EXECUTOR ═══════════
+function validateJSON(el) {
+  try { JSON.parse(el.value); el.style.borderColor = 'var(--green)'; }
+  catch(e) { if(el.value.length>3) el.style.borderColor = 'var(--accent2)'; }
+}
+
+function loadDemoMission() {
+  const demo = { project:"demo", files:[
+    { path:"index.html", content:"<!DOCTYPE html>\n<html>\n<head><title>Demo</title></head>\n<body><h1>Hello!</h1></body>\n</html>" },
+    { path:"css/style.css", content:"body { background: #fff; color: #000; }" },
+    { path:"README.md", content:"# Demo\nCreated by Mission Runner v8.1" }
+  ]};
+  document.getElementById('missionInput').value = JSON.stringify(demo,null,2);
+  validateJSON(document.getElementById('missionInput'));
+}
+
+function clearMission() {
+  document.getElementById('missionInput').value = '';
+  document.getElementById('missionInput').style.borderColor = 'var(--border)';
+}
+
+async function runMission() {
+  const raw = document.getElementById('missionInput').value.trim();
+  if (!raw) { toast('⚠️ Paste a mission first','error'); return; }
+  let mission;
+  try { mission = JSON.parse(raw); } catch(e) { toast('❌ Invalid JSON','error'); return; }
+  if (!mission.files || !Array.isArray(mission.files)) { toast('❌ Needs "files" array','error'); return; }
+
+  const btn = document.getElementById('runMissionBtn');
+  btn.disabled = true; btn.textContent = '⏳ Processing...';
+  const wrap = document.getElementById('missionProgress');
+  const bar = document.getElementById('missionProgressBar');
+  wrap.classList.add('show'); bar.style.width = '0%';
+
+  try {
+    if (typeof window.showDirectoryPicker === 'function') {
+      const dirHandle = await window.showDirectoryPicker();
+      let created = 0;
+      for (const file of mission.files) {
+        const parts = file.path.split('/');
+        const fileName = parts.pop();
+        let currentDir = dirHandle;
+        for (const part of parts) currentDir = await currentDir.getDirectoryHandle(part, { create: true });
+        const fileHandle = await currentDir.getFileHandle(fileName, { create: true });
+        const writable = await fileHandle.createWritable();
+        await writable.write(file.content || '');
+        await writable.close();
+        created++;
+        bar.style.width = (created/mission.files.length*100)+'%';
+        log('Created: '+file.path);
+      }
+      toast(`✅ ${created} files created!`,'success');
+    } else {
+      for (let i=0; i<mission.files.length; i++) {
+        const file = mission.files[i];
+        const fname = file.path.split('/').pop();
+        const ext = fname.includes('.') ? fname.split('.').pop() : 'txt';
+        const mime = { html:'text/html', css:'text/css', js:'text/javascript', md:'text/markdown', json:'application/json' };
+        downloadFile(file.content||'', fname, mime[ext]||'text/plain');
+        bar.style.width = ((i+1)/mission.files.length*100)+'%';
+        await new Promise(r=>setTimeout(r,500));
+      }
+      toast('✅ Files downloaded','success');
+    }
+    log('Mission complete');
+  } catch(err) {
+    toast('❌ '+err.message,'error');
+  } finally {
+    btn.disabled = false; btn.textContent = '▶ Run Mission';
+    setTimeout(()=>wrap.classList.remove('show'),2000);
+  }
+}
+
+// ═══════════ CLOUD BRAIN ═══════════
+async function triggerCloudBrain() {
+  const task = document.getElementById('cloudTask').value.trim();
+  let payload = {};
+  try { payload = JSON.parse(document.getElementById('cloudPayload').value.trim()||'{}'); } catch(e) { toast('❌ Invalid payload JSON','error'); return; }
+  await triggerCloudBrainTask(task, payload);
+}
+
+async function triggerCloudBrainTask(task, payload={}) {
+  let token = localStorage.getItem('mr_github_token');
+  if (!token) {
+    token = prompt('Enter your GitHub personal access token (ghp_...):');
+    if (!token) { toast('⚠️ Token required','error'); return; }
+    localStorage.setItem('mr_github_token', token);
+  }
+  try {
+    const res = await fetch('https://api.github.com/repos/madnessgate44-debug/Mission-runner/dispatches', {
+      method:'POST',
+      headers:{ 'Authorization':'token '+token, 'Accept':'application/vnd.github.v3+json', 'Content-Type':'application/json' },
+      body: JSON.stringify({ event_type:'mission', client_payload:{ task, ...payload } })
+    });
+    if (res.status===204) { toast('✅ Cloud task triggered!','success'); log('Cloud task: '+task); }
+    else { toast('❌ GitHub API error: '+res.status,'error'); }
+  } catch(e) { toast('❌ Network error','error'); }
+}
+
+// ═══════════ CAMERA + OCR ═══════════
+async function startCamera() {
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({ video:{ facingMode:'environment' } });
+    document.getElementById('cameraVideo').srcObject = cameraStream;
+    document.getElementById('cameraVideo').classList.add('show');
+    document.getElementById('startCameraBtn').disabled = true;
+    document.getElementById('captureCameraBtn').disabled = false;
+    toast('📷 Camera active','info');
+  } catch(e) { toast('❌ Camera denied','error'); }
+}
+
+function stopCamera() {
+  if (cameraStream) { cameraStream.getTracks().forEach(t=>t.stop()); cameraStream=null; }
+  document.getElementById('cameraVideo').classList.remove('show');
+  document.getElementById('startCameraBtn').disabled = false;
+  document.getElementById('captureCameraBtn').disabled = true;
+  document.getElementById('sendCameraBtn').disabled = true;
+}
+
+function captureCamera() {
+  const video = document.getElementById('cameraVideo');
+  const canvas = document.getElementById('cameraCanvas');
+  canvas.width = video.videoWidth || 640;
+  canvas.height = video.videoHeight || 360;
+  canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);
+  const dataUrl = canvas.toDataURL('image/png');
+  document.getElementById('sendCameraBtn').disabled = false;
+  toast('📸 Captured! Reading text...','info');
+  runOCR(dataUrl);
+}
+
+async function runOCR(imageData) {
+  const loading = document.getElementById('ocrLoading');
+  loading.classList.add('show');
+  try {
+    if (!ocrReady) {
+      toast('📥 Loading OCR engine...','info');
+      ocrWorker = await Tesseract.createWorker('eng');
+      ocrReady = true;
+    }
+    const { data:{ text } } = await ocrWorker.recognize(imageData);
+    document.getElementById('cameraResult').value = text.trim();
+    document.getElementById('sendCameraBtn').disabled = false;
+    toast('✅ Text extracted!','success');
+  } catch(e) { toast('❌ OCR error','error'); }
+  finally { loading.classList.remove('show'); }
+}
+
+function sendCameraToExtractor() {
+  const text = document.getElementById('cameraResult').value.trim();
+  if (!text) { toast('⚠️ No text','error'); return; }
+  document.getElementById('extractInput').value = text;
+  switchTab('agent');
+  toast('📤 Sent to Agent','success');
+}
+
+// ═══════════ CAPTURE ═══════════
+function manualSave() {
+  const project = document.getElementById('manualProject').value.trim()||'general';
+  const text = document.getElementById('manualConversation').value.trim();
+  if (!text) { toast('⚠️ Paste a conversation','error'); return; }
+  const now = new Date();
+  const content = `# ${project} — Conversation\n\n**Saved:** ${now.toLocaleString()}\n\n---\n\n${text}`;
+  downloadFile(content, `${project}-${now.toISOString().replace(/[:.]/g,'-').slice(0,19)}.md`, 'text/markdown');
+  toast('✅ Saved!','success');
+  document.getElementById('manualConversation').value = '';
+}
+
+function saveQuickNote() {
+  const text = document.getElementById('quickNote').value.trim();
+  if (!text) { toast('⚠️ Type something','error'); return; }
+  const now = new Date();
+  downloadFile(`# Quick Note\n\n**${now.toLocaleString()}**\n\n---\n\n${text}`, `note-${now.toISOString().replace(/[:.]/g,'-').slice(0,19)}.md`, 'text/markdown');
+  toast('✅ Note saved!','success');
+  document.getElementById('quickNote').value = '';
+}
+
+function downloadFile(content, filename, type) {
+  const blob = new Blob([content], { type: type||'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+// ═══════════ AUTO-SAVE ═══════════
+function processAutoSaveLink() {
+  const params = new URLSearchParams(window.location.search);
+  const data = params.get('autosave');
+  if (!data) return;
+  try {
+    const decoded = JSON.parse(decodeURIComponent(atob(data)));
+    if (!decoded.project||!decoded.text) return;
+    pendingAutoSave = decoded;
+    document.getElementById('autoProjectLabel').textContent = '📂 '+decoded.project;
+    document.getElementById('autoPreview').textContent = decoded.text.slice(0,200)+'...';
+    document.getElementById('autoSaveCard').classList.add('show');
+    log('Auto-save link detected');
+    if (window.history?.replaceState) window.history.replaceState({}, document.title, window.location.origin+window.location.pathname);
+  } catch(e) {}
+}
+
+function downloadAutoSave() {
+  if (!pendingAutoSave) return;
+  const now = new Date();
+  const content = `# ${pendingAutoSave.project} — Conversation\n\n**Saved:** ${now.toLocaleString()}\n\n---\n\n${pendingAutoSave.text}`;
+  downloadFile(content, `${pendingAutoSave.project}-${now.toISOString().replace(/[:.]/g,'-').slice(0,19)}.md`, 'text/markdown');
+  toast('✅ Saved!','success');
+  document.getElementById('autoSaveCard').classList.remove('show');
+  pendingAutoSave = null;
+}
+
+// ═══════════ SHARE-TO-SAVE ═══════════
+function processSharedText() {
+  const params = new URLSearchParams(window.location.search);
+  const parts = [params.get('title'),params.get('text'),params.get('url')].filter(Boolean);
+  const combined = parts.join('\n\n').trim();
+  if (!combined) return;
+  pendingShareText = combined;
+  document.getElementById('sharePreview').textContent = combined.slice(0,200)+'...';
+  document.getElementById('shareCard').classList.add('show');
+  log('Shared content received');
+}
+
+function downloadShared() {
+  if (!pendingShareText) return;
+  const project = document.getElementById('shareProject').value.trim()||'general';
+  const now = new Date();
+  downloadFile(`# ${project} — Shared\n\n**${now.toLocaleString()}**\n\n---\n\n${pendingShareText}`, `shared-${now.toISOString().replace(/[:.]/g,'-').slice(0,19)}.md`, 'text/markdown');
+  toast('✅ Saved!','success');
+  document.getElementById('shareCard').classList.remove('show');
+  pendingShareText = null;
+}
+
+// ═══════════ MISSION FROM URL ═══════════
+function checkMissionLink() {
+  const params = new URLSearchParams(window.location.search);
+  const missionData = params.get('mission');
+  if (!missionData) return;
+  try {
+    const decoded = JSON.parse(decodeURIComponent(atob(missionData)));
+    document.getElementById('missionInput').value = JSON.stringify(decoded,null,2);
+    switchTab('mission');
+    log('Mission loaded from URL');
+  } catch(e) {}
+}
+
+// ═══════════ SELF-UPDATE ═══════════
+async function checkForUpdates() {
+  try {
+    const res = await fetch('https://api.github.com/repos/madnessgate44-debug/Mission-runner/releases/latest');
+    const data = await res.json();
+    const latest = data.tag_name;
+    if (latest && latest !== 'v8.1') {
+      document.getElementById('updateBanner').classList.add('show');
+      document.getElementById('updateBanner').textContent = '⬆️ New version '+latest+' available — tap to update';
+    }
+  } catch(e) { /* silent */ }
+}
+
+// ═══════════ STARTUP ═══════════
+(function init() {
+  checkMissionLink();
+  processAutoSaveLink();
+  processSharedText();
+  log('Mission Runner v8.1 ready ✅');
+  setTimeout(checkForUpdates, 2000);
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  }
+})();
+</script>
+</body>
+  </html>
