@@ -1,0 +1,21 @@
+{
+  "name": "Mission Runner",
+  "short_name": "MissionRunner",
+  "description": "AI-Agnostic Mission Executor",
+  "start_url": "/Mission-runner/",
+  "scope": "/Mission-runner/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#060608",
+  "theme_color": "#060608",
+  "icons": [],
+  "share_target": {
+    "action": "/Mission-runner/",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  }
+}
