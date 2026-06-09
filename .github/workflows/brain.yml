@@ -1,0 +1,51 @@
+name: Cloud Brain
+
+on:
+  repository_dispatch:
+    types: [mission]
+
+jobs:
+  execute:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Gradle
+        uses: gradle/gradle-build-action@v2
+
+      - name: Run Mission Script
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PAYLOAD: ${{ toJson(github.event.client_payload) }}
+        run: node scripts/mission.js
+
+      - name: Build APK (if project exists)
+        if: hashFiles('android-project/app/build.gradle') != ''
+        working-directory: android-project
+        run: gradle assembleDebug
+
+      - name: Upload APK Artifact
+        if: hashFiles('android-project/app/build/outputs/apk/debug/app-debug.apk') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: MissionRunner-APK
+          path: android-project/app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Commit changes
+        run: |
+          git config user.name "Mission Runner"
+          git config user.email "runner@mission.app"
+          git add -A
+          git diff --staged --quiet || git commit -m "Mission: ${{ github.event.client_payload.task }}"
+          git push
