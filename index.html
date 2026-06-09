@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#070709">
-  <title>Mission Runner v9.0</title>
+  <title>Mission Runner v9.1</title>
   <link rel="manifest" href="manifest.json">
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
@@ -205,7 +205,7 @@
 <div class="header">
   <div class="header-left">
     <div class="logo">Mission<span>Runner</span></div>
-    <div class="version-pill">v9.0</div>
+    <div class="version-pill">v9.1</div>
   </div>
   <div class="project-selector" onclick="switchToProjectMenu()">
     <span id="activeProjectName">Gahiz</span> ▾
@@ -222,7 +222,7 @@
   <button class="tab" onclick="switchTab('settings')"><span class="tab-icon">⚙️</span> Settings</button>
 </div>
 
-<!-- ══════════ TAB: AGENT ══════════ -->
+<!-- TAB: AGENT -->
 <div class="panel active" id="tab-agent">
   <div class="alert-card" id="autoSaveCard">
     <div class="alert-header"><div class="alert-title">📥 Auto-Save Ready</div><span style="font-family:var(--font-mono);font-size:0.6em;color:var(--muted);" id="autoProjectLabel"></span></div>
@@ -257,7 +257,7 @@
   </div>
 </div>
 
-<!-- ══════════ TAB: MISSION ══════════ -->
+<!-- TAB: MISSION -->
 <div class="panel" id="tab-mission">
   <div class="card">
     <div class="card-label">MISSION EXECUTOR</div>
@@ -270,16 +270,16 @@
   </div>
   <div class="card">
     <div class="card-label">CLOUD BRAIN</div>
-    <div class="card-title">Deploy, run code, clone templates</div>
+    <div class="card-title">Deploy, run code, clone templates, build APK</div>
     <div class="token-card" id="tokenInputCard"><input type="password" id="tokenInput" placeholder="GitHub token (ghp_...)"><button class="btn btn-ghost" onclick="saveCloudToken()">🔑 SAVE TOKEN</button></div>
     <div class="folder-indicator show" id="tokenSavedIndicator" style="display:none;">🔑 TOKEN SAVED (THIS SESSION)</div>
-    <input type="text" id="cloudTask" placeholder="Task: deploy_site, run_script, clone_template">
+    <input type="text" id="cloudTask" placeholder="Task: deploy_site, run_script, clone_template, build_apk">
     <textarea id="cloudPayload" rows="3" placeholder='{"target":"sites/my-app","files":[...]}'></textarea>
-    <button class="btn btn-gold" onclick="triggerCloudBrain()">☁️ TRIGGER CLOUD TASK</button>
+    <button class="btn btn-gold" id="cloudTriggerBtn" onclick="triggerCloudBrain()">☁️ TRIGGER CLOUD TASK</button>
   </div>
 </div>
 
-<!-- ══════════ TAB: CAMERA ══════════ -->
+<!-- TAB: CAMERA -->
 <div class="panel" id="tab-camera">
   <div class="card">
     <div class="card-label">CAMERA SCANNER</div>
@@ -293,7 +293,7 @@
   </div>
 </div>
 
-<!-- ══════════ TAB: CAPTURE ══════════ -->
+<!-- TAB: CAPTURE -->
 <div class="panel" id="tab-capture">
   <div class="card">
     <div class="card-label">CAPTURE CONVERSATION</div>
@@ -311,7 +311,7 @@
   </div>
 </div>
 
-<!-- ══════════ TAB: HISTORY ══════════ -->
+<!-- TAB: HISTORY -->
 <div class="panel" id="tab-history">
   <div class="card">
     <div class="card-label">PROJECT HISTORY</div>
@@ -323,7 +323,7 @@
   </div>
 </div>
 
-<!-- ══════════ TAB: SETTINGS ══════════ -->
+<!-- TAB: SETTINGS -->
 <div class="panel" id="tab-settings">
   <div class="card">
     <div class="card-label">PROJECT MANAGER</div>
@@ -347,18 +347,19 @@
     <div class="card-label">TOOLS</div>
     <button class="btn btn-ghost" onclick="downloadBrainYml()">⬇️ DOWNLOAD BRAIN.YML</button>
     <button class="btn btn-ghost" onclick="downloadSystemOrder()">⬇️ DOWNLOAD SYSTEM-ORDER.MD</button>
+    <button class="btn btn-gold" onclick="triggerAPKBuild()">🤖 BUILD MISSION RUNNER APK</button>
   </div>
   <div class="card">
     <div class="card-label">ABOUT</div>
     <div style="font-family:var(--font-mono);font-size:0.65em;color:var(--muted);line-height:2;">
-      VERSION: <span style="color:var(--accent)">9.0.0</span><br>
+      VERSION: <span style="color:var(--accent)">9.1.0</span><br>
       ENGINE: <span style="color:var(--accent)">AI-AGNOSTIC (OFFLINE + OCR)</span><br>
       STORAGE: <span style="color:var(--accent)">INDEXEDDB + FOLDER PICKER</span>
     </div>
   </div>
 </div>
 
-<div class="footer">MISSION RUNNER v9.0 · BUILT FOR AHMED · GAHIZ × CONTENT FACTORY × THE WIRED LEADER</div>
+<div class="footer">MISSION RUNNER v9.1 · BUILT FOR AHMED · GAHIZ × CONTENT FACTORY × THE WIRED LEADER</div>
 
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script>
@@ -413,15 +414,6 @@ async function dbGet(storeName, key) {
   });
 }
 
-async function dbDelete(storeName, key) {
-  if (!db) await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(storeName, 'readwrite');
-    tx.objectStore(storeName).delete(key);
-    tx.oncomplete = resolve; tx.onerror = reject;
-  });
-}
-
 // ═══════════ GLOBALS ═══════════
 let pendingAutoSave = null, pendingShareText = null, extractedSteps = [], previewCode = '';
 let cameraStream = null, ocrWorker = null, ocrReady = false, saveFolderHandle = null;
@@ -432,6 +424,9 @@ const DEFAULT_PROJECTS = [
   { id: 'content-factory', name: 'Content Factory', description: 'AI content production system for client brands', color: '#00e5ff' },
   { id: 'wired-leader', name: 'Wired Leader', description: 'ADHD coaching brand (client: Hesham Elansari)', color: '#ffd600' }
 ];
+
+// ═══════════ CORRECTED APK PAYLOAD ═══════════
+const APK_PAYLOAD = {"files":[{"path":"build.gradle","content":"buildscript {\n    repositories {\n        google()\n        mavenCentral()\n    }\n    dependencies {\n        classpath 'com.android.tools.build:gradle:8.2.0'\n    }\n}\n\ntask clean(type: Delete) {\n    delete rootProject.buildDir\n}\n"},{"path":"settings.gradle","content":"pluginManagement {\n    repositories {\n        google()\n        mavenCentral()\n        gradlePluginPortal()\n    }\n}\ndependencyResolutionManagement {\n    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)\n    repositories {\n        google()\n        mavenCentral()\n    }\n}\nrootProject.name = 'MissionRunner'\ninclude ':app'\n"},{"path":"gradle.properties","content":"org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8\nandroid.useAndroidX=true\nandroid.nonTransitiveRClass=true\n"},{"path":"app/build.gradle","content":"plugins {\n    id 'com.android.application'\n}\n\nandroid {\n    namespace 'com.missionrunner.app'\n    compileSdk 34\n\n    defaultConfig {\n        applicationId 'com.missionrunner.app'\n        minSdk 26\n        targetSdk 34\n        versionCode 1\n        versionName '1.0'\n    }\n\n    buildTypes {\n        release {\n            minifyEnabled false\n        }\n    }\n\n    compileOptions {\n        sourceCompatibility JavaVersion.VERSION_17\n        targetCompatibility JavaVersion.VERSION_17\n    }\n}\n\ndependencies {\n    implementation 'androidx.appcompat:appcompat:1.6.1'\n    implementation 'androidx.webkit:webkit:1.8.0'\n}\n"},{"path":"app/src/main/AndroidManifest.xml","content":"<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">\n\n    <uses-permission android:name=\"android.permission.INTERNET\"/>\n    <uses-permission android:name=\"android.permission.CAMERA\"/>\n    <uses-permission android:name=\"android.permission.READ_EXTERNAL_STORAGE\"/>\n    <uses-permission android:name=\"android.permission.WRITE_EXTERNAL_STORAGE\"/>\n    <uses-permission android:name=\"android.permission.FOREGROUND_SERVICE\"/>\n    <uses-permission android:name=\"android.permission.SYSTEM_ALERT_WINDOW\"/>\n\n    <application\n        android:allowBackup=\"true\"\n        android:label=\"Mission Runner\"\n        android:supportsRtl=\"true\"\n        android:theme=\"@style/Theme.MissionRunner\"\n        android:usesCleartextTraffic=\"true\">\n\n        <activity\n            android:name=\".MainActivity\"\n            android:exported=\"true\"\n            android:configChanges=\"orientation|screenSize\">\n            <intent-filter>\n                <action android:name=\"android.intent.action.MAIN\"/>\n                <category android:name=\"android.intent.category.LAUNCHER\"/>\n            </intent-filter>\n            <intent-filter>\n                <action android:name=\"android.intent.action.SEND\"/>\n                <category android:name=\"android.intent.category.DEFAULT\"/>\n                <data android:mimeType=\"text/plain\"/>\n            </intent-filter>\n        </activity>\n\n    </application>\n</manifest>\n"},{"path":"app/src/main/java/com/missionrunner/app/MainActivity.java","content":"package com.missionrunner.app;\n\nimport android.content.ClipData;\nimport android.content.ClipboardManager;\nimport android.content.Context;\nimport android.content.Intent;\nimport android.net.Uri;\nimport android.os.Bundle;\nimport android.os.Environment;\nimport android.webkit.JavascriptInterface;\nimport android.webkit.WebChromeClient;\nimport android.webkit.WebSettings;\nimport android.webkit.WebView;\nimport android.webkit.WebViewClient;\nimport android.widget.Toast;\nimport androidx.appcompat.app.AppCompatActivity;\nimport java.io.File;\nimport java.io.FileWriter;\n\npublic class MainActivity extends AppCompatActivity {\n\n    private WebView webView;\n\n    @Override\n    protected void onCreate(Bundle savedInstanceState) {\n        super.onCreate(savedInstanceState);\n        setContentView(R.layout.activity_main);\n\n        webView = findViewById(R.id.webview);\n\n        WebSettings settings = webView.getSettings();\n        settings.setJavaScriptEnabled(true);\n        settings.setDomStorageEnabled(true);\n        settings.setAllowFileAccess(true);\n        settings.setAllowContentAccess(true);\n        settings.setMediaPlaybackRequiresUserGesture(false);\n        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);\n        settings.setUserAgentString(settings.getUserAgentString() + \" MissionRunnerApp/1.0\");\n\n        webView.addJavascriptInterface(new NativeBridge(this), \"NativeApp\");\n\n        webView.setWebViewClient(new WebViewClient());\n        webView.setWebChromeClient(new WebChromeClient());\n\n        webView.loadUrl(\"https://madnessgate44-debug.github.io/Mission-runner/\");\n\n        handleShareIntent(getIntent());\n    }\n\n    @Override\n    protected void onNewIntent(Intent intent) {\n        super.onNewIntent(intent);\n        handleShareIntent(intent);\n    }\n\n    private void handleShareIntent(Intent intent) {\n        if (intent != null && Intent.ACTION_SEND.equals(intent.getAction())) {\n            String sharedText = intent.getStringExtra(Intent.EXTRA_TEXT);\n            if (sharedText != null) {\n                String escaped = sharedText.replace(\"\\\\\", \"\\\\\\\\\").replace(\"'\", \"\\\\'\").replace(\"\\n\", \"\\\\n\");\n                webView.evaluateJavascript(\"window.processSharedText('\" + escaped + \"')\", null);\n            }\n        }\n    }\n\n    public class NativeBridge {\n        private Context context;\n\n        public NativeBridge(Context c) {\n            context = c;\n        }\n\n        @JavascriptInterface\n        public void saveFile(String content, String filename) {\n            try {\n                File dir = new File(Environment.getExternalStoragePublicDirectory(\n                    Environment.DIRECTORY_DOWNLOADS), \"MissionRunner\");\n                dir.mkdirs();\n                File file = new File(dir, filename);\n                FileWriter writer = new FileWriter(file);\n                writer.write(content);\n                writer.close();\n                runOnUiThread(() -> {\n                    webView.evaluateJavascript(\"window.nativeFileSaved('\" + filename + \"')\", null);\n                    Toast.makeText(context, \"Saved: \" + filename, Toast.LENGTH_SHORT).show();\n                });\n            } catch (Exception e) {\n                runOnUiThread(() ->\n                    Toast.makeText(context, \"Error: \" + e.getMessage(), Toast.LENGTH_SHORT).show()\n                );\n            }\n        }\n\n        @JavascriptInterface\n        public void copyToClipboard(String text) {\n            ClipboardManager clipboard = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);\n            ClipData clip = ClipData.newPlainText(\"MissionRunner\", text);\n            clipboard.setPrimaryClip(clip);\n            runOnUiThread(() ->\n                Toast.makeText(context, \"Copied!\", Toast.LENGTH_SHORT).show()\n            );\n        }\n\n        @JavascriptInterface\n        public String getVersion() {\n            return \"1.0.0\";\n        }\n    }\n}\n"},{"path":"app/src/main/res/layout/activity_main.xml","content":"<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<LinearLayout xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    android:layout_width=\"match_parent\"\n    android:layout_height=\"match_parent\"\n    android:orientation=\"vertical\">\n\n    <WebView\n        android:id=\"@+id/webview\"\n        android:layout_width=\"match_parent\"\n        android:layout_height=\"match_parent\"/>\n\n</LinearLayout>\n"},{"path":"app/src/main/res/values/strings.xml","content":"<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<resources>\n    <string name=\"app_name\">Mission Runner</string>\n</resources>\n"},{"path":"app/src/main/res/values/styles.xml","content":"<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<resources>\n    <style name=\"Theme.MissionRunner\" parent=\"Theme.AppCompat.NoActionBar\">\n        <item name=\"android:windowBackground\">@android:color/black</item>\n        <item name=\"android:statusBarColor\">@android:color/black</item>\n        <item name=\"android:navigationBarColor\">@android:color/black</item>\n    </style>\n</resources>\n"}]};
 
 // ═══════════ TABS ═══════════
 function switchTab(name) {
@@ -463,7 +458,6 @@ function log(msg, type='') {
   line.className = 'log-line ' + type;
   line.textContent = `[${now}] ${msg}`;
   el.appendChild(line); el.scrollTop = el.scrollHeight;
-  // Also save to history
   dbPut('steps', { projectId: activeProject, timestamp: Date.now(), message: msg, type });
 }
 
@@ -541,7 +535,6 @@ async function initProjects() {
   if (!existing.length) {
     for (const p of DEFAULT_PROJECTS) await dbPut('projects', p);
   }
-  // Restore active project
   const saved = await dbGet('settings', 'activeProject');
   if (saved) activeProject = saved.value;
   document.getElementById('activeProjectName').textContent = activeProject.charAt(0).toUpperCase() + activeProject.slice(1);
@@ -587,22 +580,16 @@ async function renderProjectChips() {
   });
 }
 
-// ═══════════ FORMAT DETECTION & EXTRACTION ═══════════
+// ═══════════ FORMAT DETECTION ═══════════
 function detectAndParse(text) {
-  // 1. HTML/CSS/JS code blocks → live preview
   const codeMatch = text.match(/```(html|htm)\s*([\s\S]*?)```/i) || text.match(/```(css|js|javascript)\s*([\s\S]*?)```/i);
   if (codeMatch) {
-    const lang = codeMatch[1].toLowerCase();
     const code = codeMatch[2].trim();
-    if (lang === 'html' || lang === 'htm') {
-      previewCode = code;
-      showPreview(code);
-      toast('🖼️ CODE PREVIEW READY', 'info');
-      return { type: 'preview', data: code };
-    }
+    previewCode = code;
+    showPreview(code);
+    toast('🖼️ CODE PREVIEW READY', 'info');
+    return { type:'preview', data:code };
   }
-
-  // 2. mission-json block
   const missionMatch = text.match(/```mission-json\s*([\s\S]*?)```/);
   if (missionMatch) {
     try {
@@ -612,13 +599,10 @@ function detectAndParse(text) {
         validateJSON(document.getElementById('missionInput'));
         switchTab('mission');
         toast('📁 MISSION JSON DETECTED', 'info');
-        log('Parsed mission-json');
         return { type:'mission', data:mission };
       }
     } catch(e) {}
   }
-
-  // 3. action-steps block
   const stepsMatch = text.match(/```action-steps\s*([\s\S]*?)```/);
   if (stepsMatch) {
     try {
@@ -628,14 +612,10 @@ function detectAndParse(text) {
         renderSteps(steps);
         document.getElementById('stepsCard').style.display = 'flex';
         toast(`✅ ${steps.length} STEPS EXTRACTED`, 'success');
-        log('Parsed action-steps');
-        dbPut('steps', { projectId: activeProject, timestamp: Date.now(), message: `Extracted ${steps.length} steps from AI output`, type: 'ok' });
         return { type:'steps', data:steps };
       }
     } catch(e) {}
   }
-
-  // 4. auto-save-link block
   const autoSaveMatch = text.match(/```auto-save-link\s*([\s\S]*?)```/);
   if (autoSaveMatch) {
     const url = autoSaveMatch[1].trim();
@@ -656,19 +636,14 @@ function detectAndParse(text) {
       } catch(e) {}
     }
   }
-
-  // 5. Fallback offline extraction
   const steps = parseStepsOffline(text);
   if (steps.length > 0) {
     extractedSteps = steps;
     renderSteps(steps);
     document.getElementById('stepsCard').style.display = 'flex';
     toast(`✅ ${steps.length} STEPS FOUND (OFFLINE)`, 'success');
-    log(`Extracted ${steps.length} steps offline`);
-    dbPut('steps', { projectId: activeProject, timestamp: Date.now(), message: `Extracted ${steps.length} steps (offline parser)`, type: 'ok' });
     return { type:'steps', data:steps };
   }
-
   toast('⚠️ NO RECOGNIZABLE FORMAT FOUND', 'error');
   return { type:'unknown' };
 }
@@ -772,7 +747,6 @@ async function runAllSteps() {
   }
   toast('✅ ALL STEPS COMPLETE', 'success');
   log('All steps executed');
-  dbPut('steps', { projectId: activeProject, timestamp: Date.now(), message: `Executed ${extractedSteps.length} steps`, type: 'ok' });
 }
 
 async function executeStep(step, idx) {
@@ -800,9 +774,8 @@ function showPreview(code) {
 
 function closePreview() {
   document.getElementById('previewCard').style.display = 'none';
-  const iframe = document.getElementById('previewIframe');
-  iframe.srcdoc = '';
-  iframe.classList.remove('show');
+  document.getElementById('previewIframe').srcdoc = '';
+  document.getElementById('previewIframe').classList.remove('show');
   previewCode = '';
 }
 
@@ -831,7 +804,7 @@ function loadDemoMission() {
   const demo = { project:activeProject, files:[
     { path:"index.html", content:"<!DOCTYPE html>\n<html>\n<head><title>"+activeProject+"</title></head>\n<body><h1>Hello from "+activeProject+"!</h1></body>\n</html>" },
     { path:"css/style.css", content:"body { background: #0f0f14; color: #e8e8f2; font-family: sans-serif; }" },
-    { path:"README.md", content:"# "+activeProject+"\nCreated by Mission Runner v9.0" }
+    { path:"README.md", content:"# "+activeProject+"\nCreated by Mission Runner v9.1" }
   ]};
   document.getElementById('missionInput').value = JSON.stringify(demo,null,2);
   validateJSON(document.getElementById('missionInput'));
@@ -871,7 +844,6 @@ async function runMission() {
         created++;
         bar.style.width = (created/mission.files.length*100)+'%';
         log('Created: '+file.path);
-        dbPut('files', { projectId: mission.project || activeProject, name: file.path, content: file.content, savedAt: Date.now() });
       }
       toast(`✅ ${created} FILES CREATED!`,'success');
     } else {
@@ -935,6 +907,25 @@ async function triggerCloudBrainTask(task, payload={}) {
     if (res.status===204) { toast('✅ CLOUD TASK TRIGGERED!','success'); log('Cloud task: '+task); }
     else { toast('❌ GITHUB API ERROR: '+res.status,'error'); }
   } catch(e) { toast('❌ NETWORK ERROR','error'); }
+}
+
+// ═══════════ ONE-TAP APK BUILDER ═══════════
+async function triggerAPKBuild() {
+  let token = sessionStorage.getItem('mr_github_token');
+  if (!token) {
+    // Ask for token inline
+    const t = prompt('Enter your GitHub token to build the APK:');
+    if (!t) { toast('⚠️ TOKEN REQUIRED', 'error'); return; }
+    sessionStorage.setItem('mr_github_token', t);
+    token = t;
+  }
+  toast('🤖 BUILDING APK... This will take 2-3 minutes.', 'info', 5000);
+  log('Triggering APK build');
+  await triggerCloudBrainTask('build_apk', APK_PAYLOAD);
+  // After 3 seconds, tell user where to check
+  setTimeout(() => {
+    toast('📥 Check Actions tab for the APK artifact', 'info', 6000);
+  }, 3000);
 }
 
 // ═══════════ CAMERA + OCR ═══════════
@@ -1079,7 +1070,7 @@ function downloadBlob(content, filename, type) {
 }
 
 function downloadBrainYml() {
-  const yml = `name: Cloud Brain\non:\n  repository_dispatch:\n    types: [mission]\n\njobs:\n  execute:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: '20'\n      - name: Run Mission\n        env:\n          GITHUB_TOKEN: \${{ secrets.GITHUB_TOKEN }}\n          PAYLOAD: \${{ toJson(github.event.client_payload) }}\n        run: node scripts/mission.js\n      - name: Commit\n        run: |\n          git config user.name "Mission Runner"\n          git config user.email "runner@mission.app"\n          git add -A\n          git diff --staged --quiet || git commit -m "Mission: \${{ github.event.client_payload.task }}"\n          git push\n`;
+  const yml = `name: Cloud Brain\non:\n  repository_dispatch:\n    types: [mission]\n\njobs:\n  execute:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: '20'\n      - name: Setup Java\n        uses: actions/setup-java@v4\n        with:\n          java-version: '17'\n          distribution: 'temurin'\n      - name: Setup Gradle\n        uses: gradle/gradle-build-action@v2\n      - name: Run Mission Script\n        env:\n          GITHUB_TOKEN: \${{ secrets.GITHUB_TOKEN }}\n          PAYLOAD: \${{ toJson(github.event.client_payload) }}\n        run: node scripts/mission.js\n      - name: Build APK\n        if: hashFiles('android-project/app/build.gradle') != ''\n        uses: gradle/gradle-build-action@v2\n        with:\n          arguments: assembleDebug\n          build-root-directory: android-project\n          gradle-version: 8.2\n      - name: Upload APK Artifact\n        if: hashFiles('android-project/app/build/outputs/apk/debug/app-debug.apk') != ''\n        uses: actions/upload-artifact@v4\n        with:\n          name: MissionRunner-APK\n          path: android-project/app/build/outputs/apk/debug/app-debug.apk\n      - name: Commit changes\n        run: |\n          git config user.name "Mission Runner"\n          git config user.email "runner@mission.app"\n          git add -A\n          git diff --staged --quiet || git commit -m "Mission: \${{ github.event.client_payload.task }}"\n          git push\n`;
   downloadBlob(yml, 'brain.yml', 'text/yaml');
   toast('✅ BRAIN.YML DOWNLOADED','success');
 }
@@ -1138,7 +1129,7 @@ async function checkForUpdates() {
     const res = await fetch('https://api.github.com/repos/madnessgate44-debug/Mission-runner/releases/latest');
     const data = await res.json();
     const latest = data.tag_name;
-    if (latest && latest !== 'v9.0') {
+    if (latest && latest !== 'v9.1') {
       const banner = document.getElementById('updateBanner');
       if (banner) { banner.classList.add('show'); banner.textContent = '⬆️ NEW VERSION '+latest+' AVAILABLE — TAP TO UPDATE'; }
     }
@@ -1155,16 +1146,14 @@ async function checkForUpdates() {
   checkMissionLink();
   processAutoSaveLink();
   processSharedText();
-  log('Mission Runner v9.0 ready ✅');
+  log('Mission Runner v9.1 ready ✅');
 
-  // Restore folder handle
   try {
     const stored = await dbGet('settings', 'saveFolder');
     if (stored && stored.value) saveFolderHandle = stored.value;
     updateFolderUI();
   } catch(e) {}
 
-  // Restore token indicator
   if (sessionStorage.getItem('mr_github_token')) {
     const el = document.getElementById('tokenSavedIndicator');
     if (el) { el.style.display = 'flex'; el.textContent = '🔑 TOKEN SAVED (THIS SESSION)'; }
