@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#070709">
-  <title>Mission Runner v9.1</title>
+  <title>Mission Runner v9.2</title>
   <link rel="manifest" href="manifest.json">
   <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
@@ -52,6 +52,8 @@
     .logo { font-family: var(--font-display); font-weight: 700; font-size: 1.3em; color: var(--text); letter-spacing: 1px; text-transform: uppercase; }
     .logo span { color: var(--accent); }
     .version-pill { font-size: 0.55em; font-weight: 600; background: var(--accent); color: #000; padding: 0.2em 0.5em; border-radius: 20px; font-family: var(--font-mono); }
+    .native-badge { font-size: 0.5em; background: var(--green); color: #000; padding: 0.15em 0.4em; border-radius: 10px; display: none; font-weight: 700; margin-left: 0.3em; }
+    .native-badge.show { display: inline-block; }
     .project-selector {
       background: var(--surface2); border: 1px solid var(--border); border-radius: 20px;
       padding: 0.3em 0.6em; font-size: 0.75em; color: var(--accent); font-weight: 600;
@@ -91,16 +93,6 @@
     }
     textarea:focus, input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,229,255,0.06); }
     textarea::placeholder, input::placeholder { color: var(--muted); }
-    .input-row { display: flex; gap: 0.3em; }
-    .input-row textarea { flex: 1; resize: none; min-height: 42px; max-height: 100px; }
-    .voice-btn {
-      width: 42px; min-width: 42px; height: 42px; border-radius: 8px;
-      background: var(--surface2); border: 1px solid var(--border); color: var(--accent);
-      cursor: pointer; font-size: 1.1em; display: flex; align-items: center; justify-content: center;
-      flex-shrink: 0; transition: all 0.2s;
-    }
-    .voice-btn:active { background: var(--accent); color: #000; }
-    .voice-btn.listening { background: var(--accent2); color: #fff; animation: pulse 0.8s infinite; border-color: var(--accent2); }
     .btn {
       font-family: var(--font-display); font-weight: 600; font-size: 0.82em;
       padding: 0.7em 0.8em; border-radius: 8px; border: none; cursor: pointer;
@@ -205,7 +197,8 @@
 <div class="header">
   <div class="header-left">
     <div class="logo">Mission<span>Runner</span></div>
-    <div class="version-pill">v9.1</div>
+    <div class="version-pill">v9.2</div>
+    <span class="native-badge" id="nativeBadge">NATIVE</span>
   </div>
   <div class="project-selector" onclick="switchToProjectMenu()">
     <span id="activeProjectName">Gahiz</span> ▾
@@ -222,22 +215,22 @@
   <button class="tab" onclick="switchTab('settings')"><span class="tab-icon">⚙️</span> Settings</button>
 </div>
 
-<!-- TAB: AGENT -->
+<!-- ══════════ TAB: AGENT ══════════ -->
 <div class="panel active" id="tab-agent">
   <div class="alert-card" id="autoSaveCard">
     <div class="alert-header"><div class="alert-title">📥 Auto-Save Ready</div><span style="font-family:var(--font-mono);font-size:0.6em;color:var(--muted);" id="autoProjectLabel"></span></div>
-    <div class="alert-preview" id="autoPreview"></div><button class="btn btn-success" onclick="downloadWithPicker('autoSave')">⬇️ SAVE TO FOLDER</button>
+    <div class="alert-preview" id="autoPreview"></div><button class="btn btn-success" onclick="saveContent('autoSave')">⬇️ SAVE TO FOLDER</button>
   </div>
   <div class="alert-card" id="shareCard">
     <div class="alert-header"><div class="alert-title">📤 Shared Content</div></div>
     <div class="alert-preview" id="sharePreview"></div>
     <input type="text" id="shareProject" placeholder="Project name" value="general">
-    <button class="btn btn-primary" onclick="downloadWithPicker('shared')">⬇️ SAVE SHARED TO FOLDER</button>
+    <button class="btn btn-primary" onclick="saveContent('shared')">⬇️ SAVE SHARED TO FOLDER</button>
   </div>
   <div class="card">
     <div class="card-label">STEP EXTRACTOR</div>
     <div class="card-title">Paste AI output — auto-detects missions, steps, code</div>
-    <div class="quick-actions" id="quickActions">
+    <div class="quick-actions">
       <button class="quick-action" onclick="pasteFromClipboard('extractInput')">📋 PASTE</button>
       <button class="quick-action" onclick="startVoice('extractInput')">🎤 VOICE</button>
     </div>
@@ -257,7 +250,7 @@
   </div>
 </div>
 
-<!-- TAB: MISSION -->
+<!-- ══════════ TAB: MISSION ══════════ -->
 <div class="panel" id="tab-mission">
   <div class="card">
     <div class="card-label">MISSION EXECUTOR</div>
@@ -272,14 +265,14 @@
     <div class="card-label">CLOUD BRAIN</div>
     <div class="card-title">Deploy, run code, clone templates, build APK</div>
     <div class="token-card" id="tokenInputCard"><input type="password" id="tokenInput" placeholder="GitHub token (ghp_...)"><button class="btn btn-ghost" onclick="saveCloudToken()">🔑 SAVE TOKEN</button></div>
-    <div class="folder-indicator show" id="tokenSavedIndicator" style="display:none;">🔑 TOKEN SAVED (THIS SESSION)</div>
+    <div class="folder-indicator show" id="tokenSavedIndicator" style="display:none;">🔑 TOKEN SAVED</div>
     <input type="text" id="cloudTask" placeholder="Task: deploy_site, run_script, clone_template, build_apk">
     <textarea id="cloudPayload" rows="3" placeholder='{"target":"sites/my-app","files":[...]}'></textarea>
     <button class="btn btn-gold" id="cloudTriggerBtn" onclick="triggerCloudBrain()">☁️ TRIGGER CLOUD TASK</button>
   </div>
 </div>
 
-<!-- TAB: CAMERA -->
+<!-- ══════════ TAB: CAMERA ══════════ -->
 <div class="panel" id="tab-camera">
   <div class="card">
     <div class="card-label">CAMERA SCANNER</div>
@@ -293,25 +286,24 @@
   </div>
 </div>
 
-<!-- TAB: CAPTURE -->
+<!-- ══════════ TAB: CAPTURE ══════════ -->
 <div class="panel" id="tab-capture">
   <div class="card">
     <div class="card-label">CAPTURE CONVERSATION</div>
     <input type="text" id="manualProject" placeholder="Project name">
     <button class="paste-btn" onclick="pasteFromClipboard('manualConversation')">⌨️ PASTE FROM CLIPBOARD</button>
     <textarea id="manualConversation" rows="5" placeholder="Paste conversation..."></textarea>
-    <div class="folder-indicator" id="captureFolderIndicator">📁 FOLDER SELECTED</div>
-    <button class="btn btn-success" onclick="downloadWithPicker('manual')">💾 SAVE TO FOLDER</button>
+    <button class="btn btn-success" onclick="saveContent('manual')">💾 SAVE TO FOLDER</button>
   </div>
   <div class="divider">OR</div>
   <div class="card">
     <div class="card-label">QUICK NOTE</div>
     <textarea id="quickNote" rows="3" placeholder="Type a quick note..."></textarea>
-    <button class="btn btn-ghost" onclick="downloadWithPicker('note')">📝 SAVE NOTE</button>
+    <button class="btn btn-ghost" onclick="saveContent('note')">📝 SAVE NOTE</button>
   </div>
 </div>
 
-<!-- TAB: HISTORY -->
+<!-- ══════════ TAB: HISTORY ══════════ -->
 <div class="panel" id="tab-history">
   <div class="card">
     <div class="card-label">PROJECT HISTORY</div>
@@ -323,7 +315,7 @@
   </div>
 </div>
 
-<!-- TAB: SETTINGS -->
+<!-- ══════════ TAB: SETTINGS ══════════ -->
 <div class="panel" id="tab-settings">
   <div class="card">
     <div class="card-label">PROJECT MANAGER</div>
@@ -339,11 +331,6 @@
     <div class="folder-indicator show" id="settingsTokenIndicator" style="display:none;">🔑 TOKEN SAVED</div>
   </div>
   <div class="card">
-    <div class="card-label">SAVE FOLDER</div>
-    <div class="folder-indicator show" id="savedFolderIndicator">📁 NO FOLDER SELECTED</div>
-    <button class="btn btn-ghost" onclick="selectSaveFolder()">📂 CHOOSE SAVE FOLDER</button>
-  </div>
-  <div class="card">
     <div class="card-label">TOOLS</div>
     <button class="btn btn-ghost" onclick="downloadBrainYml()">⬇️ DOWNLOAD BRAIN.YML</button>
     <button class="btn btn-ghost" onclick="downloadSystemOrder()">⬇️ DOWNLOAD SYSTEM-ORDER.MD</button>
@@ -352,17 +339,21 @@
   <div class="card">
     <div class="card-label">ABOUT</div>
     <div style="font-family:var(--font-mono);font-size:0.65em;color:var(--muted);line-height:2;">
-      VERSION: <span style="color:var(--accent)">9.1.0</span><br>
-      ENGINE: <span style="color:var(--accent)">AI-AGNOSTIC (OFFLINE + OCR)</span><br>
-      STORAGE: <span style="color:var(--accent)">INDEXEDDB + FOLDER PICKER</span>
+      VERSION: <span style="color:var(--accent)">9.2.0</span><br>
+      ENGINE: <span style="color:var(--accent)">AI-AGNOSTIC + NATIVE BRIDGE</span><br>
+      STORAGE: <span style="color:var(--accent)">INDEXEDDB + NATIVE FS</span>
     </div>
   </div>
 </div>
 
-<div class="footer">MISSION RUNNER v9.1 · BUILT FOR AHMED · GAHIZ × CONTENT FACTORY × THE WIRED LEADER</div>
+<div class="footer">MISSION RUNNER v9.2 · BUILT FOR AHMED · GAHIZ × CONTENT FACTORY × THE WIRED LEADER</div>
 
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script>
+// ═══════════ DETECT NATIVE APP ═══════════
+const isNative = typeof window.NativeApp !== 'undefined';
+if (isNative) { document.getElementById('nativeBadge').classList.add('show'); }
+
 // ═══════════ DATABASE ═══════════
 const DB_NAME = 'mission-runner-v9';
 const DB_VERSION = 1;
@@ -425,7 +416,6 @@ const DEFAULT_PROJECTS = [
   { id: 'wired-leader', name: 'Wired Leader', description: 'ADHD coaching brand (client: Hesham Elansari)', color: '#ffd600' }
 ];
 
-// ═══════════ CORRECTED APK PAYLOAD ═══════════
 const APK_PAYLOAD = {"files":[{"path":"build.gradle","content":"buildscript {\n    repositories {\n        google()\n        mavenCentral()\n    }\n    dependencies {\n        classpath 'com.android.tools.build:gradle:8.2.0'\n    }\n}\n\ntask clean(type: Delete) {\n    delete rootProject.buildDir\n}\n"},{"path":"settings.gradle","content":"pluginManagement {\n    repositories {\n        google()\n        mavenCentral()\n        gradlePluginPortal()\n    }\n}\ndependencyResolutionManagement {\n    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)\n    repositories {\n        google()\n        mavenCentral()\n    }\n}\nrootProject.name = 'MissionRunner'\ninclude ':app'\n"},{"path":"gradle.properties","content":"org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8\nandroid.useAndroidX=true\nandroid.nonTransitiveRClass=true\n"},{"path":"app/build.gradle","content":"plugins {\n    id 'com.android.application'\n}\n\nandroid {\n    namespace 'com.missionrunner.app'\n    compileSdk 34\n\n    defaultConfig {\n        applicationId 'com.missionrunner.app'\n        minSdk 26\n        targetSdk 34\n        versionCode 1\n        versionName '1.0'\n    }\n\n    buildTypes {\n        release {\n            minifyEnabled false\n        }\n    }\n\n    compileOptions {\n        sourceCompatibility JavaVersion.VERSION_17\n        targetCompatibility JavaVersion.VERSION_17\n    }\n}\n\ndependencies {\n    implementation 'androidx.appcompat:appcompat:1.6.1'\n    implementation 'androidx.webkit:webkit:1.8.0'\n}\n"},{"path":"app/src/main/AndroidManifest.xml","content":"<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">\n\n    <uses-permission android:name=\"android.permission.INTERNET\"/>\n    <uses-permission android:name=\"android.permission.CAMERA\"/>\n    <uses-permission android:name=\"android.permission.READ_EXTERNAL_STORAGE\"/>\n    <uses-permission android:name=\"android.permission.WRITE_EXTERNAL_STORAGE\"/>\n    <uses-permission android:name=\"android.permission.FOREGROUND_SERVICE\"/>\n    <uses-permission android:name=\"android.permission.SYSTEM_ALERT_WINDOW\"/>\n\n    <application\n        android:allowBackup=\"true\"\n        android:label=\"Mission Runner\"\n        android:supportsRtl=\"true\"\n        android:theme=\"@style/Theme.MissionRunner\"\n        android:usesCleartextTraffic=\"true\">\n\n        <activity\n            android:name=\".MainActivity\"\n            android:exported=\"true\"\n            android:configChanges=\"orientation|screenSize\">\n            <intent-filter>\n                <action android:name=\"android.intent.action.MAIN\"/>\n                <category android:name=\"android.intent.category.LAUNCHER\"/>\n            </intent-filter>\n            <intent-filter>\n                <action android:name=\"android.intent.action.SEND\"/>\n                <category android:name=\"android.intent.category.DEFAULT\"/>\n                <data android:mimeType=\"text/plain\"/>\n            </intent-filter>\n        </activity>\n\n    </application>\n</manifest>\n"},{"path":"app/src/main/java/com/missionrunner/app/MainActivity.java","content":"package com.missionrunner.app;\n\nimport android.content.ClipData;\nimport android.content.ClipboardManager;\nimport android.content.Context;\nimport android.content.Intent;\nimport android.net.Uri;\nimport android.os.Bundle;\nimport android.os.Environment;\nimport android.webkit.JavascriptInterface;\nimport android.webkit.WebChromeClient;\nimport android.webkit.WebSettings;\nimport android.webkit.WebView;\nimport android.webkit.WebViewClient;\nimport android.widget.Toast;\nimport androidx.appcompat.app.AppCompatActivity;\nimport java.io.File;\nimport java.io.FileWriter;\n\npublic class MainActivity extends AppCompatActivity {\n\n    private WebView webView;\n\n    @Override\n    protected void onCreate(Bundle savedInstanceState) {\n        super.onCreate(savedInstanceState);\n        setContentView(R.layout.activity_main);\n\n        webView = findViewById(R.id.webview);\n\n        WebSettings settings = webView.getSettings();\n        settings.setJavaScriptEnabled(true);\n        settings.setDomStorageEnabled(true);\n        settings.setAllowFileAccess(true);\n        settings.setAllowContentAccess(true);\n        settings.setMediaPlaybackRequiresUserGesture(false);\n        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);\n        settings.setUserAgentString(settings.getUserAgentString() + \" MissionRunnerApp/1.0\");\n\n        webView.addJavascriptInterface(new NativeBridge(this), \"NativeApp\");\n\n        webView.setWebViewClient(new WebViewClient());\n        webView.setWebChromeClient(new WebChromeClient());\n\n        webView.loadUrl(\"https://madnessgate44-debug.github.io/Mission-runner/\");\n\n        handleShareIntent(getIntent());\n    }\n\n    @Override\n    protected void onNewIntent(Intent intent) {\n        super.onNewIntent(intent);\n        handleShareIntent(intent);\n    }\n\n    private void handleShareIntent(Intent intent) {\n        if (intent != null && Intent.ACTION_SEND.equals(intent.getAction())) {\n            String sharedText = intent.getStringExtra(Intent.EXTRA_TEXT);\n            if (sharedText != null) {\n                String escaped = sharedText.replace(\"\\\\\", \"\\\\\\\\\").replace(\"'\", \"\\\\'\").replace(\"\\n\", \"\\\\n\");\n                webView.evaluateJavascript(\"window.processSharedText('\" + escaped + \"')\", null);\n            }\n        }\n    }\n\n    public class NativeBridge {\n        private Context context;\n\n        public NativeBridge(Context c) {\n            context = c;\n        }\n\n        @JavascriptInterface\n        public void saveFile(String content, String filename) {\n            try {\n                File dir = new File(Environment.getExternalStoragePublicDirectory(\n                    Environment.DIRECTORY_DOWNLOADS), \"MissionRunner\");\n                dir.mkdirs();\n                File file = new File(dir, filename);\n                FileWriter writer = new FileWriter(file);\n                writer.write(content);\n                writer.close();\n                runOnUiThread(() -> {\n                    webView.evaluateJavascript(\"window.nativeFileSaved('\" + filename + \"')\", null);\n                    Toast.makeText(context, \"Saved: \" + filename, Toast.LENGTH_SHORT).show();\n                });\n            } catch (Exception e) {\n                runOnUiThread(() ->\n                    Toast.makeText(context, \"Error: \" + e.getMessage(), Toast.LENGTH_SHORT).show()\n                );\n            }\n        }\n\n        @JavascriptInterface\n        public void copyToClipboard(String text) {\n            ClipboardManager clipboard = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);\n            ClipData clip = ClipData.newPlainText(\"MissionRunner\", text);\n            clipboard.setPrimaryClip(clip);\n            runOnUiThread(() ->\n                Toast.makeText(context, \"Copied!\", Toast.LENGTH_SHORT).show()\n            );\n        }\n\n        @JavascriptInterface\n        public String getVersion() {\n            return \"1.0.0\";\n        }\n    }\n}\n"},{"path":"app/src/main/res/layout/activity_main.xml","content":"<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<LinearLayout xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    android:layout_width=\"match_parent\"\n    android:layout_height=\"match_parent\"\n    android:orientation=\"vertical\">\n\n    <WebView\n        android:id=\"@+id/webview\"\n        android:layout_width=\"match_parent\"\n        android:layout_height=\"match_parent\"/>\n\n</LinearLayout>\n"},{"path":"app/src/main/res/values/strings.xml","content":"<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<resources>\n    <string name=\"app_name\">Mission Runner</string>\n</resources>\n"},{"path":"app/src/main/res/values/styles.xml","content":"<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<resources>\n    <style name=\"Theme.MissionRunner\" parent=\"Theme.AppCompat.NoActionBar\">\n        <item name=\"android:windowBackground\">@android:color/black</item>\n        <item name=\"android:statusBarColor\">@android:color/black</item>\n        <item name=\"android:navigationBarColor\">@android:color/black</item>\n    </style>\n</resources>\n"}]};
 
 // ═══════════ TABS ═══════════
@@ -490,14 +480,14 @@ function exportProjectHistory() {
 
 // ═══════════ CLIPBOARD ═══════════
 async function pasteFromClipboard(id) {
-  try { const text = await navigator.clipboard.readText(); document.getElementById(id).value = text; toast('✅ PASTED', 'success'); log('Pasted to #'+id); }
+  try { const text = await navigator.clipboard.readText(); document.getElementById(id).value = text; toast('✅ PASTED', 'success'); }
   catch(e) { toast('⚠️ PASTE MANUALLY', 'error'); }
 }
 
 // ═══════════ VOICE INPUT ═══════════
 function startVoice(targetId) {
   if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-    toast('⚠️ VOICE NOT SUPPORTED ON THIS BROWSER', 'error'); return;
+    toast('⚠️ VOICE NOT SUPPORTED', 'error'); return;
   }
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!recognition) {
@@ -507,7 +497,7 @@ function startVoice(targetId) {
     recognition.onresult = (e) => {
       const text = e.results[0][0].transcript;
       const el = document.getElementById(currentVoiceTarget);
-      if (el) { el.value += (el.value ? ' ' : '') + text; }
+      if (el) el.value += (el.value ? ' ' : '') + text;
       const btn = document.querySelector(`[onclick="startVoice('${currentVoiceTarget}')"]`);
       if (btn) btn.classList.remove('listening');
       toast('🎤 CAPTURED', 'success');
@@ -532,18 +522,13 @@ function startVoice(targetId) {
 async function initProjects() {
   if (!db) await openDB();
   const existing = await dbGetAll('projects');
-  if (!existing.length) {
-    for (const p of DEFAULT_PROJECTS) await dbPut('projects', p);
-  }
+  if (!existing.length) for (const p of DEFAULT_PROJECTS) await dbPut('projects', p);
   const saved = await dbGet('settings', 'activeProject');
   if (saved) activeProject = saved.value;
   document.getElementById('activeProjectName').textContent = activeProject.charAt(0).toUpperCase() + activeProject.slice(1);
 }
 
-function switchToProjectMenu() {
-  switchTab('settings');
-  setTimeout(renderProjectChips, 100);
-}
+function switchToProjectMenu() { switchTab('settings'); setTimeout(renderProjectChips, 100); }
 
 async function switchProject(id) {
   activeProject = id;
@@ -583,13 +568,7 @@ async function renderProjectChips() {
 // ═══════════ FORMAT DETECTION ═══════════
 function detectAndParse(text) {
   const codeMatch = text.match(/```(html|htm)\s*([\s\S]*?)```/i) || text.match(/```(css|js|javascript)\s*([\s\S]*?)```/i);
-  if (codeMatch) {
-    const code = codeMatch[2].trim();
-    previewCode = code;
-    showPreview(code);
-    toast('🖼️ CODE PREVIEW READY', 'info');
-    return { type:'preview', data:code };
-  }
+  if (codeMatch) { previewCode = codeMatch[2].trim(); showPreview(previewCode); toast('🖼️ CODE PREVIEW READY', 'info'); return { type:'preview', data:previewCode }; }
   const missionMatch = text.match(/```mission-json\s*([\s\S]*?)```/);
   if (missionMatch) {
     try {
@@ -607,13 +586,7 @@ function detectAndParse(text) {
   if (stepsMatch) {
     try {
       const steps = JSON.parse(stepsMatch[1].trim());
-      if (Array.isArray(steps) && steps.length > 0) {
-        extractedSteps = steps;
-        renderSteps(steps);
-        document.getElementById('stepsCard').style.display = 'flex';
-        toast(`✅ ${steps.length} STEPS EXTRACTED`, 'success');
-        return { type:'steps', data:steps };
-      }
+      if (Array.isArray(steps) && steps.length > 0) { extractedSteps = steps; renderSteps(steps); document.getElementById('stepsCard').style.display = 'flex'; toast(`✅ ${steps.length} STEPS EXTRACTED`, 'success'); return { type:'steps', data:steps }; }
     } catch(e) {}
   }
   const autoSaveMatch = text.match(/```auto-save-link\s*([\s\S]*?)```/);
@@ -627,8 +600,7 @@ function detectAndParse(text) {
         if (decoded.project && decoded.text) {
           pendingAutoSave = decoded;
           document.getElementById('autoProjectLabel').textContent = '📂 ' + decoded.project;
-          const preview = decoded.text;
-          document.getElementById('autoPreview').textContent = preview.length > 200 ? preview.slice(0,200)+'...' : preview;
+          document.getElementById('autoPreview').textContent = decoded.text.length > 200 ? decoded.text.slice(0,200)+'...' : decoded.text;
           document.getElementById('autoSaveCard').classList.add('show');
           toast('📥 AUTO-SAVE READY', 'info');
           return { type:'autosave', data:decoded };
@@ -637,46 +609,26 @@ function detectAndParse(text) {
     }
   }
   const steps = parseStepsOffline(text);
-  if (steps.length > 0) {
-    extractedSteps = steps;
-    renderSteps(steps);
-    document.getElementById('stepsCard').style.display = 'flex';
-    toast(`✅ ${steps.length} STEPS FOUND (OFFLINE)`, 'success');
-    return { type:'steps', data:steps };
-  }
+  if (steps.length > 0) { extractedSteps = steps; renderSteps(steps); document.getElementById('stepsCard').style.display = 'flex'; toast(`✅ ${steps.length} STEPS FOUND (OFFLINE)`, 'success'); return { type:'steps', data:steps }; }
   toast('⚠️ NO RECOGNIZABLE FORMAT FOUND', 'error');
   return { type:'unknown' };
 }
 
-function extractSteps() {
-  const text = document.getElementById('extractInput').value.trim();
-  if (!text) { toast('⚠️ PASTE SOMETHING FIRST', 'error'); return; }
-  detectAndParse(text);
-}
+function extractSteps() { const text = document.getElementById('extractInput').value.trim(); if (!text) { toast('⚠️ PASTE SOMETHING FIRST', 'error'); return; } detectAndParse(text); }
 
 function parseStepsOffline(text) {
   const steps = []; let idx = 1;
   const numRegex = /^(?:\d+[\.\)\-]|Step\s*\d+[\.\:\)\-])\s*(.+?)$/gmi;
   let match;
-  while ((match = numRegex.exec(text)) !== null) {
-    const action = match[1].trim();
-    if (action.length>3) steps.push({ step: idx++, action, type: detectType(action), detail: extractDetail(action) });
-  }
+  while ((match = numRegex.exec(text)) !== null) { const action = match[1].trim(); if (action.length>3) steps.push({ step: idx++, action, type: detectType(action), detail: extractDetail(action) }); }
   if (!steps.length) {
     const bulletRegex = /^[\-\*•]\s*(.+?)$/gmi;
-    while ((match = bulletRegex.exec(text)) !== null) {
-      const action = match[1].trim();
-      if (action.length>3) steps.push({ step: idx++, action, type: detectType(action), detail: extractDetail(action) });
-    }
+    while ((match = bulletRegex.exec(text)) !== null) { const action = match[1].trim(); if (action.length>3) steps.push({ step: idx++, action, type: detectType(action), detail: extractDetail(action) }); }
   }
   if (!steps.length) {
     const verbs = /\b(navigate|open|go to|download|copy|paste|click|tap|type|write|save|create|run|deploy|search|clone|preview)\b/i;
     const lines = text.split(/\n/);
-    for (const line of lines) {
-      if (verbs.test(line.trim()) && line.trim().length>5) {
-        steps.push({ step: idx++, action: line.trim(), type: detectType(line), detail: extractDetail(line) });
-      }
-    }
+    for (const line of lines) { if (verbs.test(line.trim()) && line.trim().length>5) steps.push({ step: idx++, action: line.trim(), type: detectType(line), detail: extractDetail(line) }); }
   }
   return steps;
 }
@@ -695,125 +647,59 @@ function detectType(action) {
   return 'other';
 }
 
-function extractDetail(action) {
-  const urlMatch = action.match(/https?:\/\/[^\s]+/);
-  if (urlMatch) return urlMatch[0];
-  const quoted = action.match(/["']([^"']+)["']/);
-  if (quoted) return quoted[1];
-  return action.slice(0,120);
-}
+function extractDetail(action) { const urlMatch = action.match(/https?:\/\/[^\s]+/); if (urlMatch) return urlMatch[0]; const quoted = action.match(/["']([^"']+)["']/); if (quoted) return quoted[1]; return action.slice(0,120); }
 
 function renderSteps(steps) {
-  const out = document.getElementById('stepsOutput');
-  out.innerHTML = '';
-  steps.forEach((s,i) => {
-    const div = document.createElement('div');
-    div.className = 'step-item'; div.id = 'step-'+i;
-    div.innerHTML = `<div class="step-num">${s.step||i+1}</div><div class="step-text">${s.action}</div><div class="step-action">${s.type||''}</div>`;
-    out.appendChild(div);
-  });
+  const out = document.getElementById('stepsOutput'); out.innerHTML = '';
+  steps.forEach((s,i) => { const div = document.createElement('div'); div.className = 'step-item'; div.id = 'step-'+i; div.innerHTML = `<div class="step-num">${s.step||i+1}</div><div class="step-text">${s.action}</div><div class="step-action">${s.type||''}</div>`; out.appendChild(div); });
   out.classList.add('show');
 }
 
-function clearSteps() {
-  extractedSteps = [];
-  document.getElementById('stepsOutput').innerHTML = '';
-  document.getElementById('stepsCard').style.display = 'none';
-  document.getElementById('extractInput').value = '';
-  document.getElementById('progressWrap').classList.remove('show');
-  closePreview();
-}
-
-function copyAllSteps() {
-  if (!extractedSteps.length) return;
-  const text = extractedSteps.map((s,i)=>`${i+1}. ${s.action}`).join('\n');
-  navigator.clipboard.writeText(text).then(()=>toast('✅ COPIED','success'));
-}
+function clearSteps() { extractedSteps = []; document.getElementById('stepsOutput').innerHTML = ''; document.getElementById('stepsCard').style.display = 'none'; document.getElementById('extractInput').value = ''; document.getElementById('progressWrap').classList.remove('show'); closePreview(); }
+function copyAllSteps() { if (!extractedSteps.length) return; navigator.clipboard.writeText(extractedSteps.map((s,i)=>`${i+1}. ${s.action}`).join('\n')).then(()=>toast('✅ COPIED','success')); }
 
 async function runAllSteps() {
   if (!extractedSteps.length) return;
-  const wrap = document.getElementById('progressWrap');
-  const bar = document.getElementById('progressBar');
+  const wrap = document.getElementById('progressWrap'); const bar = document.getElementById('progressBar');
   wrap.classList.add('show'); bar.style.width = '0%';
-  log('Running all steps...');
   for (let i=0; i<extractedSteps.length; i++) {
-    const s = extractedSteps[i];
-    const el = document.getElementById('step-'+i);
+    const s = extractedSteps[i]; const el = document.getElementById('step-'+i);
     if (el) el.classList.add('running');
     try { await executeStep(s, i); if (el) { el.classList.remove('running'); el.classList.add('done'); } }
-    catch(e) { if (el) { el.classList.remove('running'); el.classList.add('failed'); } log('Step failed: '+e.message, 'err'); }
+    catch(e) { if (el) { el.classList.remove('running'); el.classList.add('failed'); } }
     bar.style.width = ((i+1)/extractedSteps.length*100)+'%';
     await new Promise(r=>setTimeout(r,300));
   }
   toast('✅ ALL STEPS COMPLETE', 'success');
-  log('All steps executed');
 }
 
 async function executeStep(step, idx) {
-  const type = (step.type||'').toLowerCase();
-  const detail = step.detail || step.action || '';
-  log(`Step ${idx+1}: ${step.action} [${type}]`);
-  if ((type==='navigate'||type==='open') && detail.includes('.')) {
-    window.open(detail.startsWith('http')?detail:'https://'+detail, '_blank');
-  } else if (type==='copy' && detail) {
-    try { await navigator.clipboard.writeText(detail); } catch(e) {}
-  } else if (type==='download' && detail) {
-    try { await writeToFolder(activeProject, detail); toast('✅ SAVED TO PROJECT FOLDER', 'success'); }
-    catch(e) { toast('⚠️ COULD NOT SAVE', 'error'); }
-  } else if (type==='cloud') { triggerCloudBrainTask(detail); }
+  const type = (step.type||'').toLowerCase(); const detail = step.detail || step.action || '';
+  if ((type==='navigate'||type==='open') && detail.includes('.')) window.open(detail.startsWith('http')?detail:'https://'+detail, '_blank');
+  else if (type==='copy' && detail) try { await navigator.clipboard.writeText(detail); } catch(e) {}
+  else if (type==='download' && detail) await smartSave(activeProject, detail);
+  else if (type==='cloud') triggerCloudBrainTask(detail);
   else if (type==='preview' && detail) { previewCode = detail; showPreview(detail); }
 }
 
 // ═══════════ LIVE PREVIEW ═══════════
-function showPreview(code) {
-  document.getElementById('previewCard').style.display = 'flex';
-  const iframe = document.getElementById('previewIframe');
-  iframe.classList.add('show');
-  iframe.srcdoc = code;
-}
-
-function closePreview() {
-  document.getElementById('previewCard').style.display = 'none';
-  document.getElementById('previewIframe').srcdoc = '';
-  document.getElementById('previewIframe').classList.remove('show');
-  previewCode = '';
-}
-
-function copyPreviewCode() {
-  if (!previewCode) return;
-  navigator.clipboard.writeText(previewCode).then(()=>toast('✅ CODE COPIED','success'));
-}
-
-async function savePreviewToProject() {
-  if (!previewCode) { toast('⚠️ NO CODE TO SAVE', 'error'); return; }
-  try {
-    const fn = `${activeProject}-preview-${Date.now()}.html`;
-    await writeToFolder(activeProject, previewCode, fn);
-    toast('✅ SAVED: ' + fn, 'success');
-    dbPut('files', { projectId: activeProject, name: fn, content: previewCode, savedAt: Date.now() });
-  } catch(e) { toast('❌ SAVE FAILED', 'error'); }
-}
+function showPreview(code) { document.getElementById('previewCard').style.display = 'flex'; const iframe = document.getElementById('previewIframe'); iframe.classList.add('show'); iframe.srcdoc = code; }
+function closePreview() { document.getElementById('previewCard').style.display = 'none'; document.getElementById('previewIframe').srcdoc = ''; document.getElementById('previewIframe').classList.remove('show'); previewCode = ''; }
+function copyPreviewCode() { if (!previewCode) return; navigator.clipboard.writeText(previewCode).then(()=>toast('✅ CODE COPIED','success')); }
+async function savePreviewToProject() { if (!previewCode) { toast('⚠️ NO CODE TO SAVE', 'error'); return; } await smartSave(activeProject, previewCode, `${activeProject}-preview-${Date.now()}.html`); }
 
 // ═══════════ MISSION EXECUTOR ═══════════
-function validateJSON(el) {
-  try { JSON.parse(el.value); el.style.borderColor = 'var(--green)'; }
-  catch(e) { if(el.value.length>3) el.style.borderColor = 'var(--accent2)'; else el.style.borderColor = 'var(--border)'; }
-}
-
+function validateJSON(el) { try { JSON.parse(el.value); el.style.borderColor = 'var(--green)'; } catch(e) { if(el.value.length>3) el.style.borderColor = 'var(--accent2)'; else el.style.borderColor = 'var(--border)'; } }
 function loadDemoMission() {
   const demo = { project:activeProject, files:[
     { path:"index.html", content:"<!DOCTYPE html>\n<html>\n<head><title>"+activeProject+"</title></head>\n<body><h1>Hello from "+activeProject+"!</h1></body>\n</html>" },
     { path:"css/style.css", content:"body { background: #0f0f14; color: #e8e8f2; font-family: sans-serif; }" },
-    { path:"README.md", content:"# "+activeProject+"\nCreated by Mission Runner v9.1" }
+    { path:"README.md", content:"# "+activeProject+"\nCreated by Mission Runner v9.2" }
   ]};
   document.getElementById('missionInput').value = JSON.stringify(demo,null,2);
   validateJSON(document.getElementById('missionInput'));
 }
-
-function clearMission() {
-  document.getElementById('missionInput').value = '';
-  document.getElementById('missionInput').style.borderColor = 'var(--border)';
-}
+function clearMission() { document.getElementById('missionInput').value = ''; document.getElementById('missionInput').style.borderColor = 'var(--border)'; }
 
 async function runMission() {
   const raw = document.getElementById('missionInput').value.trim();
@@ -821,44 +707,16 @@ async function runMission() {
   let mission;
   try { mission = JSON.parse(raw); } catch(e) { toast('❌ INVALID JSON','error'); return; }
   if (!mission.files || !Array.isArray(mission.files)) { toast('❌ NEEDS "FILES" ARRAY','error'); return; }
-
-  const btn = document.getElementById('runMissionBtn');
-  btn.disabled = true; btn.textContent = '⏳ PROCESSING...';
-  const wrap = document.getElementById('missionProgress');
-  const bar = document.getElementById('missionProgressBar');
+  const btn = document.getElementById('runMissionBtn'); btn.disabled = true; btn.textContent = '⏳ PROCESSING...';
+  const wrap = document.getElementById('missionProgress'); const bar = document.getElementById('missionProgressBar');
   wrap.classList.add('show'); bar.style.width = '0%';
-
   try {
-    if (typeof window.showDirectoryPicker === 'function') {
-      const dirHandle = await window.showDirectoryPicker();
-      let created = 0;
-      for (const file of mission.files) {
-        const parts = file.path.split('/');
-        const fileName = parts.pop();
-        let currentDir = dirHandle;
-        for (const part of parts) currentDir = await currentDir.getDirectoryHandle(part, { create: true });
-        const fileHandle = await currentDir.getFileHandle(fileName, { create: true });
-        const writable = await fileHandle.createWritable();
-        await writable.write(file.content || '');
-        await writable.close();
-        created++;
-        bar.style.width = (created/mission.files.length*100)+'%';
-        log('Created: '+file.path);
-      }
-      toast(`✅ ${created} FILES CREATED!`,'success');
-    } else {
-      for (let i=0; i<mission.files.length; i++) {
-        const file = mission.files[i];
-        const fname = file.path.split('/').pop();
-        const ext = fname.includes('.') ? fname.split('.').pop() : 'txt';
-        const mime = { html:'text/html', css:'text/css', js:'text/javascript', md:'text/markdown', json:'application/json' };
-        downloadBlob(file.content||'', fname, mime[ext]||'text/plain');
-        bar.style.width = ((i+1)/mission.files.length*100)+'%';
-        await new Promise(r=>setTimeout(r,600));
-      }
-      toast('✅ FILES DOWNLOADED','success');
+    for (let i=0; i<mission.files.length; i++) {
+      const file = mission.files[i];
+      await smartSave(mission.project || activeProject, file.content || '', file.path);
+      bar.style.width = ((i+1)/mission.files.length*100)+'%';
     }
-    log('Mission complete');
+    toast('✅ MISSION COMPLETE','success');
   } catch(err) { toast('❌ '+err.message,'error'); }
   finally { btn.disabled = false; btn.textContent = '▶ RUN MISSION'; setTimeout(()=>wrap.classList.remove('show'),2000); }
 }
@@ -867,20 +725,25 @@ async function runMission() {
 function saveCloudToken() {
   const t = document.getElementById('tokenInput').value.trim();
   if (!t) { toast('⚠️ PASTE YOUR TOKEN FIRST','error'); return; }
-  sessionStorage.setItem('mr_github_token', t);
+  dbPut('settings', { key: 'github_token', value: t });
   document.getElementById('tokenInputCard').classList.remove('show');
   document.getElementById('tokenSavedIndicator').style.display = 'flex';
-  document.getElementById('tokenSavedIndicator').textContent = '🔑 TOKEN SAVED (THIS SESSION)';
+  document.getElementById('tokenSavedIndicator').textContent = '🔑 TOKEN SAVED PERMANENTLY';
   toast('✅ TOKEN SAVED','success');
 }
 
 function saveSettingsToken() {
   const t = document.getElementById('settingsToken').value.trim();
   if (!t) { toast('⚠️ PASTE YOUR TOKEN FIRST','error'); return; }
-  sessionStorage.setItem('mr_github_token', t);
+  dbPut('settings', { key: 'github_token', value: t });
   document.getElementById('settingsTokenIndicator').style.display = 'flex';
-  document.getElementById('settingsTokenIndicator').textContent = '🔑 TOKEN SAVED (THIS SESSION)';
+  document.getElementById('settingsTokenIndicator').textContent = '🔑 TOKEN SAVED PERMANENTLY';
   toast('✅ TOKEN SAVED','success');
+}
+
+async function getToken() {
+  const stored = await dbGet('settings', 'github_token');
+  return stored ? stored.value : null;
 }
 
 async function triggerCloudBrain() {
@@ -891,7 +754,7 @@ async function triggerCloudBrain() {
 }
 
 async function triggerCloudBrainTask(task, payload={}) {
-  let token = sessionStorage.getItem('mr_github_token');
+  let token = await getToken();
   if (!token) {
     document.getElementById('tokenInputCard').classList.add('show');
     document.getElementById('tokenSavedIndicator').style.display = 'none';
@@ -909,23 +772,12 @@ async function triggerCloudBrainTask(task, payload={}) {
   } catch(e) { toast('❌ NETWORK ERROR','error'); }
 }
 
-// ═══════════ ONE-TAP APK BUILDER ═══════════
 async function triggerAPKBuild() {
-  let token = sessionStorage.getItem('mr_github_token');
-  if (!token) {
-    // Ask for token inline
-    const t = prompt('Enter your GitHub token to build the APK:');
-    if (!t) { toast('⚠️ TOKEN REQUIRED', 'error'); return; }
-    sessionStorage.setItem('mr_github_token', t);
-    token = t;
-  }
-  toast('🤖 BUILDING APK... This will take 2-3 minutes.', 'info', 5000);
-  log('Triggering APK build');
+  let token = await getToken();
+  if (!token) { toast('🔑 SAVE YOUR TOKEN IN SETTINGS FIRST','error', 4000); return; }
+  toast('🤖 BUILDING APK... 2-3 minutes.','info', 5000);
   await triggerCloudBrainTask('build_apk', APK_PAYLOAD);
-  // After 3 seconds, tell user where to check
-  setTimeout(() => {
-    toast('📥 Check Actions tab for the APK artifact', 'info', 6000);
-  }, 3000);
+  setTimeout(() => toast('📥 Check Actions tab for APK artifact','info', 6000), 3000);
 }
 
 // ═══════════ CAMERA + OCR ═══════════
@@ -939,33 +791,25 @@ async function startCamera() {
     toast('📷 CAMERA ACTIVE','info');
   } catch(e) { toast('❌ CAMERA DENIED','error'); }
 }
-
 function stopCamera() {
   if (cameraStream) { cameraStream.getTracks().forEach(t=>t.stop()); cameraStream=null; }
   document.getElementById('cameraVideo').classList.remove('show');
-  const startBtn = document.getElementById('startCameraBtn'); if (startBtn) startBtn.disabled = false;
-  const capBtn = document.getElementById('captureCameraBtn'); if (capBtn) capBtn.disabled = true;
-  const sendBtn = document.getElementById('sendCameraBtn'); if (sendBtn) sendBtn.disabled = true;
+  document.getElementById('startCameraBtn').disabled = false;
+  document.getElementById('captureCameraBtn').disabled = true;
+  document.getElementById('sendCameraBtn').disabled = true;
 }
-
-async function stopOCR() {
-  if (ocrWorker) { try { await ocrWorker.terminate(); } catch(e) {} ocrWorker = null; ocrReady = false; }
-}
-
+async function stopOCR() { if (ocrWorker) { try { await ocrWorker.terminate(); } catch(e) {} ocrWorker = null; ocrReady = false; } }
 function captureCamera() {
   const video = document.getElementById('cameraVideo');
   const canvas = document.getElementById('cameraCanvas');
   canvas.width = video.videoWidth || 640; canvas.height = video.videoHeight || 360;
   canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);
-  const dataUrl = canvas.toDataURL('image/png');
   document.getElementById('sendCameraBtn').disabled = false;
   toast('📸 CAPTURED! READING TEXT...','info');
-  runOCR(dataUrl);
+  runOCR(canvas.toDataURL('image/png'));
 }
-
 async function runOCR(imageData) {
-  const loading = document.getElementById('ocrLoading');
-  loading.classList.add('show');
+  const loading = document.getElementById('ocrLoading'); loading.classList.add('show');
   try {
     if (!ocrReady) { toast('📥 LOADING OCR ENGINE...','info'); ocrWorker = await Tesseract.createWorker('eng'); ocrReady = true; }
     const { data:{ text } } = await ocrWorker.recognize(imageData);
@@ -975,7 +819,6 @@ async function runOCR(imageData) {
   } catch(e) { toast('❌ OCR ERROR','error'); }
   finally { loading.classList.remove('show'); }
 }
-
 function sendCameraToExtractor() {
   const text = document.getElementById('cameraResult').value.trim();
   if (!text) { toast('⚠️ NO TEXT','error'); return; }
@@ -984,80 +827,72 @@ function sendCameraToExtractor() {
   toast('📤 SENT TO AGENT','success');
 }
 
-// ═══════════ FOLDER PICKER ═══════════
-async function selectSaveFolder() {
-  if (typeof window.showDirectoryPicker !== 'function') { toast('⚠️ NOT SUPPORTED ON THIS BROWSER','error'); return; }
-  try {
-    saveFolderHandle = await window.showDirectoryPicker();
-    await dbPut('settings', { key: 'saveFolder', value: saveFolderHandle });
-    updateFolderUI();
-    toast('✅ FOLDER: ' + saveFolderHandle.name,'success');
-    log('Save folder set: ' + saveFolderHandle.name);
-  } catch(e) { if (e.name !== 'AbortError') toast('❌ ERROR','error'); }
+// ═══════════ SMART SAVE (Native or Fallback) ═══════════
+async function smartSave(project, text, customFilename) {
+  const now = new Date();
+  const timestamp = now.toISOString().replace(/[:.]/g, '-').slice(0,19);
+  const filename = customFilename || `${project}-${timestamp}.md`;
+  const content = `# ${project}\n\n**Saved:** ${now.toLocaleString()}\n\n---\n\n${text}`;
+
+  if (isNative) {
+    // Use native bridge — saves directly to Downloads/MissionRunner/
+    window.NativeApp.saveFile(content, filename);
+    toast('✅ SAVED: ' + filename, 'success');
+    log('Native save: ' + filename);
+  } else {
+    // Fallback: folder picker
+    try {
+      const folderHandle = await ensureFolder();
+      if (!folderHandle) throw new Error('No folder selected');
+      const projectDir = await folderHandle.getDirectoryHandle(project, { create: true });
+      const fileHandle = await projectDir.getFileHandle(filename, { create: true });
+      const writable = await fileHandle.createWritable();
+      await writable.write(content);
+      await writable.close();
+      toast('✅ SAVED: ' + filename, 'success');
+      log('Saved: ' + filename);
+    } catch(e) {
+      if (e.name === 'AbortError') { toast('⚠️ CANCELLED', 'error'); return; }
+      // Last resort: blob download
+      downloadBlob(content, filename, 'text/markdown');
+      toast('✅ DOWNLOADED: ' + filename, 'success');
+    }
+  }
 }
 
-function updateFolderUI() {
-  if (!saveFolderHandle) return;
-  const el = document.getElementById('savedFolderIndicator');
-  if (el) { el.textContent = '📁 ' + saveFolderHandle.name; el.classList.add('show'); }
-  const el2 = document.getElementById('captureFolderIndicator');
-  if (el2) el2.classList.add('show');
+async function saveContent(source) {
+  let project, text;
+  if (source === 'autoSave') { if (!pendingAutoSave) { toast('⚠️ NO DATA','error'); return; } project = pendingAutoSave.project; text = pendingAutoSave.text; }
+  else if (source === 'shared') { if (!pendingShareText) { toast('⚠️ NO DATA','error'); return; } project = document.getElementById('shareProject').value.trim()||activeProject; text = pendingShareText; }
+  else if (source === 'manual') { project = document.getElementById('manualProject').value.trim()||activeProject; text = document.getElementById('manualConversation').value.trim(); if (!text) { toast('⚠️ PASTE CONVERSATION','error'); return; } }
+  else if (source === 'note') { project = 'notes'; text = document.getElementById('quickNote').value.trim(); if (!text) { toast('⚠️ TYPE SOMETHING','error'); return; } }
+  else { toast('⚠️ UNKNOWN','error'); return; }
+  await smartSave(project, text);
+  if (source==='autoSave') { document.getElementById('autoSaveCard').classList.remove('show'); pendingAutoSave=null; }
+  if (source==='shared') { document.getElementById('shareCard').classList.remove('show'); pendingShareText=null; }
+  if (source==='manual') document.getElementById('manualConversation').value='';
+  if (source==='note') document.getElementById('quickNote').value='';
 }
 
+// ═══════════ FOLDER PICKER (Fallback) ═══════════
 async function ensureFolder() {
   if (saveFolderHandle) {
     try { const perm = await saveFolderHandle.queryPermission({ mode: 'readwrite' }); if (perm === 'granted') return saveFolderHandle; }
     catch(e) {}
-    try { const req = await saveFolderHandle.requestPermission({ mode: 'readwrite' }); if (req === 'granted') return saveFolderHandle; }
-    catch(e) {}
     saveFolderHandle = null;
-    toast('📂 PERMISSION LOST — RE-SELECT FOLDER','info');
   }
   const stored = await dbGet('settings', 'saveFolder');
   if (stored && stored.value) {
     saveFolderHandle = stored.value;
-    try { const perm = await saveFolderHandle.queryPermission({ mode: 'readwrite' }); if (perm === 'granted') { updateFolderUI(); return saveFolderHandle; } }
-    catch(e) {}
-    try { const req = await saveFolderHandle.requestPermission({ mode: 'readwrite' }); if (req === 'granted') { updateFolderUI(); return saveFolderHandle; } }
-    catch(e) {}
-    saveFolderHandle = null;
+    try { const perm = await saveFolderHandle.queryPermission({ mode: 'readwrite' }); if (perm === 'granted') return saveFolderHandle; }
+    catch(e) { saveFolderHandle = null; }
   }
-  toast('📂 SELECT A SAVE FOLDER FIRST','info', 4000);
-  await selectSaveFolder();
-  return saveFolderHandle;
-}
-
-async function writeToFolder(project, text, customFilename) {
-  const folderHandle = await ensureFolder();
-  if (!folderHandle) throw new Error('No folder selected');
-  const projectDir = await folderHandle.getDirectoryHandle(project, { create: true });
-  const now = new Date();
-  const timestamp = now.toISOString().replace(/[:.]/g, '-').slice(0,19);
-  const fileName = customFilename || `${project}-${timestamp}.md`;
-  const fileHandle = await projectDir.getFileHandle(fileName, { create: true });
-  const writable = await fileHandle.createWritable();
-  await writable.write(`# ${project}\n\n**Saved:** ${now.toLocaleString()}\n\n---\n\n${text}`);
-  await writable.close();
-  log(`Saved: ${project}/${fileName}`, 'ok');
-  dbPut('files', { projectId: project, name: fileName, content: text, savedAt: Date.now() });
-  return fileName;
-}
-
-async function downloadWithPicker(source) {
+  toast('📂 SELECT A FOLDER','info', 4000);
   try {
-    let project, text;
-    if (source === 'autoSave') { if (!pendingAutoSave) { toast('⚠️ NO DATA','error'); return; } project = pendingAutoSave.project; text = pendingAutoSave.text; }
-    else if (source === 'shared') { if (!pendingShareText) { toast('⚠️ NO DATA','error'); return; } project = document.getElementById('shareProject').value.trim()||activeProject; text = pendingShareText; }
-    else if (source === 'manual') { project = document.getElementById('manualProject').value.trim()||activeProject; text = document.getElementById('manualConversation').value.trim(); if (!text) { toast('⚠️ PASTE CONVERSATION','error'); return; } }
-    else if (source === 'note') { project = 'notes'; text = document.getElementById('quickNote').value.trim(); if (!text) { toast('⚠️ TYPE SOMETHING','error'); return; } }
-    else { toast('⚠️ UNKNOWN','error'); return; }
-    const fn = await writeToFolder(project, text);
-    toast(`✅ SAVED TO ${project}/${fn}`,'success');
-    if (source==='autoSave') { document.getElementById('autoSaveCard').classList.remove('show'); pendingAutoSave=null; }
-    if (source==='shared') { document.getElementById('shareCard').classList.remove('show'); pendingShareText=null; }
-    if (source==='manual') document.getElementById('manualConversation').value='';
-    if (source==='note') document.getElementById('quickNote').value='';
-  } catch(e) { if (e.name==='AbortError') toast('⚠️ CANCELLED','error'); else toast('❌ '+e.message,'error'); }
+    saveFolderHandle = await window.showDirectoryPicker();
+    await dbPut('settings', { key: 'saveFolder', value: saveFolderHandle });
+    return saveFolderHandle;
+  } catch(e) { return null; }
 }
 
 // ═══════════ TOOLS ═══════════
@@ -1070,13 +905,13 @@ function downloadBlob(content, filename, type) {
 }
 
 function downloadBrainYml() {
-  const yml = `name: Cloud Brain\non:\n  repository_dispatch:\n    types: [mission]\n\njobs:\n  execute:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: '20'\n      - name: Setup Java\n        uses: actions/setup-java@v4\n        with:\n          java-version: '17'\n          distribution: 'temurin'\n      - name: Setup Gradle\n        uses: gradle/gradle-build-action@v2\n      - name: Run Mission Script\n        env:\n          GITHUB_TOKEN: \${{ secrets.GITHUB_TOKEN }}\n          PAYLOAD: \${{ toJson(github.event.client_payload) }}\n        run: node scripts/mission.js\n      - name: Build APK\n        if: hashFiles('android-project/app/build.gradle') != ''\n        uses: gradle/gradle-build-action@v2\n        with:\n          arguments: assembleDebug\n          build-root-directory: android-project\n          gradle-version: 8.2\n      - name: Upload APK Artifact\n        if: hashFiles('android-project/app/build/outputs/apk/debug/app-debug.apk') != ''\n        uses: actions/upload-artifact@v4\n        with:\n          name: MissionRunner-APK\n          path: android-project/app/build/outputs/apk/debug/app-debug.apk\n      - name: Commit changes\n        run: |\n          git config user.name "Mission Runner"\n          git config user.email "runner@mission.app"\n          git add -A\n          git diff --staged --quiet || git commit -m "Mission: \${{ github.event.client_payload.task }}"\n          git push\n`;
+  const yml = `name: Cloud Brain\npermissions:\n  contents: write\n\non:\n  repository_dispatch:\n    types: [mission]\n\njobs:\n  execute:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: '20'\n      - uses: actions/setup-java@v4\n        with:\n          java-version: '17'\n          distribution: 'temurin'\n      - name: Run Mission Script\n        env:\n          GITHUB_TOKEN: \${{ secrets.GITHUB_TOKEN }}\n          PAYLOAD: \${{ toJson(github.event.client_payload) }}\n        run: node scripts/mission.js\n      - name: Generate Gradle Wrapper\n        if: hashFiles('android-project/app/build.gradle') != ''\n        working-directory: android-project\n        run: gradle wrapper --gradle-version 8.2\n      - name: Build APK\n        if: hashFiles('android-project/app/build.gradle') != ''\n        working-directory: android-project\n        run: ./gradlew assembleDebug\n      - name: Upload APK Artifact\n        if: hashFiles('android-project/app/build/outputs/apk/debug/app-debug.apk') != ''\n        uses: actions/upload-artifact@v4\n        with:\n          name: MissionRunner-APK\n          path: android-project/app/build/outputs/apk/debug/app-debug.apk\n      - name: Commit changes\n        run: |\n          git config user.name "Mission Runner"\n          git config user.email "runner@mission.app"\n          git add -A\n          git diff --staged --quiet || git commit -m "Mission: \${{ github.event.client_payload.task }}"\n          git push\n`;
   downloadBlob(yml, 'brain.yml', 'text/yaml');
   toast('✅ BRAIN.YML DOWNLOADED','success');
 }
 
 function downloadSystemOrder() {
-  const md = `# SYSTEM ORDER — MISSION RUNNER PROTOCOL v1.0\n\nYou are working with Ahmed. He uses Mission Runner to execute instructions.\n\n## OUTPUT FORMATS\n\n### MISSION JSON (file creation)\n\`\`\`mission-json\n{"project":"name","files":[{"path":"index.html","content":"..."}]}\n\`\`\`\n\n### ACTION STEPS\n\`\`\`action-steps\n[{"step":1,"action":"Do this","type":"navigate","detail":"url"}]\n\`\`\`\nTypes: navigate, copy, paste, download, open, click, write, search, cloud, other.\n\n### AUTO-SAVE LINK\n\`\`\`auto-save-link\nhttps://madnessgate44-debug.github.io/Mission-runner/?autosave=[BASE64]\n\`\`\`\n\n## PROJECTS\n- Gahiz: AI interview simulation\n- Content Factory: AI content production\n- Wired Leader: ADHD coaching brand\n\n## RULES\n- Never ask Ahmed to create files manually\n- Always provide auto-save link at end\n- Be concise (phone screen)\n`;
+  const md = `# SYSTEM ORDER — MISSION RUNNER PROTOCOL v1.0\n\nYou are working with Ahmed. He uses Mission Runner to execute instructions.\n\n## OUTPUT FORMATS\n\n### MISSION JSON (file creation)\n\`\`\`mission-json\n{"project":"name","files":[{"path":"index.html","content":"..."}]}\n\`\`\`\n\n### ACTION STEPS\n\`\`\`action-steps\n[{"step":1,"action":"Do this","type":"navigate","detail":"url"}]\n\`\`\`\n\n### AUTO-SAVE LINK\n\`\`\`auto-save-link\nhttps://madnessgate44-debug.github.io/Mission-runner/?autosave=[BASE64]\n\`\`\`\n\n## PROJECTS\n- Gahiz: AI interview simulation\n- Content Factory: AI content production\n- Wired Leader: ADHD coaching brand\n\n## RULES\n- Never ask Ahmed to create files manually\n- Always provide auto-save link at end\n- Be concise (phone screen)\n`;
   downloadBlob(md, 'system-order.md', 'text/markdown');
   toast('✅ SYSTEM-ORDER.MD DOWNLOADED','success');
 }
@@ -1105,8 +940,7 @@ function processSharedText() {
   const combined = parts.join('\n\n').trim();
   if (!combined) return;
   pendingShareText = combined;
-  const preview = combined;
-  document.getElementById('sharePreview').textContent = preview.length > 200 ? preview.slice(0,200)+'...' : preview;
+  document.getElementById('sharePreview').textContent = combined.length > 200 ? combined.slice(0,200)+'...' : combined;
   document.getElementById('shareCard').classList.add('show');
   log('Shared content received');
 }
@@ -1129,7 +963,7 @@ async function checkForUpdates() {
     const res = await fetch('https://api.github.com/repos/madnessgate44-debug/Mission-runner/releases/latest');
     const data = await res.json();
     const latest = data.tag_name;
-    if (latest && latest !== 'v9.1') {
+    if (latest && latest !== 'v9.2') {
       const banner = document.getElementById('updateBanner');
       if (banner) { banner.classList.add('show'); banner.textContent = '⬆️ NEW VERSION '+latest+' AVAILABLE — TAP TO UPDATE'; }
     }
@@ -1138,33 +972,21 @@ async function checkForUpdates() {
 
 // ═══════════ STARTUP ═══════════
 (async function init() {
-  try {
-    await openDB();
-    await initProjects();
-  } catch(e) { console.warn('DB init failed:', e); }
-
+  try { await openDB(); await initProjects(); } catch(e) {}
   checkMissionLink();
   processAutoSaveLink();
   processSharedText();
-  log('Mission Runner v9.1 ready ✅');
-
-  try {
-    const stored = await dbGet('settings', 'saveFolder');
-    if (stored && stored.value) saveFolderHandle = stored.value;
-    updateFolderUI();
-  } catch(e) {}
-
-  if (sessionStorage.getItem('mr_github_token')) {
+  log('Mission Runner v9.2 ready ✅');
+  // Restore token indicator
+  const token = await getToken();
+  if (token) {
     const el = document.getElementById('tokenSavedIndicator');
-    if (el) { el.style.display = 'flex'; el.textContent = '🔑 TOKEN SAVED (THIS SESSION)'; }
+    if (el) { el.style.display = 'flex'; el.textContent = '🔑 TOKEN SAVED PERMANENTLY'; }
     const el2 = document.getElementById('settingsTokenIndicator');
-    if (el2) { el2.style.display = 'flex'; el2.textContent = '🔑 TOKEN SAVED (THIS SESSION)'; }
+    if (el2) { el2.style.display = 'flex'; el2.textContent = '🔑 TOKEN SAVED PERMANENTLY'; }
   }
-
   setTimeout(checkForUpdates, 2000);
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js').catch(()=>{});
-  }
+  if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js').catch(()=>{}); }
 })();
 </script>
 </body>
