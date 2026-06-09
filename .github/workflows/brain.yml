@@ -21,19 +21,21 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Setup Gradle
-        uses: gradle/gradle-build-action@v2
-
       - name: Run Mission Script
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PAYLOAD: ${{ toJson(github.event.client_payload) }}
         run: node scripts/mission.js
 
-      - name: Build APK (if project exists)
+      - name: Generate Gradle Wrapper
         if: hashFiles('android-project/app/build.gradle') != ''
         working-directory: android-project
-        run: gradle assembleDebug
+        run: gradle wrapper --gradle-version 8.2
+
+      - name: Build APK
+        if: hashFiles('android-project/app/build.gradle') != ''
+        working-directory: android-project
+        run: ./gradlew assembleDebug
 
       - name: Upload APK Artifact
         if: hashFiles('android-project/app/build/outputs/apk/debug/app-debug.apk') != ''
