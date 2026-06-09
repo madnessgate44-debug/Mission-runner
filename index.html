@@ -4,587 +4,448 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="theme-color" content="#ffffff">
-  <title>Mission Runner</title>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#070709">
+  <title>Mission Runner v9.0</title>
   <link rel="manifest" href="manifest.json">
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #ffffff;
-      --surface: #f5f5f7;
-      --card: #ffffff;
-      --border: #e0e0e6;
-      --accent: #007aff;
-      --accent2: #ff3b30;
-      --accent3: #ffcc00;
-      --green: #34c759;
-      --text: #1c1c1e;
-      --muted: #8e8e93;
-      --shadow: 0 2px 12px rgba(0,0,0,0.06);
-      --radius: 16px;
-      --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      --bg: #070709;
+      --surface: #0f0f14;
+      --surface2: #16161e;
+      --border: #1c1c26;
+      --accent: #00e5ff;
+      --accent2: #ff3d3d;
+      --accent3: #ffd600;
+      --green: #00e676;
+      --text: #e8e8f2;
+      --muted: #4a4a62;
+      --font-display: 'Rajdhani', sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+      --radius: 10px;
     }
-
     * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-
     body {
-      font-family: var(--font);
+      font-family: var(--font-display);
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
       padding-bottom: 80px;
       -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
     }
-
+    body::after {
+      content: '';
+      position: fixed; inset: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,229,255,0.008) 2px, rgba(0,229,255,0.008) 3px);
+      pointer-events: none; z-index: 0;
+    }
     .header {
-      padding: 1em 1.2em;
-      background: var(--bg);
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      backdrop-filter: blur(12px);
-      background: rgba(255,255,255,0.85);
-    }
-
-    .logo {
-      font-size: 1.3em;
-      font-weight: 700;
-      color: var(--text);
-      letter-spacing: -0.3px;
-    }
-
-    .logo span { color: var(--accent); }
-
-    .version-pill {
-      font-size: 0.7em;
-      font-weight: 600;
-      background: var(--accent3);
-      color: #000;
-      padding: 0.25em 0.7em;
-      border-radius: 20px;
-      letter-spacing: 0.3px;
-    }
-
-    .update-banner {
-      display: none;
-      padding: 0.6em 1.2em;
-      background: var(--accent);
-      color: #fff;
-      text-align: center;
-      font-weight: 600;
-      font-size: 0.9em;
-      cursor: pointer;
-    }
-
-    .update-banner.show { display: block; }
-
-    .tab-bar {
-      position: sticky;
-      top: 52px;
-      display: flex;
-      gap: 0.4em;
-      padding: 0.6em 1em;
-      background: rgba(255,255,255,0.85);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid var(--border);
-      z-index: 99;
-      overflow-x: auto;
-      scrollbar-width: none;
-    }
-
-    .tab-bar::-webkit-scrollbar { display: none; }
-
-    .tab {
-      flex-shrink: 0;
-      display: flex;
-      align-items: center;
-      gap: 0.4em;
-      padding: 0.55em 1em;
-      border-radius: 20px;
-      font-weight: 600;
-      font-size: 0.85em;
-      color: var(--muted);
-      background: transparent;
-      border: none;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: all 0.2s;
-    }
-
-    .tab.active {
-      background: var(--accent);
-      color: #fff;
-      box-shadow: 0 2px 8px rgba(0,122,255,0.25);
-    }
-
-    .tab-icon { font-size: 1.2em; }
-
-    .panel { display: none; padding: 1em 1.2em; flex-direction: column; gap: 1em; }
-    .panel.active { display: flex; }
-
-    .card {
-      background: var(--card);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      padding: 1.1em;
-      display: flex;
-      flex-direction: column;
-      gap: 0.8em;
-      border: 1px solid var(--border);
-    }
-
-    .card-label {
-      font-size: 0.7em;
-      font-weight: 600;
-      color: var(--accent);
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
-    }
-
-    .card-title {
-      font-size: 1em;
-      font-weight: 600;
-      color: var(--text);
-    }
-
-    textarea, input[type="text"] {
-      width: 100%;
+      padding: 0.8em 1em;
       background: var(--surface);
-      color: var(--text);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 0.8em;
-      font-size: 0.9em;
-      font-family: var(--font);
-      resize: vertical;
-      line-height: 1.5;
-      transition: border-color 0.2s;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
     }
-
-    textarea:focus, input:focus {
-      outline: none;
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(0,122,255,0.1);
+    .header-left { display: flex; align-items: center; gap: 0.6em; }
+    .logo { font-family: var(--font-display); font-weight: 700; font-size: 1.3em; color: var(--text); letter-spacing: 1px; text-transform: uppercase; }
+    .logo span { color: var(--accent); }
+    .version-pill { font-size: 0.55em; font-weight: 600; background: var(--accent); color: #000; padding: 0.2em 0.5em; border-radius: 20px; font-family: var(--font-mono); }
+    .project-selector {
+      background: var(--surface2); border: 1px solid var(--border); border-radius: 20px;
+      padding: 0.3em 0.6em; font-size: 0.75em; color: var(--accent); font-weight: 600;
+      font-family: var(--font-display); cursor: pointer; display: flex; align-items: center; gap: 0.3em;
     }
-
+    .status-dot { width: 8px; height: 8px; background: var(--green); border-radius: 50%; box-shadow: 0 0 6px var(--green); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+    .update-banner { display: none; padding: 0.5em 1em; background: var(--accent); color: #000; text-align: center; font-weight: 700; font-size: 0.8em; cursor: pointer; position: sticky; top: 48px; z-index: 99; }
+    .update-banner.show { display: block; }
+    .tab-bar {
+      position: sticky; top: 48px; display: flex; gap: 0.3em; padding: 0.5em 0.6em;
+      background: var(--surface); border-bottom: 1px solid var(--border); z-index: 98;
+      overflow-x: auto; scrollbar-width: none;
+    }
+    .tab-bar::-webkit-scrollbar { display: none; }
+    .tab {
+      flex-shrink: 0; display: flex; align-items: center; gap: 0.3em;
+      padding: 0.4em 0.8em; border-radius: 16px; font-weight: 600; font-size: 0.72em;
+      color: var(--muted); background: transparent; border: 1px solid var(--border);
+      cursor: pointer; white-space: nowrap; transition: all 0.2s; font-family: var(--font-display);
+    }
+    .tab.active { background: var(--accent); color: #000; border-color: var(--accent); box-shadow: 0 0 12px rgba(0,229,255,0.25); }
+    .tab-icon { font-size: 1.1em; }
+    .panel { display: none; padding: 0.8em; flex-direction: column; gap: 0.8em; position: relative; z-index: 1; }
+    .panel.active { display: flex; }
+    .card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 0.9em; display: flex; flex-direction: column; gap: 0.7em; position: relative; overflow: hidden;
+    }
+    .card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--accent), transparent); opacity: 0.4; }
+    .card-label { font-family: var(--font-mono); font-size: 0.6em; color: var(--accent); text-transform: uppercase; letter-spacing: 2px; font-weight: 700; }
+    .card-title { font-size: 0.9em; font-weight: 600; color: var(--text); font-family: var(--font-display); }
+    textarea, input[type="text"], input[type="password"] {
+      width: 100%; background: var(--surface2); color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px; padding: 0.7em;
+      font-size: 0.82em; font-family: var(--font-mono); resize: vertical; line-height: 1.5;
+    }
+    textarea:focus, input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,229,255,0.06); }
     textarea::placeholder, input::placeholder { color: var(--muted); }
-
-    .btn {
-      font-weight: 600;
-      font-size: 0.9em;
-      padding: 0.85em 1em;
-      border-radius: 12px;
-      border: none;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.3em;
-      width: 100%;
-      transition: all 0.15s;
+    .input-row { display: flex; gap: 0.3em; }
+    .input-row textarea { flex: 1; resize: none; min-height: 42px; max-height: 100px; }
+    .voice-btn {
+      width: 42px; min-width: 42px; height: 42px; border-radius: 8px;
+      background: var(--surface2); border: 1px solid var(--border); color: var(--accent);
+      cursor: pointer; font-size: 1.1em; display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; transition: all 0.2s;
     }
-
+    .voice-btn:active { background: var(--accent); color: #000; }
+    .voice-btn.listening { background: var(--accent2); color: #fff; animation: pulse 0.8s infinite; border-color: var(--accent2); }
+    .btn {
+      font-family: var(--font-display); font-weight: 600; font-size: 0.82em;
+      padding: 0.7em 0.8em; border-radius: 8px; border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 0.3em;
+      width: 100%; letter-spacing: 0.5px; transition: all 0.15s; text-transform: uppercase;
+    }
     .btn:active { transform: scale(0.97); }
-    .btn:disabled { opacity: 0.5; pointer-events: none; }
-
-    .btn-primary { background: var(--accent); color: #fff; }
-    .btn-success { background: var(--green); color: #fff; }
-    .btn-ghost { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+    .btn:disabled { opacity: 0.4; pointer-events: none; }
+    .btn-primary { background: var(--accent); color: #000; }
+    .btn-success { background: var(--green); color: #000; }
+    .btn-ghost { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
     .btn-gold { background: var(--accent3); color: #000; }
     .btn-danger { background: var(--accent2); color: #fff; }
-
-    .btn-row { display: flex; gap: 0.5em; }
+    .btn-row { display: flex; gap: 0.4em; }
     .btn-row .btn { flex: 1; }
-
-    .paste-btn {
-      font-size: 0.8em;
-      color: var(--accent);
-      background: none;
-      border: none;
-      cursor: pointer;
-      text-align: right;
-      width: 100%;
-    }
-
-    .steps-output { display: none; flex-direction: column; gap: 0.5em; }
+    .paste-btn { font-family: var(--font-mono); font-size: 0.65em; color: var(--accent); background: none; border: none; cursor: pointer; text-align: right; width: 100%; }
+    .steps-output { display: none; flex-direction: column; gap: 0.4em; }
     .steps-output.show { display: flex; }
-
     .step-item {
-      background: var(--surface);
-      border-radius: 12px;
-      padding: 0.8em;
-      display: flex;
-      align-items: flex-start;
-      gap: 0.7em;
-      border-left: 4px solid var(--accent);
+      background: var(--surface2); border: 1px solid var(--border); border-left: 3px solid var(--accent);
+      border-radius: 6px; padding: 0.6em; display: flex; align-items: flex-start; gap: 0.5em;
     }
-
     .step-item.done { border-left-color: var(--green); opacity: 0.6; }
     .step-item.running { border-left-color: var(--accent3); }
-
-    .step-num {
-      font-weight: 700;
-      font-size: 0.8em;
-      color: var(--accent);
-      background: rgba(0,122,255,0.1);
-      padding: 0.2em 0.5em;
-      border-radius: 6px;
-      flex-shrink: 0;
-      margin-top: 2px;
-    }
-
-    .step-text { font-size: 0.9em; line-height: 1.4; color: var(--text); flex: 1; }
-    .step-action { font-size: 0.7em; color: var(--muted); flex-shrink: 0; margin-top: 3px; }
-
+    .step-item.failed { border-left-color: var(--accent2); }
+    .step-num { font-family: var(--font-mono); font-size: 0.6em; color: var(--accent); background: rgba(0,229,255,0.1); padding: 0.15em 0.35em; border-radius: 4px; flex-shrink: 0; margin-top: 2px; }
+    .step-text { font-size: 0.78em; line-height: 1.4; color: var(--text); flex: 1; }
+    .step-action { font-family: var(--font-mono); font-size: 0.6em; color: var(--muted); flex-shrink: 0; margin-top: 2px; }
     .toast {
-      position: fixed;
-      bottom: 1.5em;
-      left: 50%;
-      transform: translateX(-50%) translateY(120px);
-      background: var(--card);
-      color: var(--text);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 0.8em 1.3em;
-      font-weight: 600;
-      font-size: 0.9em;
-      z-index: 9999;
-      box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+      position: fixed; bottom: 1.5em; left: 50%; transform: translateX(-50%) translateY(120px);
+      background: var(--surface); color: var(--text); border: 1px solid var(--border);
+      border-radius: 10px; padding: 0.7em 1.1em; font-weight: 600; font-size: 0.8em;
+      z-index: 9999; box-shadow: 0 8px 30px rgba(0,0,0,0.5);
       transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
-      white-space: nowrap;
-      max-width: 90vw;
+      white-space: nowrap; max-width: 90vw; font-family: var(--font-display);
     }
-
     .toast.show { transform: translateX(-50%) translateY(0); }
-    .toast.success { border-left: 4px solid var(--green); }
-    .toast.error { border-left: 4px solid var(--accent2); }
-    .toast.info { border-left: 4px solid var(--accent); }
-
+    .toast.success { border-left: 3px solid var(--green); }
+    .toast.error { border-left: 3px solid var(--accent2); }
+    .toast.info { border-left: 3px solid var(--accent); }
     .log-panel {
-      background: var(--surface);
-      border-radius: 12px;
-      padding: 0.8em;
-      max-height: 140px;
-      overflow-y: auto;
-      font-size: 0.75em;
-      color: var(--muted);
-      line-height: 1.6;
-      font-family: 'SF Mono', monospace;
+      background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.6em; max-height: 120px; overflow-y: auto;
+      font-family: var(--font-mono); font-size: 0.6em; color: var(--muted); line-height: 1.6;
     }
-
-    .log-line { padding: 2px 0; }
-    .log-line.ok { color: var(--green); }
-    .log-line.err { color: var(--accent2); }
-    .log-line.info { color: var(--accent); }
-
+    .log-line { padding: 1px 0; }
+    .log-line.ok { color: var(--green); } .log-line.err { color: var(--accent2); } .log-line.info { color: var(--accent); }
     .alert-card {
-      display: none;
-      background: var(--card);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      padding: 1em;
-      gap: 0.7em;
-      flex-direction: column;
-      border-left: 4px solid var(--accent);
-      animation: slideIn 0.3s ease;
+      display: none; background: var(--surface); border: 1px solid var(--accent); border-radius: var(--radius);
+      padding: 0.9em; gap: 0.7em; flex-direction: column; animation: slideIn 0.3s ease;
     }
-
     .alert-card.show { display: flex; }
-
-    @keyframes slideIn {
-      from { opacity: 0; transform: translateY(-10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
+    @keyframes slideIn { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
     .alert-header { display: flex; align-items: center; justify-content: space-between; }
-    .alert-title { font-weight: 700; font-size: 0.9em; color: var(--text); }
-    .alert-preview { font-size: 0.8em; color: var(--muted); line-height: 1.5; }
-
-    .progress-wrap {
-      display: none;
-      background: var(--surface);
-      border-radius: 6px;
-      height: 6px;
-      overflow: hidden;
-    }
-
+    .alert-title { font-weight: 700; font-size: 0.85em; color: var(--accent); font-family: var(--font-display); }
+    .alert-preview { font-size: 0.7em; color: var(--muted); line-height: 1.5; font-family: var(--font-mono); }
+    .progress-wrap { display: none; background: var(--surface2); border-radius: 4px; height: 4px; overflow: hidden; }
     .progress-wrap.show { display: block; }
-
-    .progress-bar {
-      height: 100%;
-      background: var(--accent);
-      border-radius: 6px;
-      transition: width 0.3s ease;
-      width: 0%;
-    }
-
-    .divider {
-      text-align: center;
-      color: var(--muted);
-      font-size: 0.8em;
-      position: relative;
-      margin: 0.5em 0;
-    }
-
-    .divider::before, .divider::after {
-      content: '';
-      position: absolute;
-      top: 50%;
-      width: 35%;
-      height: 1px;
-      background: var(--border);
-    }
-
-    .divider::before { left: 0; }
-    .divider::after { right: 0; }
-
-    .copy-btn {
-      font-size: 0.75em;
-      color: var(--accent);
-      background: none;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 0.3em 0.7em;
-      cursor: pointer;
-      font-weight: 600;
-    }
-
-    .footer {
-      padding: 1.5em 1em;
-      text-align: center;
-      font-size: 0.75em;
-      color: var(--muted);
-      border-top: 1px solid var(--border);
-      margin-top: auto;
-    }
-
-    .camera-preview {
-      width: 100%;
-      border-radius: 12px;
-      background: #000;
-      display: none;
-      max-height: 220px;
-      object-fit: contain;
-    }
-
+    .progress-bar { height: 100%; background: linear-gradient(90deg, var(--accent), var(--green)); border-radius: 4px; transition: width 0.3s ease; width: 0%; }
+    .divider { text-align: center; color: var(--muted); font-size: 0.65em; position: relative; margin: 0.3em 0; font-family: var(--font-mono); }
+    .divider::before, .divider::after { content: ''; position: absolute; top: 50%; width: 35%; height: 1px; background: var(--border); }
+    .divider::before { left: 0; } .divider::after { right: 0; }
+    .copy-btn { font-family: var(--font-mono); font-size: 0.6em; color: var(--muted); background: none; border: 1px solid var(--border); border-radius: 4px; padding: 0.15em 0.4em; cursor: pointer; }
+    .footer { padding: 1.5em 1em; text-align: center; font-family: var(--font-mono); font-size: 0.55em; color: var(--muted); border-top: 1px solid var(--border); }
+    .camera-preview { width: 100%; border-radius: 8px; background: #000; display: none; max-height: 200px; object-fit: contain; }
     .camera-preview.show { display: block; }
-
-    .loading-dots {
-      display: none;
-      align-items: center;
-      gap: 0.5em;
-      font-size: 0.85em;
-      color: var(--accent);
-      font-weight: 500;
-    }
-
+    .loading-dots { display: none; align-items: center; gap: 0.5em; font-size: 0.75em; color: var(--accent); font-weight: 500; font-family: var(--font-display); }
     .loading-dots.show { display: flex; }
-
-    .dot-anim span {
-      display: inline-block;
-      width: 4px; height: 4px;
-      background: var(--accent);
-      border-radius: 50%;
-      animation: dot 1.2s infinite;
-      margin: 0 1px;
+    .dot-anim span { display: inline-block; width: 3px; height: 3px; background: var(--accent); border-radius: 50%; animation: dot 1.2s infinite; margin: 0 1px; }
+    .dot-anim span:nth-child(2) { animation-delay: 0.2s; } .dot-anim span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes dot { 0%,80%,100%{opacity:0.3;transform:scale(0.6);} 40%{opacity:1;transform:scale(1);} }
+    .folder-indicator { display: none; align-items: center; gap: 0.3em; font-size: 0.7em; color: var(--green); font-weight: 500; }
+    .folder-indicator.show { display: flex; }
+    .token-card { display: none; flex-direction: column; gap: 0.5em; }
+    .token-card.show { display: flex; }
+    .preview-iframe { width: 100%; height: 200px; border: 1px solid var(--border); border-radius: 6px; background: #fff; display: none; }
+    .preview-iframe.show { display: block; }
+    .project-chip {
+      display: inline-flex; align-items: center; gap: 0.3em; padding: 0.2em 0.6em;
+      border-radius: 12px; font-size: 0.7em; font-weight: 600; cursor: pointer;
+      border: 1px solid var(--border); background: var(--surface2); color: var(--muted);
+      font-family: var(--font-display); transition: all 0.2s;
     }
-
-    .dot-anim span:nth-child(2) { animation-delay: 0.2s; }
-    .dot-anim span:nth-child(3) { animation-delay: 0.4s; }
-
-    @keyframes dot {
-      0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
-      40% { transform: scale(1); opacity: 1; }
+    .project-chip.active { background: var(--accent); color: #000; border-color: var(--accent); }
+    .project-chip.gahiz { border-left: 3px solid #00e676; }
+    .project-chip.content-factory { border-left: 3px solid #00e5ff; }
+    .project-chip.wired-leader { border-left: 3px solid #ffd600; }
+    .quick-actions { display: flex; gap: 0.4em; flex-wrap: wrap; }
+    .quick-action {
+      font-family: var(--font-mono); font-size: 0.65em; padding: 0.4em 0.7em;
+      border-radius: 16px; background: var(--surface2); border: 1px solid var(--border);
+      color: var(--muted); cursor: pointer; white-space: nowrap;
     }
+    .quick-action:active { background: var(--accent); color: #000; border-color: var(--accent); }
   </style>
 </head>
 <body>
 
 <div class="toast" id="toast"></div>
-
-<div class="update-banner" id="updateBanner" onclick="location.reload(true)">
-  ⬆️ New version available — tap to update
-</div>
+<div class="update-banner" id="updateBanner" onclick="location.reload(true)">⬆️ New version available — tap to update</div>
 
 <div class="header">
-  <div class="logo">Mission<span>Runner</span></div>
-  <div class="version-pill" id="versionDisplay">v8.1</div>
+  <div class="header-left">
+    <div class="logo">Mission<span>Runner</span></div>
+    <div class="version-pill">v9.0</div>
+  </div>
+  <div class="project-selector" onclick="switchToProjectMenu()">
+    <span id="activeProjectName">Gahiz</span> ▾
+  </div>
+  <div class="status-dot"></div>
 </div>
 
 <div class="tab-bar">
-  <button class="tab active" onclick="switchTab('agent')">
-    <span class="tab-icon">🤖</span> Agent
-  </button>
-  <button class="tab" onclick="switchTab('mission')">
-    <span class="tab-icon">📁</span> Mission
-  </button>
-  <button class="tab" onclick="switchTab('camera')">
-    <span class="tab-icon">📸</span> Camera
-  </button>
-  <button class="tab" onclick="switchTab('capture')">
-    <span class="tab-icon">💾</span> Capture
-  </button>
-  <button class="tab" onclick="switchTab('log')">
-    <span class="tab-icon">📋</span> Log
-  </button>
+  <button class="tab active" onclick="switchTab('agent')"><span class="tab-icon">🤖</span> Agent</button>
+  <button class="tab" onclick="switchTab('mission')"><span class="tab-icon">📁</span> Mission</button>
+  <button class="tab" onclick="switchTab('camera')"><span class="tab-icon">📸</span> Camera</button>
+  <button class="tab" onclick="switchTab('capture')"><span class="tab-icon">💾</span> Capture</button>
+  <button class="tab" onclick="switchTab('history')"><span class="tab-icon">🕐</span> History</button>
+  <button class="tab" onclick="switchTab('settings')"><span class="tab-icon">⚙️</span> Settings</button>
 </div>
 
-<!-- TAB: AGENT -->
+<!-- ══════════ TAB: AGENT ══════════ -->
 <div class="panel active" id="tab-agent">
-
   <div class="alert-card" id="autoSaveCard">
-    <div class="alert-header">
-      <div class="alert-title">📥 Auto-Save Ready</div>
-      <span style="font-size:0.8em;color:var(--muted);" id="autoProjectLabel"></span>
-    </div>
-    <div class="alert-preview" id="autoPreview"></div>
-    <button class="btn btn-success" onclick="downloadAutoSave()">⬇️ Download Conversation</button>
+    <div class="alert-header"><div class="alert-title">📥 Auto-Save Ready</div><span style="font-family:var(--font-mono);font-size:0.6em;color:var(--muted);" id="autoProjectLabel"></span></div>
+    <div class="alert-preview" id="autoPreview"></div><button class="btn btn-success" onclick="downloadWithPicker('autoSave')">⬇️ SAVE TO FOLDER</button>
   </div>
-
   <div class="alert-card" id="shareCard">
     <div class="alert-header"><div class="alert-title">📤 Shared Content</div></div>
     <div class="alert-preview" id="sharePreview"></div>
     <input type="text" id="shareProject" placeholder="Project name" value="general">
-    <button class="btn btn-primary" onclick="downloadShared()">⬇️ Save Shared Content</button>
+    <button class="btn btn-primary" onclick="downloadWithPicker('shared')">⬇️ SAVE SHARED TO FOLDER</button>
   </div>
-
   <div class="card">
-    <div class="card-label">Step Extractor</div>
-    <div class="card-title">Paste AI output — auto-parses missions & steps</div>
-    <button class="paste-btn" onclick="pasteFromClipboard('extractInput')">⌨️ Paste from clipboard</button>
-    <textarea id="extractInput" rows="5" placeholder="Paste conversation or AI code blocks..."></textarea>
-    <button class="btn btn-primary" onclick="extractSteps()">⚡ Extract & Parse</button>
-  </div>
-
-  <div class="card" id="stepsCard" style="display:none;">
-    <div style="display:flex;align-items:center;justify-content:space-between;">
-      <div class="card-label">Action Steps</div>
-      <button class="copy-btn" onclick="copyAllSteps()">Copy All</button>
+    <div class="card-label">STEP EXTRACTOR</div>
+    <div class="card-title">Paste AI output — auto-detects missions, steps, code</div>
+    <div class="quick-actions" id="quickActions">
+      <button class="quick-action" onclick="pasteFromClipboard('extractInput')">📋 PASTE</button>
+      <button class="quick-action" onclick="startVoice('extractInput')">🎤 VOICE</button>
     </div>
+    <textarea id="extractInput" rows="5" placeholder="Paste ANY AI conversation here..."></textarea>
+    <button class="btn btn-primary" onclick="extractSteps()">⚡ EXTRACT & PARSE</button>
+  </div>
+  <div class="card" id="stepsCard" style="display:none;">
+    <div style="display:flex;align-items:center;justify-content:space-between;"><div class="card-label">ACTION STEPS</div><button class="copy-btn" onclick="copyAllSteps()">COPY ALL</button></div>
     <div class="steps-output show" id="stepsOutput"></div>
     <div class="progress-wrap" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
-    <div class="btn-row">
-      <button class="btn btn-ghost" onclick="clearSteps()">🗑️ Clear</button>
-      <button class="btn btn-gold" onclick="runAllSteps()">▶ Execute All</button>
-    </div>
+    <div class="btn-row"><button class="btn btn-ghost" onclick="clearSteps()">🗑️ CLEAR</button><button class="btn btn-gold" onclick="runAllSteps()">▶ EXECUTE ALL</button></div>
   </div>
-
-  <div class="card">
-    <div class="card-label">How It Works</div>
-    <div style="font-size:0.9em;color:var(--muted);line-height:1.7;">
-      1️⃣ Paste any AI output → app auto-detects mission JSON, action steps, or auto-save links.<br>
-      2️⃣ Missions go to the Mission tab, steps render here for execution.<br>
-      3️⃣ Use the 📸 Camera tab to scan another screen for text.
-    </div>
+  <div class="card" id="previewCard" style="display:none;">
+    <div style="display:flex;align-items:center;justify-content:space-between;"><div class="card-label">LIVE PREVIEW</div><button class="copy-btn" onclick="savePreviewToProject()">💾 SAVE</button></div>
+    <iframe class="preview-iframe show" id="previewIframe" sandbox="allow-scripts"></iframe>
+    <div class="btn-row"><button class="btn btn-ghost" onclick="copyPreviewCode()">📋 COPY CODE</button><button class="btn btn-gold" onclick="closePreview()">✕ CLOSE</button></div>
   </div>
 </div>
 
-<!-- TAB: MISSION -->
+<!-- ══════════ TAB: MISSION ══════════ -->
 <div class="panel" id="tab-mission">
   <div class="card">
-    <div class="card-label">Mission Executor</div>
+    <div class="card-label">MISSION EXECUTOR</div>
     <div class="card-title">Paste JSON → Creates files on your device</div>
-    <button class="paste-btn" onclick="pasteFromClipboard('missionInput')">⌨️ Paste from clipboard</button>
-    <textarea id="missionInput" rows="8" placeholder='{"project":"my-app","files":[{"path":"index.html","content":"..."}]}' oninput="validateJSON(this)"></textarea>
-    <div class="btn-row">
-      <button class="btn btn-ghost" onclick="loadDemoMission()">📦 Demo</button>
-      <button class="btn btn-ghost" onclick="clearMission()">🗑️ Clear</button>
-    </div>
+    <button class="paste-btn" onclick="pasteFromClipboard('missionInput')">⌨️ PASTE FROM CLIPBOARD</button>
+    <textarea id="missionInput" rows="7" placeholder='{"project":"my-app","files":[{"path":"index.html","content":"..."}]}' oninput="validateJSON(this)"></textarea>
+    <div class="btn-row"><button class="btn btn-ghost" onclick="loadDemoMission()">📦 DEMO</button><button class="btn btn-ghost" onclick="clearMission()">🗑️ CLEAR</button></div>
     <div class="progress-wrap" id="missionProgress"><div class="progress-bar" id="missionProgressBar"></div></div>
-    <button class="btn btn-primary" id="runMissionBtn" onclick="runMission()">▶ Run Mission</button>
+    <button class="btn btn-primary" id="runMissionBtn" onclick="runMission()">▶ RUN MISSION</button>
   </div>
   <div class="card">
-    <div class="card-label">Cloud Brain</div>
+    <div class="card-label">CLOUD BRAIN</div>
     <div class="card-title">Deploy, run code, clone templates</div>
+    <div class="token-card" id="tokenInputCard"><input type="password" id="tokenInput" placeholder="GitHub token (ghp_...)"><button class="btn btn-ghost" onclick="saveCloudToken()">🔑 SAVE TOKEN</button></div>
+    <div class="folder-indicator show" id="tokenSavedIndicator" style="display:none;">🔑 TOKEN SAVED (THIS SESSION)</div>
     <input type="text" id="cloudTask" placeholder="Task: deploy_site, run_script, clone_template">
     <textarea id="cloudPayload" rows="3" placeholder='{"target":"sites/my-app","files":[...]}'></textarea>
-    <button class="btn btn-gold" onclick="triggerCloudBrain()">☁️ Trigger Cloud Task</button>
+    <button class="btn btn-gold" onclick="triggerCloudBrain()">☁️ TRIGGER CLOUD TASK</button>
   </div>
 </div>
 
-<!-- TAB: CAMERA -->
+<!-- ══════════ TAB: CAMERA ══════════ -->
 <div class="panel" id="tab-camera">
   <div class="card">
-    <div class="card-label">Camera Scanner</div>
+    <div class="card-label">CAMERA SCANNER</div>
     <div class="card-title">Point at another screen to extract text</div>
     <video id="cameraVideo" class="camera-preview" autoplay playsinline></video>
     <canvas id="cameraCanvas" style="display:none;"></canvas>
-    <div class="loading-dots" id="ocrLoading">
-      <div class="dot-anim"><span></span><span></span><span></span></div> Reading text...
-    </div>
-    <div class="btn-row">
-      <button class="btn btn-primary" id="startCameraBtn" onclick="startCamera()">📷 Start Camera</button>
-      <button class="btn btn-ghost" id="captureCameraBtn" onclick="captureCamera()" disabled>📸 Capture & Read</button>
-    </div>
-    <button class="btn btn-gold" id="sendCameraBtn" onclick="sendCameraToExtractor()" disabled>📤 Send to Extractor</button>
+    <div class="loading-dots" id="ocrLoading"><div class="dot-anim"><span></span><span></span><span></span></div> READING TEXT...</div>
+    <div class="btn-row"><button class="btn btn-primary" id="startCameraBtn" onclick="startCamera()">📷 START CAMERA</button><button class="btn btn-ghost" id="captureCameraBtn" onclick="captureCamera()" disabled>📸 CAPTURE & READ</button></div>
+    <button class="btn btn-gold" id="sendCameraBtn" onclick="sendCameraToExtractor()" disabled>📤 SEND TO AGENT</button>
     <textarea id="cameraResult" rows="3" placeholder="OCR result will appear here..." readonly></textarea>
   </div>
 </div>
 
-<!-- TAB: CAPTURE -->
+<!-- ══════════ TAB: CAPTURE ══════════ -->
 <div class="panel" id="tab-capture">
   <div class="card">
-    <div class="card-label">Capture Conversation</div>
-    <input type="text" id="manualProject" placeholder="Project name (e.g. gahiz)">
-    <button class="paste-btn" onclick="pasteFromClipboard('manualConversation')">⌨️ Paste from clipboard</button>
+    <div class="card-label">CAPTURE CONVERSATION</div>
+    <input type="text" id="manualProject" placeholder="Project name">
+    <button class="paste-btn" onclick="pasteFromClipboard('manualConversation')">⌨️ PASTE FROM CLIPBOARD</button>
     <textarea id="manualConversation" rows="5" placeholder="Paste conversation..."></textarea>
-    <button class="btn btn-success" onclick="manualSave()">💾 Download as .md File</button>
+    <div class="folder-indicator" id="captureFolderIndicator">📁 FOLDER SELECTED</div>
+    <button class="btn btn-success" onclick="downloadWithPicker('manual')">💾 SAVE TO FOLDER</button>
   </div>
   <div class="divider">OR</div>
   <div class="card">
-    <div class="card-label">Quick Note</div>
+    <div class="card-label">QUICK NOTE</div>
     <textarea id="quickNote" rows="3" placeholder="Type a quick note..."></textarea>
-    <button class="btn btn-ghost" onclick="saveQuickNote()">📝 Save Note</button>
+    <button class="btn btn-ghost" onclick="downloadWithPicker('note')">📝 SAVE NOTE</button>
   </div>
 </div>
 
-<!-- TAB: LOG -->
-<div class="panel" id="tab-log">
+<!-- ══════════ TAB: HISTORY ══════════ -->
+<div class="panel" id="tab-history">
   <div class="card">
+    <div class="card-label">PROJECT HISTORY</div>
     <div style="display:flex;align-items:center;justify-content:space-between;">
-      <div class="card-label">Activity Log</div>
-      <button class="copy-btn" onclick="clearLog()">Clear</button>
+      <div class="card-title" id="historyProjectName">Gahiz</div>
+      <button class="copy-btn" onclick="exportProjectHistory()">📤 EXPORT</button>
     </div>
-    <div class="log-panel" id="logFull"></div>
+    <div class="log-panel" id="historyLog" style="max-height:300px;"></div>
+  </div>
+</div>
+
+<!-- ══════════ TAB: SETTINGS ══════════ -->
+<div class="panel" id="tab-settings">
+  <div class="card">
+    <div class="card-label">PROJECT MANAGER</div>
+    <div style="display:flex;gap:0.4em;flex-wrap:wrap;" id="projectChips"></div>
+    <input type="text" id="newProjectName" placeholder="New project name...">
+    <input type="text" id="newProjectDesc" placeholder="Description (optional)">
+    <button class="btn btn-primary" onclick="addProject()">➕ ADD PROJECT</button>
   </div>
   <div class="card">
-    <div class="card-label">About</div>
-    <div style="font-size:0.8em;color:var(--muted);line-height:2;">
-      Version: <strong>8.1</strong><br>
-      Built for Gahiz & Content Factory<br>
-      Engine: AI-Agnostic (Offline + OCR)
+    <div class="card-label">CLOUD TOKEN</div>
+    <input type="password" id="settingsToken" placeholder="GitHub token (ghp_...)">
+    <button class="btn btn-ghost" onclick="saveSettingsToken()">🔑 SAVE TOKEN</button>
+    <div class="folder-indicator show" id="settingsTokenIndicator" style="display:none;">🔑 TOKEN SAVED</div>
+  </div>
+  <div class="card">
+    <div class="card-label">SAVE FOLDER</div>
+    <div class="folder-indicator show" id="savedFolderIndicator">📁 NO FOLDER SELECTED</div>
+    <button class="btn btn-ghost" onclick="selectSaveFolder()">📂 CHOOSE SAVE FOLDER</button>
+  </div>
+  <div class="card">
+    <div class="card-label">TOOLS</div>
+    <button class="btn btn-ghost" onclick="downloadBrainYml()">⬇️ DOWNLOAD BRAIN.YML</button>
+    <button class="btn btn-ghost" onclick="downloadSystemOrder()">⬇️ DOWNLOAD SYSTEM-ORDER.MD</button>
+  </div>
+  <div class="card">
+    <div class="card-label">ABOUT</div>
+    <div style="font-family:var(--font-mono);font-size:0.65em;color:var(--muted);line-height:2;">
+      VERSION: <span style="color:var(--accent)">9.0.0</span><br>
+      ENGINE: <span style="color:var(--accent)">AI-AGNOSTIC (OFFLINE + OCR)</span><br>
+      STORAGE: <span style="color:var(--accent)">INDEXEDDB + FOLDER PICKER</span>
     </div>
   </div>
 </div>
 
-<div class="footer">Mission Runner · Built for Ahmed</div>
+<div class="footer">MISSION RUNNER v9.0 · BUILT FOR AHMED · GAHIZ × CONTENT FACTORY × THE WIRED LEADER</div>
 
-<!-- Tesseract OCR -->
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-
 <script>
+// ═══════════ DATABASE ═══════════
+const DB_NAME = 'mission-runner-v9';
+const DB_VERSION = 1;
+let db;
+let activeProject = 'gahiz';
+
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    request.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains('projects')) db.createObjectStore('projects', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('conversations')) db.createObjectStore('conversations', { keyPath: 'id', autoIncrement: true });
+      if (!db.objectStoreNames.contains('steps')) db.createObjectStore('steps', { keyPath: 'id', autoIncrement: true });
+      if (!db.objectStoreNames.contains('files')) db.createObjectStore('files', { keyPath: 'id', autoIncrement: true });
+      if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings', { keyPath: 'key' });
+    };
+    request.onsuccess = (e) => { db = e.target.result; resolve(db); };
+    request.onerror = (e) => reject(e.target.error);
+  });
+}
+
+async function dbPut(storeName, value) {
+  if (!db) await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, 'readwrite');
+    tx.objectStore(storeName).put(value);
+    tx.oncomplete = resolve; tx.onerror = reject;
+  });
+}
+
+async function dbGetAll(storeName) {
+  if (!db) await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, 'readonly');
+    const req = tx.objectStore(storeName).getAll();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = reject;
+  });
+}
+
+async function dbGet(storeName, key) {
+  if (!db) await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, 'readonly');
+    const req = tx.objectStore(storeName).get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = reject;
+  });
+}
+
+async function dbDelete(storeName, key) {
+  if (!db) await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, 'readwrite');
+    tx.objectStore(storeName).delete(key);
+    tx.oncomplete = resolve; tx.onerror = reject;
+  });
+}
+
 // ═══════════ GLOBALS ═══════════
-let pendingAutoSave = null;
-let pendingShareText = null;
-let extractedSteps = [];
-let cameraStream = null;
-let ocrWorker = null, ocrReady = false;
+let pendingAutoSave = null, pendingShareText = null, extractedSteps = [], previewCode = '';
+let cameraStream = null, ocrWorker = null, ocrReady = false, saveFolderHandle = null;
+let currentVoiceTarget = null, recognition = null;
+
+const DEFAULT_PROJECTS = [
+  { id: 'gahiz', name: 'Gahiz', description: 'AI interview simulation platform for Egyptian BPO job seekers', color: '#00e676' },
+  { id: 'content-factory', name: 'Content Factory', description: 'AI content production system for client brands', color: '#00e5ff' },
+  { id: 'wired-leader', name: 'Wired Leader', description: 'ADHD coaching brand (client: Hesham Elansari)', color: '#ffd600' }
+];
 
 // ═══════════ TABS ═══════════
 function switchTab(name) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-  const tabs = ['agent','mission','camera','capture','log'];
+  const tabs = ['agent','mission','camera','capture','history','settings'];
   const idx = tabs.indexOf(name);
   if (idx >= 0) {
     document.querySelectorAll('.tab')[idx].classList.add('active');
     document.getElementById('tab-' + name).classList.add('active');
   }
-  if (name !== 'camera') stopCamera();
+  if (name !== 'camera') { stopCamera(); if (ocrWorker) stopOCR(); }
+  if (name === 'history') loadHistory();
+  if (name === 'settings') renderProjectChips();
 }
 
 // ═══════════ TOAST ═══════════
@@ -597,27 +458,151 @@ function toast(msg, type='info', dur=3000) {
 // ═══════════ LOG ═══════════
 function log(msg, type='') {
   const now = new Date().toLocaleTimeString('en',{hour12:false});
-  const el = document.getElementById('logFull');
+  const el = document.getElementById('logFull'); if (!el) return;
   const line = document.createElement('div');
   line.className = 'log-line ' + type;
   line.textContent = `[${now}] ${msg}`;
   el.appendChild(line); el.scrollTop = el.scrollHeight;
+  // Also save to history
+  dbPut('steps', { projectId: activeProject, timestamp: Date.now(), message: msg, type });
 }
-function clearLog() { document.getElementById('logFull').innerHTML = ''; }
+
+async function loadHistory() {
+  const logEl = document.getElementById('historyLog');
+  const projectName = document.getElementById('historyProjectName');
+  if (projectName) projectName.textContent = activeProject.charAt(0).toUpperCase() + activeProject.slice(1);
+  logEl.innerHTML = '<div class="log-line info">Loading history...</div>';
+  try {
+    const allSteps = await dbGetAll('steps');
+    const projectSteps = allSteps.filter(s => s.projectId === activeProject).sort((a,b) => b.timestamp - a.timestamp).slice(0, 50);
+    logEl.innerHTML = '';
+    if (!projectSteps.length) { logEl.innerHTML = '<div class="log-line">No history for this project yet.</div>'; return; }
+    projectSteps.forEach(s => {
+      const line = document.createElement('div');
+      line.className = 'log-line ' + (s.type || '');
+      line.textContent = `[${new Date(s.timestamp).toLocaleTimeString('en',{hour12:false})}] ${s.message}`;
+      logEl.appendChild(line);
+    });
+  } catch(e) { logEl.innerHTML = '<div class="log-line err">Error loading history</div>'; }
+}
+
+function exportProjectHistory() {
+  const logEl = document.getElementById('historyLog');
+  const text = logEl ? logEl.innerText : '';
+  if (!text.trim()) { toast('⚠️ No history to export', 'error'); return; }
+  downloadBlob(`# ${activeProject} — History\n\n${text}`, `${activeProject}-history-${Date.now()}.md`, 'text/markdown');
+  toast('✅ History exported', 'success');
+}
 
 // ═══════════ CLIPBOARD ═══════════
 async function pasteFromClipboard(id) {
-  try {
-    const text = await navigator.clipboard.readText();
-    document.getElementById(id).value = text;
-    toast('✅ Pasted', 'success');
-    log('Pasted to #'+id);
-  } catch(e) { toast('⚠️ Paste manually', 'error'); }
+  try { const text = await navigator.clipboard.readText(); document.getElementById(id).value = text; toast('✅ PASTED', 'success'); log('Pasted to #'+id); }
+  catch(e) { toast('⚠️ PASTE MANUALLY', 'error'); }
+}
+
+// ═══════════ VOICE INPUT ═══════════
+function startVoice(targetId) {
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    toast('⚠️ VOICE NOT SUPPORTED ON THIS BROWSER', 'error'); return;
+  }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!recognition) {
+    recognition = new SR();
+    recognition.continuous = false;
+    recognition.lang = 'en-US';
+    recognition.onresult = (e) => {
+      const text = e.results[0][0].transcript;
+      const el = document.getElementById(currentVoiceTarget);
+      if (el) { el.value += (el.value ? ' ' : '') + text; }
+      const btn = document.querySelector(`[onclick="startVoice('${currentVoiceTarget}')"]`);
+      if (btn) btn.classList.remove('listening');
+      toast('🎤 CAPTURED', 'success');
+    };
+    recognition.onerror = (e) => {
+      const btn = document.querySelector(`[onclick="startVoice('${currentVoiceTarget}')"]`);
+      if (btn) btn.classList.remove('listening');
+      if (e.error !== 'aborted') toast('⚠️ VOICE ERROR: ' + e.error, 'error');
+    };
+    recognition.onend = () => {
+      const btn = document.querySelector(`[onclick="startVoice('${currentVoiceTarget}')"]`);
+      if (btn) btn.classList.remove('listening');
+    };
+  }
+  currentVoiceTarget = targetId;
+  const btn = document.querySelector(`[onclick="startVoice('${targetId}')"]`);
+  if (btn) btn.classList.add('listening');
+  recognition.start();
+}
+
+// ═══════════ PROJECT MANAGEMENT ═══════════
+async function initProjects() {
+  if (!db) await openDB();
+  const existing = await dbGetAll('projects');
+  if (!existing.length) {
+    for (const p of DEFAULT_PROJECTS) await dbPut('projects', p);
+  }
+  // Restore active project
+  const saved = await dbGet('settings', 'activeProject');
+  if (saved) activeProject = saved.value;
+  document.getElementById('activeProjectName').textContent = activeProject.charAt(0).toUpperCase() + activeProject.slice(1);
+}
+
+function switchToProjectMenu() {
+  switchTab('settings');
+  setTimeout(renderProjectChips, 100);
+}
+
+async function switchProject(id) {
+  activeProject = id;
+  document.getElementById('activeProjectName').textContent = id.charAt(0).toUpperCase() + id.slice(1);
+  await dbPut('settings', { key: 'activeProject', value: id });
+  toast('📂 SWITCHED TO: ' + id.toUpperCase(), 'info');
+  renderProjectChips();
+  switchTab('agent');
+}
+
+async function addProject() {
+  const name = document.getElementById('newProjectName').value.trim();
+  if (!name) { toast('⚠️ ENTER A PROJECT NAME', 'error'); return; }
+  const id = name.toLowerCase().replace(/\s+/g, '-');
+  const desc = document.getElementById('newProjectDesc').value.trim();
+  await dbPut('projects', { id, name, description: desc, color: '#00e5ff' });
+  document.getElementById('newProjectName').value = '';
+  document.getElementById('newProjectDesc').value = '';
+  toast('✅ PROJECT ADDED: ' + name, 'success');
+  renderProjectChips();
+}
+
+async function renderProjectChips() {
+  const container = document.getElementById('projectChips');
+  if (!container) return;
+  const projects = await dbGetAll('projects');
+  container.innerHTML = '';
+  projects.forEach(p => {
+    const chip = document.createElement('span');
+    chip.className = 'project-chip ' + p.id + (activeProject === p.id ? ' active' : '');
+    chip.textContent = p.name;
+    chip.onclick = () => switchProject(p.id);
+    container.appendChild(chip);
+  });
 }
 
 // ═══════════ FORMAT DETECTION & EXTRACTION ═══════════
 function detectAndParse(text) {
-  // mission-json block
+  // 1. HTML/CSS/JS code blocks → live preview
+  const codeMatch = text.match(/```(html|htm)\s*([\s\S]*?)```/i) || text.match(/```(css|js|javascript)\s*([\s\S]*?)```/i);
+  if (codeMatch) {
+    const lang = codeMatch[1].toLowerCase();
+    const code = codeMatch[2].trim();
+    if (lang === 'html' || lang === 'htm') {
+      previewCode = code;
+      showPreview(code);
+      toast('🖼️ CODE PREVIEW READY', 'info');
+      return { type: 'preview', data: code };
+    }
+  }
+
+  // 2. mission-json block
   const missionMatch = text.match(/```mission-json\s*([\s\S]*?)```/);
   if (missionMatch) {
     try {
@@ -626,14 +611,14 @@ function detectAndParse(text) {
         document.getElementById('missionInput').value = JSON.stringify(mission, null, 2);
         validateJSON(document.getElementById('missionInput'));
         switchTab('mission');
-        toast('📁 Mission JSON detected — switched to Mission tab', 'info');
+        toast('📁 MISSION JSON DETECTED', 'info');
         log('Parsed mission-json');
         return { type:'mission', data:mission };
       }
     } catch(e) {}
   }
 
-  // action-steps block
+  // 3. action-steps block
   const stepsMatch = text.match(/```action-steps\s*([\s\S]*?)```/);
   if (stepsMatch) {
     try {
@@ -642,14 +627,15 @@ function detectAndParse(text) {
         extractedSteps = steps;
         renderSteps(steps);
         document.getElementById('stepsCard').style.display = 'flex';
-        toast(`✅ ${steps.length} steps extracted`, 'success');
+        toast(`✅ ${steps.length} STEPS EXTRACTED`, 'success');
         log('Parsed action-steps');
+        dbPut('steps', { projectId: activeProject, timestamp: Date.now(), message: `Extracted ${steps.length} steps from AI output`, type: 'ok' });
         return { type:'steps', data:steps };
       }
     } catch(e) {}
   }
 
-  // auto-save-link block
+  // 4. auto-save-link block
   const autoSaveMatch = text.match(/```auto-save-link\s*([\s\S]*?)```/);
   if (autoSaveMatch) {
     const url = autoSaveMatch[1].trim();
@@ -661,34 +647,35 @@ function detectAndParse(text) {
         if (decoded.project && decoded.text) {
           pendingAutoSave = decoded;
           document.getElementById('autoProjectLabel').textContent = '📂 ' + decoded.project;
-          document.getElementById('autoPreview').textContent = decoded.text.slice(0,200)+'...';
+          const preview = decoded.text;
+          document.getElementById('autoPreview').textContent = preview.length > 200 ? preview.slice(0,200)+'...' : preview;
           document.getElementById('autoSaveCard').classList.add('show');
-          toast('📥 Auto-save ready', 'info');
-          log('Parsed auto-save-link');
+          toast('📥 AUTO-SAVE READY', 'info');
           return { type:'autosave', data:decoded };
         }
       } catch(e) {}
     }
   }
 
-  // Fallback offline extraction
+  // 5. Fallback offline extraction
   const steps = parseStepsOffline(text);
   if (steps.length > 0) {
     extractedSteps = steps;
     renderSteps(steps);
     document.getElementById('stepsCard').style.display = 'flex';
-    toast(`✅ ${steps.length} steps found`, 'success');
+    toast(`✅ ${steps.length} STEPS FOUND (OFFLINE)`, 'success');
     log(`Extracted ${steps.length} steps offline`);
+    dbPut('steps', { projectId: activeProject, timestamp: Date.now(), message: `Extracted ${steps.length} steps (offline parser)`, type: 'ok' });
     return { type:'steps', data:steps };
   }
 
-  toast('⚠️ No recognizable format found', 'error');
+  toast('⚠️ NO RECOGNIZABLE FORMAT FOUND', 'error');
   return { type:'unknown' };
 }
 
 function extractSteps() {
   const text = document.getElementById('extractInput').value.trim();
-  if (!text) { toast('⚠️ Paste something first', 'error'); return; }
+  if (!text) { toast('⚠️ PASTE SOMETHING FIRST', 'error'); return; }
   detectAndParse(text);
 }
 
@@ -708,7 +695,7 @@ function parseStepsOffline(text) {
     }
   }
   if (!steps.length) {
-    const verbs = /\b(navigate|open|go to|download|copy|paste|click|tap|type|write|save|create|run|deploy|search|clone)\b/i;
+    const verbs = /\b(navigate|open|go to|download|copy|paste|click|tap|type|write|save|create|run|deploy|search|clone|preview)\b/i;
     const lines = text.split(/\n/);
     for (const line of lines) {
       if (verbs.test(line.trim()) && line.trim().length>5) {
@@ -729,6 +716,7 @@ function detectType(action) {
   if (/type|write/.test(a)) return 'write';
   if (/save/.test(a)) return 'save';
   if (/run|execute|deploy/.test(a)) return 'cloud';
+  if (/preview|render/.test(a)) return 'preview';
   return 'other';
 }
 
@@ -758,12 +746,13 @@ function clearSteps() {
   document.getElementById('stepsCard').style.display = 'none';
   document.getElementById('extractInput').value = '';
   document.getElementById('progressWrap').classList.remove('show');
+  closePreview();
 }
 
 function copyAllSteps() {
   if (!extractedSteps.length) return;
   const text = extractedSteps.map((s,i)=>`${i+1}. ${s.action}`).join('\n');
-  navigator.clipboard.writeText(text).then(()=>toast('✅ Copied','success'));
+  navigator.clipboard.writeText(text).then(()=>toast('✅ COPIED','success'));
 }
 
 async function runAllSteps() {
@@ -771,18 +760,19 @@ async function runAllSteps() {
   const wrap = document.getElementById('progressWrap');
   const bar = document.getElementById('progressBar');
   wrap.classList.add('show'); bar.style.width = '0%';
-  log('Running steps...');
+  log('Running all steps...');
   for (let i=0; i<extractedSteps.length; i++) {
     const s = extractedSteps[i];
     const el = document.getElementById('step-'+i);
     if (el) el.classList.add('running');
-    await executeStep(s, i);
-    if (el) { el.classList.remove('running'); el.classList.add('done'); }
+    try { await executeStep(s, i); if (el) { el.classList.remove('running'); el.classList.add('done'); } }
+    catch(e) { if (el) { el.classList.remove('running'); el.classList.add('failed'); } log('Step failed: '+e.message, 'err'); }
     bar.style.width = ((i+1)/extractedSteps.length*100)+'%';
     await new Promise(r=>setTimeout(r,300));
   }
-  toast('✅ All steps complete!','success');
+  toast('✅ ALL STEPS COMPLETE', 'success');
   log('All steps executed');
+  dbPut('steps', { projectId: activeProject, timestamp: Date.now(), message: `Executed ${extractedSteps.length} steps`, type: 'ok' });
 }
 
 async function executeStep(step, idx) {
@@ -794,23 +784,54 @@ async function executeStep(step, idx) {
   } else if (type==='copy' && detail) {
     try { await navigator.clipboard.writeText(detail); } catch(e) {}
   } else if (type==='download' && detail) {
-    downloadFile(detail, 'step-'+idx+'.txt', 'text/plain');
-  } else if (type==='cloud') {
-    triggerCloudBrainTask(detail);
-  }
+    try { await writeToFolder(activeProject, detail); toast('✅ SAVED TO PROJECT FOLDER', 'success'); }
+    catch(e) { toast('⚠️ COULD NOT SAVE', 'error'); }
+  } else if (type==='cloud') { triggerCloudBrainTask(detail); }
+  else if (type==='preview' && detail) { previewCode = detail; showPreview(detail); }
+}
+
+// ═══════════ LIVE PREVIEW ═══════════
+function showPreview(code) {
+  document.getElementById('previewCard').style.display = 'flex';
+  const iframe = document.getElementById('previewIframe');
+  iframe.classList.add('show');
+  iframe.srcdoc = code;
+}
+
+function closePreview() {
+  document.getElementById('previewCard').style.display = 'none';
+  const iframe = document.getElementById('previewIframe');
+  iframe.srcdoc = '';
+  iframe.classList.remove('show');
+  previewCode = '';
+}
+
+function copyPreviewCode() {
+  if (!previewCode) return;
+  navigator.clipboard.writeText(previewCode).then(()=>toast('✅ CODE COPIED','success'));
+}
+
+async function savePreviewToProject() {
+  if (!previewCode) { toast('⚠️ NO CODE TO SAVE', 'error'); return; }
+  try {
+    const fn = `${activeProject}-preview-${Date.now()}.html`;
+    await writeToFolder(activeProject, previewCode, fn);
+    toast('✅ SAVED: ' + fn, 'success');
+    dbPut('files', { projectId: activeProject, name: fn, content: previewCode, savedAt: Date.now() });
+  } catch(e) { toast('❌ SAVE FAILED', 'error'); }
 }
 
 // ═══════════ MISSION EXECUTOR ═══════════
 function validateJSON(el) {
   try { JSON.parse(el.value); el.style.borderColor = 'var(--green)'; }
-  catch(e) { if(el.value.length>3) el.style.borderColor = 'var(--accent2)'; }
+  catch(e) { if(el.value.length>3) el.style.borderColor = 'var(--accent2)'; else el.style.borderColor = 'var(--border)'; }
 }
 
 function loadDemoMission() {
-  const demo = { project:"demo", files:[
-    { path:"index.html", content:"<!DOCTYPE html>\n<html>\n<head><title>Demo</title></head>\n<body><h1>Hello!</h1></body>\n</html>" },
-    { path:"css/style.css", content:"body { background: #fff; color: #000; }" },
-    { path:"README.md", content:"# Demo\nCreated by Mission Runner v8.1" }
+  const demo = { project:activeProject, files:[
+    { path:"index.html", content:"<!DOCTYPE html>\n<html>\n<head><title>"+activeProject+"</title></head>\n<body><h1>Hello from "+activeProject+"!</h1></body>\n</html>" },
+    { path:"css/style.css", content:"body { background: #0f0f14; color: #e8e8f2; font-family: sans-serif; }" },
+    { path:"README.md", content:"# "+activeProject+"\nCreated by Mission Runner v9.0" }
   ]};
   document.getElementById('missionInput').value = JSON.stringify(demo,null,2);
   validateJSON(document.getElementById('missionInput'));
@@ -823,13 +844,13 @@ function clearMission() {
 
 async function runMission() {
   const raw = document.getElementById('missionInput').value.trim();
-  if (!raw) { toast('⚠️ Paste a mission first','error'); return; }
+  if (!raw) { toast('⚠️ PASTE A MISSION FIRST','error'); return; }
   let mission;
-  try { mission = JSON.parse(raw); } catch(e) { toast('❌ Invalid JSON','error'); return; }
-  if (!mission.files || !Array.isArray(mission.files)) { toast('❌ Needs "files" array','error'); return; }
+  try { mission = JSON.parse(raw); } catch(e) { toast('❌ INVALID JSON','error'); return; }
+  if (!mission.files || !Array.isArray(mission.files)) { toast('❌ NEEDS "FILES" ARRAY','error'); return; }
 
   const btn = document.getElementById('runMissionBtn');
-  btn.disabled = true; btn.textContent = '⏳ Processing...';
+  btn.disabled = true; btn.textContent = '⏳ PROCESSING...';
   const wrap = document.getElementById('missionProgress');
   const bar = document.getElementById('missionProgressBar');
   wrap.classList.add('show'); bar.style.width = '0%';
@@ -850,43 +871,60 @@ async function runMission() {
         created++;
         bar.style.width = (created/mission.files.length*100)+'%';
         log('Created: '+file.path);
+        dbPut('files', { projectId: mission.project || activeProject, name: file.path, content: file.content, savedAt: Date.now() });
       }
-      toast(`✅ ${created} files created!`,'success');
+      toast(`✅ ${created} FILES CREATED!`,'success');
     } else {
       for (let i=0; i<mission.files.length; i++) {
         const file = mission.files[i];
         const fname = file.path.split('/').pop();
         const ext = fname.includes('.') ? fname.split('.').pop() : 'txt';
         const mime = { html:'text/html', css:'text/css', js:'text/javascript', md:'text/markdown', json:'application/json' };
-        downloadFile(file.content||'', fname, mime[ext]||'text/plain');
+        downloadBlob(file.content||'', fname, mime[ext]||'text/plain');
         bar.style.width = ((i+1)/mission.files.length*100)+'%';
-        await new Promise(r=>setTimeout(r,500));
+        await new Promise(r=>setTimeout(r,600));
       }
-      toast('✅ Files downloaded','success');
+      toast('✅ FILES DOWNLOADED','success');
     }
     log('Mission complete');
-  } catch(err) {
-    toast('❌ '+err.message,'error');
-  } finally {
-    btn.disabled = false; btn.textContent = '▶ Run Mission';
-    setTimeout(()=>wrap.classList.remove('show'),2000);
-  }
+  } catch(err) { toast('❌ '+err.message,'error'); }
+  finally { btn.disabled = false; btn.textContent = '▶ RUN MISSION'; setTimeout(()=>wrap.classList.remove('show'),2000); }
 }
 
 // ═══════════ CLOUD BRAIN ═══════════
+function saveCloudToken() {
+  const t = document.getElementById('tokenInput').value.trim();
+  if (!t) { toast('⚠️ PASTE YOUR TOKEN FIRST','error'); return; }
+  sessionStorage.setItem('mr_github_token', t);
+  document.getElementById('tokenInputCard').classList.remove('show');
+  document.getElementById('tokenSavedIndicator').style.display = 'flex';
+  document.getElementById('tokenSavedIndicator').textContent = '🔑 TOKEN SAVED (THIS SESSION)';
+  toast('✅ TOKEN SAVED','success');
+}
+
+function saveSettingsToken() {
+  const t = document.getElementById('settingsToken').value.trim();
+  if (!t) { toast('⚠️ PASTE YOUR TOKEN FIRST','error'); return; }
+  sessionStorage.setItem('mr_github_token', t);
+  document.getElementById('settingsTokenIndicator').style.display = 'flex';
+  document.getElementById('settingsTokenIndicator').textContent = '🔑 TOKEN SAVED (THIS SESSION)';
+  toast('✅ TOKEN SAVED','success');
+}
+
 async function triggerCloudBrain() {
   const task = document.getElementById('cloudTask').value.trim();
   let payload = {};
-  try { payload = JSON.parse(document.getElementById('cloudPayload').value.trim()||'{}'); } catch(e) { toast('❌ Invalid payload JSON','error'); return; }
+  try { payload = JSON.parse(document.getElementById('cloudPayload').value.trim()||'{}'); } catch(e) { toast('❌ INVALID PAYLOAD JSON','error'); return; }
   await triggerCloudBrainTask(task, payload);
 }
 
 async function triggerCloudBrainTask(task, payload={}) {
-  let token = localStorage.getItem('mr_github_token');
+  let token = sessionStorage.getItem('mr_github_token');
   if (!token) {
-    token = prompt('Enter your GitHub personal access token (ghp_...):');
-    if (!token) { toast('⚠️ Token required','error'); return; }
-    localStorage.setItem('mr_github_token', token);
+    document.getElementById('tokenInputCard').classList.add('show');
+    document.getElementById('tokenSavedIndicator').style.display = 'none';
+    toast('🔑 ENTER YOUR GITHUB TOKEN ABOVE','info', 4000);
+    return;
   }
   try {
     const res = await fetch('https://api.github.com/repos/madnessgate44-debug/Mission-runner/dispatches', {
@@ -894,9 +932,9 @@ async function triggerCloudBrainTask(task, payload={}) {
       headers:{ 'Authorization':'token '+token, 'Accept':'application/vnd.github.v3+json', 'Content-Type':'application/json' },
       body: JSON.stringify({ event_type:'mission', client_payload:{ task, ...payload } })
     });
-    if (res.status===204) { toast('✅ Cloud task triggered!','success'); log('Cloud task: '+task); }
-    else { toast('❌ GitHub API error: '+res.status,'error'); }
-  } catch(e) { toast('❌ Network error','error'); }
+    if (res.status===204) { toast('✅ CLOUD TASK TRIGGERED!','success'); log('Cloud task: '+task); }
+    else { toast('❌ GITHUB API ERROR: '+res.status,'error'); }
+  } catch(e) { toast('❌ NETWORK ERROR','error'); }
 }
 
 // ═══════════ CAMERA + OCR ═══════════
@@ -907,27 +945,30 @@ async function startCamera() {
     document.getElementById('cameraVideo').classList.add('show');
     document.getElementById('startCameraBtn').disabled = true;
     document.getElementById('captureCameraBtn').disabled = false;
-    toast('📷 Camera active','info');
-  } catch(e) { toast('❌ Camera denied','error'); }
+    toast('📷 CAMERA ACTIVE','info');
+  } catch(e) { toast('❌ CAMERA DENIED','error'); }
 }
 
 function stopCamera() {
   if (cameraStream) { cameraStream.getTracks().forEach(t=>t.stop()); cameraStream=null; }
   document.getElementById('cameraVideo').classList.remove('show');
-  document.getElementById('startCameraBtn').disabled = false;
-  document.getElementById('captureCameraBtn').disabled = true;
-  document.getElementById('sendCameraBtn').disabled = true;
+  const startBtn = document.getElementById('startCameraBtn'); if (startBtn) startBtn.disabled = false;
+  const capBtn = document.getElementById('captureCameraBtn'); if (capBtn) capBtn.disabled = true;
+  const sendBtn = document.getElementById('sendCameraBtn'); if (sendBtn) sendBtn.disabled = true;
+}
+
+async function stopOCR() {
+  if (ocrWorker) { try { await ocrWorker.terminate(); } catch(e) {} ocrWorker = null; ocrReady = false; }
 }
 
 function captureCamera() {
   const video = document.getElementById('cameraVideo');
   const canvas = document.getElementById('cameraCanvas');
-  canvas.width = video.videoWidth || 640;
-  canvas.height = video.videoHeight || 360;
+  canvas.width = video.videoWidth || 640; canvas.height = video.videoHeight || 360;
   canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);
   const dataUrl = canvas.toDataURL('image/png');
   document.getElementById('sendCameraBtn').disabled = false;
-  toast('📸 Captured! Reading text...','info');
+  toast('📸 CAPTURED! READING TEXT...','info');
   runOCR(dataUrl);
 }
 
@@ -935,59 +976,121 @@ async function runOCR(imageData) {
   const loading = document.getElementById('ocrLoading');
   loading.classList.add('show');
   try {
-    if (!ocrReady) {
-      toast('📥 Loading OCR engine...','info');
-      ocrWorker = await Tesseract.createWorker('eng');
-      ocrReady = true;
-    }
+    if (!ocrReady) { toast('📥 LOADING OCR ENGINE...','info'); ocrWorker = await Tesseract.createWorker('eng'); ocrReady = true; }
     const { data:{ text } } = await ocrWorker.recognize(imageData);
     document.getElementById('cameraResult').value = text.trim();
     document.getElementById('sendCameraBtn').disabled = false;
-    toast('✅ Text extracted!','success');
-  } catch(e) { toast('❌ OCR error','error'); }
+    toast('✅ TEXT EXTRACTED!','success');
+  } catch(e) { toast('❌ OCR ERROR','error'); }
   finally { loading.classList.remove('show'); }
 }
 
 function sendCameraToExtractor() {
   const text = document.getElementById('cameraResult').value.trim();
-  if (!text) { toast('⚠️ No text','error'); return; }
+  if (!text) { toast('⚠️ NO TEXT','error'); return; }
   document.getElementById('extractInput').value = text;
   switchTab('agent');
-  toast('📤 Sent to Agent','success');
+  toast('📤 SENT TO AGENT','success');
 }
 
-// ═══════════ CAPTURE ═══════════
-function manualSave() {
-  const project = document.getElementById('manualProject').value.trim()||'general';
-  const text = document.getElementById('manualConversation').value.trim();
-  if (!text) { toast('⚠️ Paste a conversation','error'); return; }
+// ═══════════ FOLDER PICKER ═══════════
+async function selectSaveFolder() {
+  if (typeof window.showDirectoryPicker !== 'function') { toast('⚠️ NOT SUPPORTED ON THIS BROWSER','error'); return; }
+  try {
+    saveFolderHandle = await window.showDirectoryPicker();
+    await dbPut('settings', { key: 'saveFolder', value: saveFolderHandle });
+    updateFolderUI();
+    toast('✅ FOLDER: ' + saveFolderHandle.name,'success');
+    log('Save folder set: ' + saveFolderHandle.name);
+  } catch(e) { if (e.name !== 'AbortError') toast('❌ ERROR','error'); }
+}
+
+function updateFolderUI() {
+  if (!saveFolderHandle) return;
+  const el = document.getElementById('savedFolderIndicator');
+  if (el) { el.textContent = '📁 ' + saveFolderHandle.name; el.classList.add('show'); }
+  const el2 = document.getElementById('captureFolderIndicator');
+  if (el2) el2.classList.add('show');
+}
+
+async function ensureFolder() {
+  if (saveFolderHandle) {
+    try { const perm = await saveFolderHandle.queryPermission({ mode: 'readwrite' }); if (perm === 'granted') return saveFolderHandle; }
+    catch(e) {}
+    try { const req = await saveFolderHandle.requestPermission({ mode: 'readwrite' }); if (req === 'granted') return saveFolderHandle; }
+    catch(e) {}
+    saveFolderHandle = null;
+    toast('📂 PERMISSION LOST — RE-SELECT FOLDER','info');
+  }
+  const stored = await dbGet('settings', 'saveFolder');
+  if (stored && stored.value) {
+    saveFolderHandle = stored.value;
+    try { const perm = await saveFolderHandle.queryPermission({ mode: 'readwrite' }); if (perm === 'granted') { updateFolderUI(); return saveFolderHandle; } }
+    catch(e) {}
+    try { const req = await saveFolderHandle.requestPermission({ mode: 'readwrite' }); if (req === 'granted') { updateFolderUI(); return saveFolderHandle; } }
+    catch(e) {}
+    saveFolderHandle = null;
+  }
+  toast('📂 SELECT A SAVE FOLDER FIRST','info', 4000);
+  await selectSaveFolder();
+  return saveFolderHandle;
+}
+
+async function writeToFolder(project, text, customFilename) {
+  const folderHandle = await ensureFolder();
+  if (!folderHandle) throw new Error('No folder selected');
+  const projectDir = await folderHandle.getDirectoryHandle(project, { create: true });
   const now = new Date();
-  const content = `# ${project} — Conversation\n\n**Saved:** ${now.toLocaleString()}\n\n---\n\n${text}`;
-  downloadFile(content, `${project}-${now.toISOString().replace(/[:.]/g,'-').slice(0,19)}.md`, 'text/markdown');
-  toast('✅ Saved!','success');
-  document.getElementById('manualConversation').value = '';
+  const timestamp = now.toISOString().replace(/[:.]/g, '-').slice(0,19);
+  const fileName = customFilename || `${project}-${timestamp}.md`;
+  const fileHandle = await projectDir.getFileHandle(fileName, { create: true });
+  const writable = await fileHandle.createWritable();
+  await writable.write(`# ${project}\n\n**Saved:** ${now.toLocaleString()}\n\n---\n\n${text}`);
+  await writable.close();
+  log(`Saved: ${project}/${fileName}`, 'ok');
+  dbPut('files', { projectId: project, name: fileName, content: text, savedAt: Date.now() });
+  return fileName;
 }
 
-function saveQuickNote() {
-  const text = document.getElementById('quickNote').value.trim();
-  if (!text) { toast('⚠️ Type something','error'); return; }
-  const now = new Date();
-  downloadFile(`# Quick Note\n\n**${now.toLocaleString()}**\n\n---\n\n${text}`, `note-${now.toISOString().replace(/[:.]/g,'-').slice(0,19)}.md`, 'text/markdown');
-  toast('✅ Note saved!','success');
-  document.getElementById('quickNote').value = '';
+async function downloadWithPicker(source) {
+  try {
+    let project, text;
+    if (source === 'autoSave') { if (!pendingAutoSave) { toast('⚠️ NO DATA','error'); return; } project = pendingAutoSave.project; text = pendingAutoSave.text; }
+    else if (source === 'shared') { if (!pendingShareText) { toast('⚠️ NO DATA','error'); return; } project = document.getElementById('shareProject').value.trim()||activeProject; text = pendingShareText; }
+    else if (source === 'manual') { project = document.getElementById('manualProject').value.trim()||activeProject; text = document.getElementById('manualConversation').value.trim(); if (!text) { toast('⚠️ PASTE CONVERSATION','error'); return; } }
+    else if (source === 'note') { project = 'notes'; text = document.getElementById('quickNote').value.trim(); if (!text) { toast('⚠️ TYPE SOMETHING','error'); return; } }
+    else { toast('⚠️ UNKNOWN','error'); return; }
+    const fn = await writeToFolder(project, text);
+    toast(`✅ SAVED TO ${project}/${fn}`,'success');
+    if (source==='autoSave') { document.getElementById('autoSaveCard').classList.remove('show'); pendingAutoSave=null; }
+    if (source==='shared') { document.getElementById('shareCard').classList.remove('show'); pendingShareText=null; }
+    if (source==='manual') document.getElementById('manualConversation').value='';
+    if (source==='note') document.getElementById('quickNote').value='';
+  } catch(e) { if (e.name==='AbortError') toast('⚠️ CANCELLED','error'); else toast('❌ '+e.message,'error'); }
 }
 
-function downloadFile(content, filename, type) {
+// ═══════════ TOOLS ═══════════
+function downloadBlob(content, filename, type) {
   const blob = new Blob([content], { type: type||'text/plain' });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = filename;
-  document.body.appendChild(a); a.click();
-  document.body.removeChild(a);
+  const a = document.createElement('a'); a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 
-// ═══════════ AUTO-SAVE ═══════════
+function downloadBrainYml() {
+  const yml = `name: Cloud Brain\non:\n  repository_dispatch:\n    types: [mission]\n\njobs:\n  execute:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-node@v4\n        with:\n          node-version: '20'\n      - name: Run Mission\n        env:\n          GITHUB_TOKEN: \${{ secrets.GITHUB_TOKEN }}\n          PAYLOAD: \${{ toJson(github.event.client_payload) }}\n        run: node scripts/mission.js\n      - name: Commit\n        run: |\n          git config user.name "Mission Runner"\n          git config user.email "runner@mission.app"\n          git add -A\n          git diff --staged --quiet || git commit -m "Mission: \${{ github.event.client_payload.task }}"\n          git push\n`;
+  downloadBlob(yml, 'brain.yml', 'text/yaml');
+  toast('✅ BRAIN.YML DOWNLOADED','success');
+}
+
+function downloadSystemOrder() {
+  const md = `# SYSTEM ORDER — MISSION RUNNER PROTOCOL v1.0\n\nYou are working with Ahmed. He uses Mission Runner to execute instructions.\n\n## OUTPUT FORMATS\n\n### MISSION JSON (file creation)\n\`\`\`mission-json\n{"project":"name","files":[{"path":"index.html","content":"..."}]}\n\`\`\`\n\n### ACTION STEPS\n\`\`\`action-steps\n[{"step":1,"action":"Do this","type":"navigate","detail":"url"}]\n\`\`\`\nTypes: navigate, copy, paste, download, open, click, write, search, cloud, other.\n\n### AUTO-SAVE LINK\n\`\`\`auto-save-link\nhttps://madnessgate44-debug.github.io/Mission-runner/?autosave=[BASE64]\n\`\`\`\n\n## PROJECTS\n- Gahiz: AI interview simulation\n- Content Factory: AI content production\n- Wired Leader: ADHD coaching brand\n\n## RULES\n- Never ask Ahmed to create files manually\n- Always provide auto-save link at end\n- Be concise (phone screen)\n`;
+  downloadBlob(md, 'system-order.md', 'text/markdown');
+  toast('✅ SYSTEM-ORDER.MD DOWNLOADED','success');
+}
+
+// ═══════════ AUTO-SAVE & SHARE ═══════════
 function processAutoSaveLink() {
   const params = new URLSearchParams(window.location.search);
   const data = params.get('autosave');
@@ -997,46 +1100,26 @@ function processAutoSaveLink() {
     if (!decoded.project||!decoded.text) return;
     pendingAutoSave = decoded;
     document.getElementById('autoProjectLabel').textContent = '📂 '+decoded.project;
-    document.getElementById('autoPreview').textContent = decoded.text.slice(0,200)+'...';
+    const preview = decoded.text;
+    document.getElementById('autoPreview').textContent = preview.length > 200 ? preview.slice(0,200)+'...' : preview;
     document.getElementById('autoSaveCard').classList.add('show');
     log('Auto-save link detected');
     if (window.history?.replaceState) window.history.replaceState({}, document.title, window.location.origin+window.location.pathname);
   } catch(e) {}
 }
 
-function downloadAutoSave() {
-  if (!pendingAutoSave) return;
-  const now = new Date();
-  const content = `# ${pendingAutoSave.project} — Conversation\n\n**Saved:** ${now.toLocaleString()}\n\n---\n\n${pendingAutoSave.text}`;
-  downloadFile(content, `${pendingAutoSave.project}-${now.toISOString().replace(/[:.]/g,'-').slice(0,19)}.md`, 'text/markdown');
-  toast('✅ Saved!','success');
-  document.getElementById('autoSaveCard').classList.remove('show');
-  pendingAutoSave = null;
-}
-
-// ═══════════ SHARE-TO-SAVE ═══════════
 function processSharedText() {
   const params = new URLSearchParams(window.location.search);
   const parts = [params.get('title'),params.get('text'),params.get('url')].filter(Boolean);
   const combined = parts.join('\n\n').trim();
   if (!combined) return;
   pendingShareText = combined;
-  document.getElementById('sharePreview').textContent = combined.slice(0,200)+'...';
+  const preview = combined;
+  document.getElementById('sharePreview').textContent = preview.length > 200 ? preview.slice(0,200)+'...' : preview;
   document.getElementById('shareCard').classList.add('show');
   log('Shared content received');
 }
 
-function downloadShared() {
-  if (!pendingShareText) return;
-  const project = document.getElementById('shareProject').value.trim()||'general';
-  const now = new Date();
-  downloadFile(`# ${project} — Shared\n\n**${now.toLocaleString()}**\n\n---\n\n${pendingShareText}`, `shared-${now.toISOString().replace(/[:.]/g,'-').slice(0,19)}.md`, 'text/markdown');
-  toast('✅ Saved!','success');
-  document.getElementById('shareCard').classList.remove('show');
-  pendingShareText = null;
-}
-
-// ═══════════ MISSION FROM URL ═══════════
 function checkMissionLink() {
   const params = new URLSearchParams(window.location.search);
   const missionData = params.get('mission');
@@ -1055,19 +1138,40 @@ async function checkForUpdates() {
     const res = await fetch('https://api.github.com/repos/madnessgate44-debug/Mission-runner/releases/latest');
     const data = await res.json();
     const latest = data.tag_name;
-    if (latest && latest !== 'v8.1') {
-      document.getElementById('updateBanner').classList.add('show');
-      document.getElementById('updateBanner').textContent = '⬆️ New version '+latest+' available — tap to update';
+    if (latest && latest !== 'v9.0') {
+      const banner = document.getElementById('updateBanner');
+      if (banner) { banner.classList.add('show'); banner.textContent = '⬆️ NEW VERSION '+latest+' AVAILABLE — TAP TO UPDATE'; }
     }
-  } catch(e) { /* silent */ }
+  } catch(e) {}
 }
 
 // ═══════════ STARTUP ═══════════
-(function init() {
+(async function init() {
+  try {
+    await openDB();
+    await initProjects();
+  } catch(e) { console.warn('DB init failed:', e); }
+
   checkMissionLink();
   processAutoSaveLink();
   processSharedText();
-  log('Mission Runner v8.1 ready ✅');
+  log('Mission Runner v9.0 ready ✅');
+
+  // Restore folder handle
+  try {
+    const stored = await dbGet('settings', 'saveFolder');
+    if (stored && stored.value) saveFolderHandle = stored.value;
+    updateFolderUI();
+  } catch(e) {}
+
+  // Restore token indicator
+  if (sessionStorage.getItem('mr_github_token')) {
+    const el = document.getElementById('tokenSavedIndicator');
+    if (el) { el.style.display = 'flex'; el.textContent = '🔑 TOKEN SAVED (THIS SESSION)'; }
+    const el2 = document.getElementById('settingsTokenIndicator');
+    if (el2) { el2.style.display = 'flex'; el2.textContent = '🔑 TOKEN SAVED (THIS SESSION)'; }
+  }
+
   setTimeout(checkForUpdates, 2000);
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(()=>{});
@@ -1075,4 +1179,4 @@ async function checkForUpdates() {
 })();
 </script>
 </body>
-  </html>
+</html>
