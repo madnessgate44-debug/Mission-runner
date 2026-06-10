@@ -153,19 +153,15 @@ jobs:
     });
   }
 
-  // 2. Change Pages source to GitHub Actions
-  async function setPagesToActions() {
+  // 2. Ensure Pages source is set to branch (we'll rely on Actions)
+  async function configurePages() {
+    // Set source to main branch (required for Actions to take over)
     await fetch(`https://api.github.com/repos/${owner}/${repo}/pages`, {
       method: "PATCH",
       headers: { Authorization: `token ${githubToken}`, "Content-Type": "application/json" },
       body: JSON.stringify({ source: { branch: "main", path: "/" } })
     });
-    // Note: The Pages API doesn't directly set "GitHub Actions" source;
-    // we need to delete the branch source and rely on the workflow.
-    // Actually, setting source to branch with a dummy then relying on workflow is enough.
-    // But we also need to ensure the Pages setting is not "None".
-    // Simpler: the presence of the workflow and the Pages configuration will work.
-    // To be safe, we also trigger a Pages build.
+    // Trigger a Pages build (optional)
     await fetch(`https://api.github.com/repos/${owner}/${repo}/pages/builds`, {
       method: "POST",
       headers: { Authorization: `token ${githubToken}` }
@@ -183,9 +179,9 @@ jobs:
       addMessage("📁 Creating workflow file...", "ai");
       await createWorkflow();
       addMessage("✅ Workflow created.", "ai");
-      addMessage("⚙️ Switching Pages to GitHub Actions...", "ai");
-      await setPagesToActions();
-      addMessage("✅ Pages source updated.", "ai");
+      addMessage("⚙️ Configuring Pages source...", "ai");
+      await configurePages();
+      addMessage("✅ Pages configured.", "ai");
       addMessage("🔄 Triggering a test commit (updating index.html timestamp)...", "ai");
       // Make a dummy commit to index.html to trigger the workflow
       const currentHtml = document.documentElement.outerHTML;
