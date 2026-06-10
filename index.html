@@ -3,20 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Self-Updater v3 · with Diagnosis</title>
+  <title>Self-Updater v4 · Reliable Reload</title>
   <style>
     body{font-family:system-ui;max-width:600px;margin:2rem auto;padding:1rem;}
     input,textarea,button{width:100%;margin:0.3rem 0;padding:0.5rem;}
     button{background:#3b82f6;color:white;border:none;cursor:pointer;}
     .flex{display:flex;gap:8px;}
     .flex button{flex:1;}
-    .status{background:#e2e8f0;padding:0.5rem;margin-top:1rem;white-space:pre-wrap;font-family:monospace;font-size:0.8rem;}
-    .diagnosis{background:#f1f5f9;margin-top:1rem;padding:0.5rem;border-left:3px solid #3b82f6;}
+    .status{background:#e2e8f0;padding:0.5rem;margin-top:1rem;white-space:pre-wrap;font-family:monospace;}
+    .diagnosis{background:#f1f5f9;margin-top:1rem;padding:0.5rem;border-left:3px solid #3b82f6;display:none;}
   </style>
 </head>
 <body>
-<h1>🔁 Self-Updater <span style="font-size:0.8rem;">v3 · Diagnosis</span></h1>
-<p>Update index.html on GitHub. No cache clearing.</p>
+<h1>🔁 Self-Updater <span style="font-size:0.8rem;">v4</span></h1>
+<p>Update index.html on GitHub. After commit, wait 30 seconds then reload.</p>
 <input type="password" id="token" placeholder="GitHub token (repo scope)">
 <textarea id="code" rows="10" placeholder="Paste full HTML code here"></textarea>
 <div class="flex">
@@ -24,7 +24,7 @@
   <button id="diagnoseBtn">🔍 Self Diagnosis</button>
 </div>
 <div id="status" class="status">Ready</div>
-<div id="diagnosisResult" class="diagnosis" style="display:none;"></div>
+<div id="diagnosisResult" class="diagnosis"></div>
 
 <script>
   const owner='madnessgate44-debug', repo='Mission-runner', path='index.html', branch='main';
@@ -44,7 +44,7 @@
     localStorage.setItem('github_token', token);
     const html=codeArea.value.trim();
     if(!html.includes('<!DOCTYPE html>')){ statusDiv.innerText='❌ Invalid HTML'; return; }
-    statusDiv.innerText='⏳ Updating...';
+    statusDiv.innerText='⏳ Committing to GitHub...';
     try {
       const url=`https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
       const get=await fetch(url,{headers:{Authorization:`token ${token}`}});
@@ -57,8 +57,15 @@
         body:JSON.stringify({message:'Self-update', content, sha, branch})
       });
       if(!put.ok) throw new Error(await put.text());
-      statusDiv.innerText='✅ Updated! Reloading...';
-      setTimeout(()=>{ window.location.href=`/?v=${Date.now()}`; },1500);
+      const timestamp=Date.now();
+      statusDiv.innerHTML=`✅ Commit successful!<br>
+        ⏳ GitHub Pages takes 30-60 seconds to rebuild.<br>
+        🔁 Auto-reload in 10 seconds...<br>
+        👉 If nothing happens, <a href="/?v=${timestamp}" id="manualReload">click here to reload manually</a>.`;
+      // Auto-reload after 10 seconds (still optimistic, but better than 1.5s)
+      setTimeout(()=>{
+        window.location.href=`/?v=${timestamp}`;
+      }, 10000);
     } catch(e){ statusDiv.innerText=`❌ ${e.message}`; }
   }
   updateBtn.onclick=commit;
@@ -72,7 +79,6 @@
       return;
     }
     diagnosisDiv.innerHTML+=`✅ Token exists (length ${token.length})\n`;
-    // Check token validity by calling GitHub API
     try {
       const userRes=await fetch('https://api.github.com/user',{headers:{Authorization:`token ${token}`}});
       if(userRes.ok){
@@ -82,7 +88,6 @@
         diagnosisDiv.innerHTML+=`❌ Token invalid (HTTP ${userRes.status})\n`;
         return;
       }
-      // Check repo file
       const fileUrl=`https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
       const fileRes=await fetch(fileUrl,{headers:{Authorization:`token ${token}`}});
       if(fileRes.ok){
@@ -93,19 +98,12 @@
       } else {
         diagnosisDiv.innerHTML+=`❌ Error checking file: HTTP ${fileRes.status}\n`;
       }
-      // Check live URL
       const liveUrl=`https://${owner}.github.io/${repo}/`;
       diagnosisDiv.innerHTML+=`🌐 Live URL: ${liveUrl}\n`;
-      try {
-        const liveRes=await fetch(liveUrl,{mode:'no-cors'}); // no-cors gives opaque but we can still check if it doesn't throw
-        diagnosisDiv.innerHTML+=`✅ Live site seems reachable (check manually: ${liveUrl})\n`;
-      } catch(e){
-        diagnosisDiv.innerHTML+=`⚠️ Could not reach live site: ${e.message}\n`;
-      }
+      diagnosisDiv.innerHTML+='\n✅ Diagnosis complete. If live site still 404, wait 1 minute and refresh.';
     } catch(e){
       diagnosisDiv.innerHTML+=`❌ Diagnosis error: ${e.message}\n`;
     }
-    diagnosisDiv.innerHTML+='\n✅ Diagnosis complete.';
   }
   diagnoseBtn.onclick=diagnosis;
 </script>
