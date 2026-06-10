@@ -3,169 +3,54 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Self-Updater v6 · Full Diagnosis</title>
+  <title>Mission Runner v7 · Sidebar</title>
   <style>
-    body{font-family:system-ui;max-width:700px;margin:2rem auto;padding:1rem;}
-    input,textarea,button{width:100%;margin:0.3rem 0;padding:0.5rem;}
-    button{background:#3b82f6;color:white;border:none;cursor:pointer;}
-    .flex{display:flex;gap:8px;}
-    .flex button{flex:1;}
-    .status{background:#e2e8f0;padding:0.5rem;margin-top:1rem;white-space:pre-wrap;font-family:monospace;}
-    .diagnosis{background:#f1f5f9;padding:0.5rem;margin-top:1rem;border-left:3px solid #3b82f6;white-space:pre-wrap;font-family:monospace;}
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{font-family:system-ui;background:#f7f9fc;height:100vh;overflow:hidden;}
+    .app{display:flex;height:100%;position:relative;}
+    /* Sidebar */
+    .sidebar{position:fixed;top:0;left:-280px;width:280px;height:100%;background:#0f172a;color:#e2e8f0;transition:left 0.2s;z-index:1000;padding:20px;display:flex;flex-direction:column;gap:8px;}
+    .sidebar.open{left:0;}
+    .overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:999;display:none;}
+    .overlay.open{display:block;}
+    .sidebar button{background:#1e293b;border:none;color:white;padding:10px;border-radius:12px;text-align:left;cursor:pointer;}
+    /* Main */
+    .main{flex:1;display:flex;flex-direction:column;background:white;}
+    .header{display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid #e2e8f0;}
+    .hamburger{font-size:28px;background:none;border:none;cursor:pointer;padding:0 8px;}
+    .title{font-weight:600;font-size:1.2rem;flex:1;}
+    .content{flex:1;display:flex;align-items:center;justify-content:center;color:#64748b;}
   </style>
 </head>
 <body>
-<h1>🔁 Self-Updater v6 · Full Diagnosis</h1>
-<p>Commit to GitHub or run diagnosis.</p>
-<input type="password" id="token" placeholder="GitHub token (repo scope)">
-<textarea id="code" rows="10" placeholder="Paste full HTML code here"></textarea>
-<div class="flex">
-  <button id="update">Commit to GitHub</button>
-  <button id="diagnoseBtn">🔬 Run Full Diagnosis</button>
+<div class="overlay" id="overlay"></div>
+<div class="sidebar" id="sidebar">
+  <h3>⚙️ Mission Runner</h3>
+  <button id="btn-close">✖ Close Sidebar</button>
+  <button disabled style="opacity:0.5;">🔑 Settings (coming)</button>
+  <button disabled style="opacity:0.5;">📁 Projects (coming)</button>
 </div>
-<div id="status" class="status">Ready</div>
-<div id="diagnosisResult" class="diagnosis" style="display:none;"></div>
-
+<div class="main">
+  <div class="header">
+    <button class="hamburger" id="hamburger">☰</button>
+    <div class="title">Mission Runner v7</div>
+  </div>
+  <div class="content">
+    <p>✅ Sidebar works. Tap ☰ to open.<br>Next step: chat area.</p>
+  </div>
+</div>
 <script>
-  const owner='madnessgate44-debug', repo='Mission-runner', path='index.html', branch='main';
-  const tokenInput=document.getElementById('token');
-  const codeArea=document.getElementById('code');
-  const updateBtn=document.getElementById('update');
-  const diagnoseBtn=document.getElementById('diagnoseBtn');
-  const statusDiv=document.getElementById('status');
-  const diagnosisDiv=document.getElementById('diagnosisResult');
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('overlay');
+  const hamburger = document.getElementById('hamburger');
+  const closeBtn = document.getElementById('btn-close');
 
-  const saved=localStorage.getItem('github_token');
-  if(saved) tokenInput.value=saved;
+  function openSidebar() { sidebar.classList.add('open'); overlay.classList.add('open'); }
+  function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('open'); }
 
-  async function commit() {
-    const token=tokenInput.value.trim();
-    if(!token){ statusDiv.innerText='❌ No token'; return; }
-    localStorage.setItem('github_token', token);
-    const html=codeArea.value.trim();
-    if(!html.includes('<!DOCTYPE html>')){ statusDiv.innerText='❌ Invalid HTML'; return; }
-    statusDiv.innerText='⏳ Committing...';
-    try {
-      const url=`https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
-      const get=await fetch(url,{headers:{Authorization:`token ${token}`}});
-      let sha=null;
-      if(get.ok) sha=(await get.json()).sha;
-      const content=btoa(unescape(encodeURIComponent(html)));
-      const put=await fetch(url,{
-        method:'PUT',
-        headers:{Authorization:`token ${token}`, 'Content-Type':'application/json'},
-        body:JSON.stringify({message:'Self-update', content, sha, branch})
-      });
-      if(!put.ok) throw new Error(await put.text());
-      const timestamp=Date.now();
-      const manualUrl=`/?v=${timestamp}`;
-      statusDiv.innerHTML=`✅ Commit successful!<br>⏳ Wait 30 sec then <a href="${manualUrl}" target="_blank">reload</a>`;
-    } catch(e){ statusDiv.innerText=`❌ ${e.message}`; }
-  }
-  updateBtn.onclick=commit;
-
-  async function runDiagnosis() {
-    diagnosisDiv.style.display='block';
-    diagnosisDiv.innerHTML='🔍 Running full diagnosis...\n';
-    const token=tokenInput.value.trim();
-    if(!token) {
-      diagnosisDiv.innerHTML+='❌ No GitHub token provided. Please enter one.\n';
-      return;
-    }
-    diagnosisDiv.innerHTML+=`✅ Token length: ${token.length}\n`;
-
-    // 1. Check token validity and user
-    try {
-      const userRes=await fetch('https://api.github.com/user',{headers:{Authorization:`token ${token}`}});
-      if(userRes.ok){
-        const user=await userRes.json();
-        diagnosisDiv.innerHTML+=`✅ Token valid for user: ${user.login}\n`;
-        // Check token scopes (via response headers)
-        const scopes=userRes.headers.get('X-OAuth-Scopes');
-        if(scopes) diagnosisDiv.innerHTML+=`   Scopes: ${scopes}\n`;
-        if(!scopes || !scopes.includes('repo')) diagnosisDiv.innerHTML+=`⚠️ WARNING: 'repo' scope missing. Please regenerate token with 'repo'.\n`;
-      } else {
-        diagnosisDiv.innerHTML+=`❌ Token invalid (HTTP ${userRes.status})\n`;
-        return;
-      }
-    } catch(e){ diagnosisDiv.innerHTML+=`❌ Cannot reach GitHub API: ${e.message}\n`; return; }
-
-    // 2. Check repo and file
-    try {
-      const repoUrl=`https://api.github.com/repos/${owner}/${repo}`;
-      const repoRes=await fetch(repoUrl,{headers:{Authorization:`token ${token}`}});
-      if(repoRes.ok){
-        const repoData=await repoRes.json();
-        diagnosisDiv.innerHTML+=`✅ Repository found: ${repoData.name}\n`;
-        diagnosisDiv.innerHTML+=`   Default branch: ${repoData.default_branch}\n`;
-        diagnosisDiv.innerHTML+=`   Private: ${repoData.private}\n`;
-        if(repoData.private) diagnosisDiv.innerHTML+=`⚠️ Repository is private. GitHub Pages requires public or GitHub Pro.\n`;
-      } else {
-        diagnosisDiv.innerHTML+=`❌ Cannot access repo (HTTP ${repoRes.status})\n`;
-      }
-
-      const fileUrl=`https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
-      const fileRes=await fetch(fileUrl,{headers:{Authorization:`token ${token}`}});
-      if(fileRes.ok){
-        const fileData=await fileRes.json();
-        diagnosisDiv.innerHTML+=`✅ ${path} exists, SHA: ${fileData.sha.substring(0,7)}\n`;
-        diagnosisDiv.innerHTML+=`   Size: ${fileData.size} bytes\n`;
-        // Get last commit
-        const commitsUrl=`https://api.github.com/repos/${owner}/${repo}/commits?path=${path}&page=1&per_page=1`;
-        const commitRes=await fetch(commitsUrl,{headers:{Authorization:`token ${token}`}});
-        if(commitRes.ok){
-          const commits=await commitRes.json();
-          if(commits.length){
-            const lastCommit=commits[0];
-            diagnosisDiv.innerHTML+=`   Last commit: ${new Date(lastCommit.commit.author.date).toLocaleString()}\n`;
-          }
-        }
-      } else if(fileRes.status===404){
-        diagnosisDiv.innerHTML+=`⚠️ ${path} not found on main branch. First commit will create it.\n`;
-      } else {
-        diagnosisDiv.innerHTML+=`❌ Error checking file: HTTP ${fileRes.status}\n`;
-      }
-    } catch(e){ diagnosisDiv.innerHTML+=`❌ Error accessing repo: ${e.message}\n`; }
-
-    // 3. Check GitHub Pages status
-    try {
-      const pagesUrl=`https://api.github.com/repos/${owner}/${repo}/pages`;
-      const pagesRes=await fetch(pagesUrl,{headers:{Authorization:`token ${token}`}});
-      if(pagesRes.ok){
-        const pagesData=await pagesRes.json();
-        diagnosisDiv.innerHTML+=`✅ GitHub Pages enabled\n`;
-        diagnosisDiv.innerHTML+=`   URL: ${pagesData.html_url}\n`;
-        diagnosisDiv.innerHTML+=`   Branch: ${pagesData.source.branch}\n`;
-        diagnosisDiv.innerHTML+=`   Path: ${pagesData.source.path}\n`;
-      } else if(pagesRes.status===404){
-        diagnosisDiv.innerHTML+=`❌ GitHub Pages NOT enabled. Go to Settings → Pages → set branch to 'main' /root.\n`;
-      } else {
-        diagnosisDiv.innerHTML+=`❌ Pages API error: HTTP ${pagesRes.status}\n`;
-      }
-    } catch(e){ diagnosisDiv.innerHTML+=`❌ Cannot check Pages: ${e.message}\n`; }
-
-    // 4. Check live URL
-    const liveUrl=`https://${owner}.github.io/${repo}/`;
-    diagnosisDiv.innerHTML+=`🌐 Live URL: ${liveUrl}\n`;
-    try {
-      const liveRes=await fetch(liveUrl,{method:'HEAD'});
-      if(liveRes.ok){
-        diagnosisDiv.innerHTML+=`✅ Live site reachable (HTTP ${liveRes.status})\n`;
-      } else if(liveRes.status===404){
-        diagnosisDiv.innerHTML+=`❌ Live site returns 404. Possible causes:\n`;
-        diagnosisDiv.innerHTML+=`   - Pages not enabled\n`;
-        diagnosisDiv.innerHTML+=`   - Branch not set correctly\n`;
-        diagnosisDiv.innerHTML+=`   - Recent commit not yet deployed (wait 2 minutes)\n`;
-      } else {
-        diagnosisDiv.innerHTML+=`⚠️ Live site HTTP ${liveRes.status}\n`;
-      }
-    } catch(e){
-      diagnosisDiv.innerHTML+=`❌ Cannot reach live site: ${e.message}\n`;
-    }
-
-    diagnosisDiv.innerHTML+='\n✅ Diagnosis complete. Based on results, follow the recommendations above.';
-  }
-  diagnoseBtn.onclick=runDiagnosis;
+  hamburger.onclick = openSidebar;
+  overlay.onclick = closeSidebar;
+  closeBtn.onclick = closeSidebar;
 </script>
 </body>
 </html>
