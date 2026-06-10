@@ -6,272 +6,134 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="theme-color" content="#0f0f14">
-  <title>Mission Runner v10.0</title>
+  <title>Mission Runner v11.0</title>
   <link rel="manifest" href="manifest.json">
   <style>
     :root {
-      --sidebar-bg: #0f0f14;
-      --main-bg: #f8f9fa;
-      --card-bg: #ffffff;
-      --border: #e5e7eb;
-      --accent: #4D6BFE;
-      --accent2: #ef4444;
-      --accent3: #f59e0b;
-      --green: #10b981;
-      --text: #1a1a2e;
-      --muted: #6b7280;
-      --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-      --font-mono: 'SF Mono', 'JetBrains Mono', 'Menlo', monospace;
-      --radius: 12px;
+      --sidebar-bg: #0f0f14; --main-bg: #f8f9fa; --card-bg: #ffffff;
+      --border: #e5e7eb; --accent: #4D6BFE; --accent2: #ef4444;
+      --accent3: #f59e0b; --green: #10b981; --text: #1a1a2e;
+      --muted: #6b7280; --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-mono: 'SF Mono', 'JetBrains Mono', 'Menlo', monospace; --radius: 12px;
     }
     * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-    body {
-      font-family: var(--font);
-      background: var(--main-bg);
-      color: var(--text);
-      height: 100vh;
-      overflow: hidden;
-      font-size: 15px;
-    }
-    /* ── SIDEBAR OVERLAY ── */
-    .sidebar-overlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200;
-      display: none; opacity: 0; transition: opacity 0.25s;
-    }
+    body { font-family: var(--font); background: var(--main-bg); color: var(--text); height: 100vh; overflow: hidden; font-size: 15px; }
+    .sidebar-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; display: none; opacity: 0; transition: opacity 0.25s; }
     .sidebar-overlay.show { display: block; opacity: 1; }
-    /* ── SIDEBAR ── */
-    .sidebar {
-      position: fixed; top: 0; left: 0; width: 280px; height: 100%; z-index: 201;
-      background: var(--sidebar-bg); color: #e0e0e0;
-      transform: translateX(-100%); transition: transform 0.25s ease;
-      display: flex; flex-direction: column; overflow-y: auto;
-    }
+    .sidebar { position: fixed; top: 0; left: 0; width: 280px; height: 100%; z-index: 201; background: var(--sidebar-bg); color: #e0e0e0; transform: translateX(-100%); transition: transform 0.25s ease; display: flex; flex-direction: column; overflow-y: auto; }
     .sidebar.show { transform: translateX(0); }
-    .sidebar-header {
-      padding: 1.2em 1em; border-bottom: 1px solid rgba(255,255,255,0.08);
-      font-weight: 700; font-size: 1.1em; display: flex; align-items: center; gap: 0.5em;
-    }
+    .sidebar-header { padding: 1.2em 1em; border-bottom: 1px solid rgba(255,255,255,0.08); font-weight: 700; font-size: 1.1em; display: flex; align-items: center; gap: 0.5em; }
     .sidebar-header span { color: var(--accent); }
-    .sidebar-item {
-      display: flex; align-items: center; gap: 0.7em; padding: 0.75em 1em;
-      cursor: pointer; font-size: 0.9em; transition: background 0.15s;
-      border-left: 3px solid transparent;
-    }
+    .sidebar-item { display: flex; align-items: center; gap: 0.7em; padding: 0.75em 1em; cursor: pointer; font-size: 0.9em; transition: background 0.15s; border-left: 3px solid transparent; }
     .sidebar-item:hover { background: rgba(255,255,255,0.05); }
     .sidebar-item.active { background: rgba(77,107,254,0.15); border-left-color: var(--accent); color: #fff; }
     .sidebar-divider { height: 1px; background: rgba(255,255,255,0.08); margin: 0.5em 1em; }
-    .sidebar-footer {
-      padding: 1em; font-size: 0.65em; color: #555; text-align: center;
-      border-top: 1px solid rgba(255,255,255,0.08); margin-top: auto;
-    }
+    .sidebar-footer { padding: 1em; font-size: 0.65em; color: #555; text-align: center; border-top: 1px solid rgba(255,255,255,0.08); margin-top: auto; }
     .ai-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-    .ai-dot.deepseek { background: #4D6BFE; }
-    .ai-dot.claude { background: #D97706; }
-    .ai-dot.gemini { background: #4285F4; }
-    /* ── HEADER ── */
-    .header {
-      background: var(--card-bg); border-bottom: 1px solid var(--border);
-      padding: 0.7em 1em; display: flex; align-items: center; gap: 0.6em;
-      position: sticky; top: 0; z-index: 100;
-    }
+    .ai-dot.deepseek { background: #4D6BFE; } .ai-dot.claude { background: #D97706; } .ai-dot.gemini { background: #4285F4; }
+    .header { background: var(--card-bg); border-bottom: 1px solid var(--border); padding: 0.7em 1em; display: flex; align-items: center; gap: 0.6em; position: sticky; top: 0; z-index: 100; }
     .hamburger { font-size: 1.4em; cursor: pointer; padding: 0.2em; color: var(--text); background: none; border: none; }
-    .header-title { font-weight: 700; font-size: 1.1em; flex: 1; }
-    .header-title span { color: var(--accent); }
-    .project-pill {
-      font-size: 0.7em; background: var(--accent); color: #fff; padding: 0.25em 0.6em;
-      border-radius: 20px; font-weight: 600; cursor: pointer;
-    }
+    .header-title { font-weight: 700; font-size: 1.1em; flex: 1; } .header-title span { color: var(--accent); }
+    .project-pill { font-size: 0.7em; background: var(--accent); color: #fff; padding: 0.25em 0.6em; border-radius: 20px; font-weight: 600; cursor: pointer; }
     .native-pill { font-size: 0.65em; background: var(--green); color: #fff; padding: 0.2em 0.5em; border-radius: 10px; display: none; font-weight: 700; }
     .native-pill.show { display: inline-block; }
-    .update-banner {
-      display: none; padding: 0.4em; background: var(--accent); color: #fff;
-      text-align: center; font-weight: 600; font-size: 0.75em; cursor: pointer;
-    }
+    .update-banner { display: none; padding: 0.4em; background: var(--accent); color: #fff; text-align: center; font-weight: 600; font-size: 0.75em; cursor: pointer; }
     .update-banner.show { display: block; }
-    /* ── MAIN CONVERSATION ── */
-    .conversation {
-      flex: 1; overflow-y: auto; padding: 0.8em; display: flex; flex-direction: column; gap: 0.6em;
-      height: calc(100vh - 110px);
-    }
-    .msg {
-      max-width: 85%; padding: 0.7em 0.9em; border-radius: 16px;
-      font-size: 0.88em; line-height: 1.5; animation: fadeIn 0.2s ease;
-    }
+    .conversation { flex: 1; overflow-y: auto; padding: 0.8em; display: flex; flex-direction: column; gap: 0.6em; height: calc(100vh - 120px); }
+    .msg { max-width: 85%; padding: 0.7em 0.9em; border-radius: 16px; font-size: 0.88em; line-height: 1.5; animation: fadeIn 0.2s ease; }
     @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
     .msg.user { background: var(--accent); color: #fff; align-self: flex-end; border-bottom-right-radius: 6px; }
     .msg.ai { background: var(--card-bg); color: var(--text); align-self: flex-start; border: 1px solid var(--border); border-bottom-left-radius: 6px; }
-    .msg.ai .ai-label { font-size: 0.7em; font-weight: 700; color: var(--accent); margin-bottom: 0.3em; }
-    /* ── RESPONSE CARDS ── */
-    .response-card {
-      background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius);
-      padding: 0.8em; align-self: stretch; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-      animation: fadeIn 0.25s ease;
-    }
-    .response-card .card-header {
-      display: flex; align-items: center; justify-content: space-between;
-      font-weight: 700; font-size: 0.8em; margin-bottom: 0.6em;
-    }
+    .msg.ai .ai-label { font-size: 0.7em; font-weight: 700; color: var(--accent); margin-bottom: 0.3em; display: flex; align-items: center; gap: 0.3em; }
+    .typing-dots { display: flex; gap: 4px; padding: 0.5em 0; }
+    .typing-dots span { width: 6px; height: 6px; background: var(--muted); border-radius: 50%; animation: bounce 1.2s infinite; }
+    .typing-dots span:nth-child(2) { animation-delay: 0.2s; } .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes bounce { 0%,80%,100% { transform: scale(0.6); opacity: 0.4; } 40% { transform: scale(1); opacity: 1; } }
+    .response-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.8em; align-self: stretch; box-shadow: 0 1px 3px rgba(0,0,0,0.04); animation: fadeIn 0.25s ease; }
+    .response-card .card-header { display: flex; align-items: center; justify-content: space-between; font-weight: 700; font-size: 0.8em; margin-bottom: 0.6em; }
     .response-card .card-header .close-btn { cursor: pointer; font-size: 1.1em; color: var(--muted); background: none; border: none; }
-    /* ── PROGRESS ── */
     .progress-wrap { background: #e5e7eb; border-radius: 6px; height: 8px; overflow: hidden; margin: 0.4em 0; }
     .progress-bar { height: 100%; background: var(--accent); border-radius: 6px; transition: width 0.3s ease; width: 0%; }
     .progress-label { font-size: 0.7em; color: var(--muted); text-align: right; }
-    /* ── FILE CARD ── */
-    .file-card {
-      display: flex; align-items: center; gap: 0.5em; padding: 0.5em;
-      background: #f9fafb; border-radius: 8px; margin-top: 0.3em;
-      font-family: var(--font-mono); font-size: 0.72em;
-    }
+    .file-card { display: flex; align-items: center; gap: 0.5em; padding: 0.5em; background: #f9fafb; border-radius: 8px; margin-top: 0.3em; font-family: var(--font-mono); font-size: 0.72em; }
     .file-card .file-status { font-size: 1em; flex-shrink: 0; }
-    .file-card .file-name { flex: 1; word-break: break-all; }
-    .file-card .file-path { color: var(--muted); font-size: 0.85em; }
-    /* ── STEP CARD ── */
-    .step-card {
-      display: flex; align-items: flex-start; gap: 0.5em; padding: 0.5em;
-      background: #f9fafb; border-radius: 8px; margin-top: 0.3em;
-      border-left: 3px solid var(--accent);
-    }
-    .step-card.running { border-left-color: var(--accent3); }
-    .step-card.done { border-left-color: var(--green); opacity: 0.6; }
+    .step-card { display: flex; align-items: flex-start; gap: 0.5em; padding: 0.5em; background: #f9fafb; border-radius: 8px; margin-top: 0.3em; border-left: 3px solid var(--accent); }
+    .step-card.running { border-left-color: var(--accent3); } .step-card.done { border-left-color: var(--green); opacity: 0.6; }
     .step-card .step-num { font-weight: 700; font-size: 0.75em; color: var(--accent); flex-shrink: 0; }
-    .step-card .step-body { flex: 1; font-size: 0.78em; }
-    .step-card .step-type { font-size: 0.65em; color: var(--muted); background: #f3f4f6; padding: 0.1em 0.4em; border-radius: 8px; }
-    /* ── INPUT BAR ── */
-    .input-bar {
-      background: var(--card-bg); border-top: 1px solid var(--border);
-      padding: 0.6em; display: flex; gap: 0.4em; align-items: flex-end;
-      position: sticky; bottom: 0; z-index: 100;
-    }
-    .input-bar textarea {
-      flex: 1; resize: none; min-height: 42px; max-height: 120px;
-      background: #f3f4f6; border: 1px solid var(--border); border-radius: 20px;
-      padding: 0.5em 0.8em; font-size: 0.85em; font-family: var(--font); line-height: 1.4;
-    }
+    .step-card .step-body { flex: 1; font-size: 0.78em; } .step-card .step-type { font-size: 0.65em; color: var(--muted); background: #f3f4f6; padding: 0.1em 0.4em; border-radius: 8px; }
+    .input-bar { background: var(--card-bg); border-top: 1px solid var(--border); padding: 0.6em; display: flex; gap: 0.4em; align-items: flex-end; position: sticky; bottom: 0; z-index: 100; }
+    .input-bar textarea { flex: 1; resize: none; min-height: 42px; max-height: 120px; background: #f3f4f6; border: 1px solid var(--border); border-radius: 20px; padding: 0.5em 0.8em; font-size: 0.85em; font-family: var(--font); line-height: 1.4; }
     .input-bar textarea:focus { outline: none; border-color: var(--accent); }
-    .input-bar .icon-btn {
-      width: 42px; height: 42px; border-radius: 50%; background: #f3f4f6;
-      border: 1px solid var(--border); cursor: pointer; font-size: 1.1em;
-      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-    }
+    .input-bar .icon-btn { width: 42px; height: 42px; border-radius: 50%; background: #f3f4f6; border: 1px solid var(--border); cursor: pointer; font-size: 1.1em; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .input-bar .icon-btn:active { background: var(--accent); color: #fff; }
     .input-bar .icon-btn.send { background: var(--accent); color: #fff; border: none; }
     .input-bar .icon-btn.listening { background: var(--accent2); color: #fff; animation: pulse 0.8s infinite; }
     @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.5;} }
-    /* ── TOAST ── */
-    .toast {
-      position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(120px);
-      background: #1a1a2e; color: #fff; border-radius: 20px; padding: 0.6em 1.2em;
-      font-weight: 600; font-size: 0.8em; z-index: 9999;
-      transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
-      white-space: nowrap; max-width: 90vw;
-    }
+    .toast { position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(120px); background: #1a1a2e; color: #fff; border-radius: 20px; padding: 0.6em 1.2em; font-weight: 600; font-size: 0.8em; z-index: 9999; transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1); white-space: nowrap; max-width: 90vw; }
     .toast.show { transform: translateX(-50%) translateY(0); }
-    .toast.success { background: var(--green); }
-    .toast.error { background: var(--accent2); }
-    /* ── CAMERA PREVIEW ── */
+    .toast.success { background: var(--green); } .toast.error { background: var(--accent2); }
     .camera-preview { width: 100%; border-radius: 8px; background: #000; display: none; max-height: 200px; object-fit: contain; }
     .camera-preview.show { display: block; }
-    /* ── BROWSER IFRAME ── */
     .browser-iframe { width: 100%; height: 300px; border: 1px solid var(--border); border-radius: 8px; }
-    /* ── INLINE CARDS (MISSION, CAPTURE, SETTINGS, HISTORY) ── */
-    .inline-card { display: none; }
-    .inline-card.show { display: flex; flex-direction: column; gap: 0.5em; }
-    .inline-card textarea, .inline-card input[type="text"], .inline-card input[type="password"] {
-      width: 100%; background: #f3f4f6; border: 1px solid var(--border); border-radius: 8px;
-      padding: 0.6em; font-size: 0.82em; font-family: var(--font-mono);
-    }
-    .inline-card textarea:focus, .inline-card input:focus { outline: none; border-color: var(--accent); }
-    .btn {
-      font-weight: 600; font-size: 0.8em; padding: 0.6em 0.8em; border-radius: 8px;
-      border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
-      gap: 0.3em; width: 100%; transition: all 0.15s; text-transform: uppercase; letter-spacing: 0.3px;
-    }
-    .btn:active { transform: scale(0.97); }
-    .btn:disabled { opacity: 0.4; }
-    .btn-primary { background: var(--accent); color: #fff; }
-    .btn-success { background: var(--green); color: #fff; }
-    .btn-ghost { background: #f3f4f6; color: var(--text); border: 1px solid var(--border); }
-    .btn-gold { background: var(--accent3); color: #fff; }
-    .btn-row { display: flex; gap: 0.4em; }
-    .btn-row .btn { flex: 1; }
-    .project-chip {
-      display: inline-flex; align-items: center; gap: 0.3em; padding: 0.3em 0.6em;
-      border-radius: 16px; font-size: 0.7em; font-weight: 600; cursor: pointer;
-      border: 1px solid var(--border); background: #fff; color: var(--text);
-    }
+    .btn { font-weight: 600; font-size: 0.8em; padding: 0.6em 0.8em; border-radius: 8px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.3em; width: 100%; transition: all 0.15s; text-transform: uppercase; letter-spacing: 0.3px; }
+    .btn:active { transform: scale(0.97); } .btn:disabled { opacity: 0.4; }
+    .btn-primary { background: var(--accent); color: #fff; } .btn-success { background: var(--green); color: #fff; }
+    .btn-ghost { background: #f3f4f6; color: var(--text); border: 1px solid var(--border); } .btn-gold { background: var(--accent3); color: #fff; }
+    .btn-row { display: flex; gap: 0.4em; } .btn-row .btn { flex: 1; }
+    .project-chip { display: inline-flex; align-items: center; gap: 0.3em; padding: 0.3em 0.6em; border-radius: 16px; font-size: 0.7em; font-weight: 600; cursor: pointer; border: 1px solid var(--border); background: #fff; color: var(--text); }
     .project-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .notif-banner { display: none; padding: 0.5em 1em; background: var(--green); color: #fff; text-align: center; font-weight: 600; font-size: 0.75em; cursor: pointer; }
+    .notif-banner.show { display: block; }
   </style>
 </head>
 <body>
-
-<!-- SIDEBAR OVERLAY -->
 <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
-
-<!-- SIDEBAR -->
 <div class="sidebar" id="sidebar">
   <div class="sidebar-header">Mission<span>Runner</span></div>
-  <div class="sidebar-item active" onclick="sidebarAction('home')">💬 Home / Chat</div>
   <div class="sidebar-item" onclick="sidebarAction('mission')">📁 Mission Executor</div>
-  <div class="sidebar-item" onclick="sidebarAction('capture')">💾 Capture</div>
-  <div class="sidebar-item" onclick="sidebarAction('camera')">📸 Camera</div>
+  <div class="sidebar-item" onclick="sidebarAction('capture')">📸 Capture</div>
   <div class="sidebar-item" onclick="sidebarAction('history')">🕐 History</div>
   <div class="sidebar-item" onclick="sidebarAction('browser')">🌐 Browser</div>
   <div class="sidebar-item" onclick="sidebarAction('settings')">⚙️ Settings</div>
   <div class="sidebar-divider"></div>
-  <div class="sidebar-item active" onclick="switchAI('deepseek')" id="ai-deepseek">
-    <span class="ai-dot deepseek"></span> DeepSeek
-  </div>
-  <div class="sidebar-item" onclick="switchAI('claude')" id="ai-claude">
-    <span class="ai-dot claude"></span> Claude
-  </div>
-  <div class="sidebar-item" onclick="switchAI('gemini')" id="ai-gemini">
-    <span class="ai-dot gemini"></span> Gemini
-  </div>
-  <div class="sidebar-footer">Mission Runner v10.0 · Built for Ahmed</div>
+  <div class="sidebar-item active" onclick="switchAI('deepseek')" id="ai-deepseek"><span class="ai-dot deepseek"></span> DeepSeek</div>
+  <div class="sidebar-item" onclick="switchAI('claude')" id="ai-claude"><span class="ai-dot claude"></span> Claude</div>
+  <div class="sidebar-item" onclick="switchAI('gemini')" id="ai-gemini"><span class="ai-dot gemini"></span> Gemini</div>
+  <div class="sidebar-item" onclick="addCustomAI()" id="ai-custom-add">➕ Add AI</div>
+  <div class="sidebar-footer">Mission Runner v11.0 · Built for Ahmed</div>
 </div>
-
-<!-- HEADER -->
 <div class="header">
   <button class="hamburger" onclick="toggleSidebar()">☰</button>
   <div class="header-title">Mission<span>Runner</span></div>
   <span class="native-pill" id="nativePill">NATIVE</span>
   <span class="project-pill" id="projectPill" onclick="sidebarAction('settings')">Gahiz</span>
 </div>
+<div class="notif-banner" id="notifBanner" onclick="dismissNotif()"></div>
 <div class="update-banner" id="updateBanner" onclick="location.reload(true)">⬆️ New version available — tap to update</div>
-
-<!-- CONVERSATION AREA -->
 <div class="conversation" id="conversation"></div>
-
-<!-- INLINE CARDS (appended to conversation dynamically) -->
-<div id="inlineCards" style="display:none;"></div>
-
-<!-- INPUT BAR -->
 <div class="input-bar">
   <button class="icon-btn" id="voiceBtn" onclick="toggleVoice()">🎤</button>
   <textarea id="mainInput" rows="1" placeholder="Type or speak... Paste AI output here..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage();}"></textarea>
+  <button class="icon-btn" id="attachBtn" onclick="triggerAttachment()">📎</button>
   <button class="icon-btn" onclick="pasteFromClipboard('mainInput')">📋</button>
   <button class="icon-btn send" onclick="sendMessage()">↑</button>
 </div>
-
-<!-- TOAST -->
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script>
-// ═══════════ DETECT NATIVE ═══════════
+// ═══════════ NATIVE DETECTION ═══════════
 const isNative = typeof window.NativeApp !== 'undefined';
 if (isNative) document.getElementById('nativePill').classList.add('show');
 
 // ═══════════ INDEXEDDB ═══════════
-const DB_NAME = 'mission-runner-v10';
-let db;
+const DB_NAME = 'mission-runner-v11'; let db;
 function openDB() {
   return new Promise((resolve, reject) => {
     const r = indexedDB.open(DB_NAME, 1);
     r.onupgradeneeded = (e) => {
       const d = e.target.result;
-      ['projects','conversations','steps','files','settings'].forEach(s => { if (!d.objectStoreNames.contains(s)) d.createObjectStore(s, { keyPath: 'id' }); });
-      if (!d.objectStoreNames.contains('messages')) d.createObjectStore('messages', { keyPath: 'id', autoIncrement: true });
+      ['projects','conversations','steps','files','settings','messages'].forEach(s => { if (!d.objectStoreNames.contains(s)) d.createObjectStore(s, { keyPath: 'id' }); });
     };
     r.onsuccess = (e) => { db = e.target.result; resolve(db); };
     r.onerror = (e) => reject(e.target.error);
@@ -282,9 +144,7 @@ async function dbGetAll(s) { if(!db) await openDB(); return new Promise((res,rej
 async function dbGet(s,k) { if(!db) await openDB(); return new Promise((res,rej)=>{ const t=db.transaction(s,'readonly'); const r=t.objectStore(s).get(k); r.onsuccess=()=>res(r.result); r.onerror=rej; }); }
 
 // ═══════════ GLOBALS ═══════════
-let activeProject = 'gahiz';
-let activeAI = 'deepseek';
-let extractedSteps = [], previewCode = '';
+let activeProject = 'gahiz', activeAI = 'deepseek', extractedSteps = [], previewCode = '';
 let cameraStream = null, ocrWorker = null, ocrReady = false, saveFolderHandle = null;
 let recognition = null, currentVoiceTarget = 'mainInput';
 
@@ -293,6 +153,13 @@ const DEFAULT_PROJECTS = [
   { id: 'content-factory', name: 'Content Factory', description: 'AI content production system', color: '#4D6BFE' },
   { id: 'wired-leader', name: 'Wired Leader', description: 'ADHD coaching brand', color: '#f59e0b' }
 ];
+
+// AI API endpoints
+const AI_CONFIG = {
+  deepseek: { name: 'DeepSeek', endpoint: 'https://api.deepseek.com/v1/chat/completions', headers: (k) => ({ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + k }), body: (msgs) => JSON.stringify({ model: 'deepseek-chat', messages: msgs }) },
+  claude: { name: 'Claude', endpoint: 'https://api.anthropic.com/v1/messages', headers: (k) => ({ 'Content-Type': 'application/json', 'x-api-key': k, 'anthropic-version': '2023-06-01' }), body: (msgs) => JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages: msgs.filter(m => m.role === 'user' || m.role === 'assistant') }) },
+  gemini: { name: 'Gemini', endpoint: (k) => `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${k}`, headers: () => ({ 'Content-Type': 'application/json' }), body: (msgs) => JSON.stringify({ contents: msgs.filter(m => m.role === 'user').map(m => ({ parts: [{ text: m.content }] })) }) }
+};
 
 // ═══════════ TOAST ═══════════
 function toast(msg, type='', dur=3000) {
@@ -312,36 +179,48 @@ function closeSidebar() {
 }
 function sidebarAction(action) {
   closeSidebar();
-  switch(action) {
-    case 'home': break;
-    case 'mission': showMissionCard(); break;
-    case 'capture': showCaptureCard(); break;
-    case 'camera': showCameraCard(); break;
-    case 'history': showHistoryCard(); break;
-    case 'browser': showBrowserCard(); break;
-    case 'settings': showSettingsCard(); break;
-  }
+  if (action === 'mission') showMissionCard();
+  else if (action === 'capture') showCaptureMenuCard();
+  else if (action === 'history') showHistoryCard();
+  else if (action === 'browser') showBrowserCard();
+  else if (action === 'settings') showSettingsCard();
 }
 function switchAI(ai) {
   activeAI = ai;
-  document.querySelectorAll('#ai-deepseek, #ai-claude, #ai-gemini').forEach(el => el.classList.remove('active'));
-  document.getElementById('ai-' + ai).classList.add('active');
-  toast('🤖 Switched to ' + ai.charAt(0).toUpperCase() + ai.slice(1), '', 2000);
+  ['deepseek','claude','gemini'].forEach(a => document.getElementById('ai-' + a)?.classList.remove('active'));
+  document.getElementById('ai-' + ai)?.classList.add('active');
+  toast('🤖 Switched to ' + AI_CONFIG[ai]?.name || ai, '', 2000);
+}
+async function addCustomAI() {
+  const name = prompt('AI Name (e.g., ChatGPT):');
+  if (!name) return;
+  const endpoint = prompt('API Endpoint URL:');
+  if (!endpoint) return;
+  const key = prompt('API Key:');
+  if (!key) return;
+  const id = name.toLowerCase().replace(/\s+/g, '-');
+  AI_CONFIG[id] = { name, endpoint, headers: (k) => ({ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (k || key) }), body: (msgs) => JSON.stringify({ messages: msgs }) };
+  await dbPut('settings', { id: 'ai_key_' + id, value: key });
+  const sidebar = document.getElementById('sidebar');
+  const customItem = document.createElement('div');
+  customItem.className = 'sidebar-item'; customItem.id = 'ai-' + id;
+  customItem.innerHTML = `<span class="ai-dot" style="background:#8b5cf6;"></span> ${name}`;
+  customItem.onclick = () => switchAI(id);
+  sidebar.insertBefore(customItem, document.getElementById('ai-custom-add'));
+  toast('✅ ' + name + ' added', 'success');
 }
 
 // ═══════════ CONVERSATION ═══════════
-function addMessage(text, role) {
+function addMessage(text, role, aiName) {
   const conv = document.getElementById('conversation');
   const div = document.createElement('div');
   div.className = 'msg ' + role;
   if (role === 'ai') {
-    div.innerHTML = `<div class="ai-label">🤖 ${activeAI.charAt(0).toUpperCase() + activeAI.slice(1)}</div>${text}`;
-  } else {
-    div.textContent = text;
-  }
+    div.innerHTML = `<div class="ai-label"><span class="ai-dot ${activeAI}"></span> ${aiName || AI_CONFIG[activeAI]?.name || activeAI}</div>${text.replace(/\n/g, '<br>')}`;
+  } else { div.textContent = text; }
   conv.appendChild(div);
   conv.scrollTop = conv.scrollHeight;
-  dbPut('messages', { role, text, projectId: activeProject, timestamp: Date.now() });
+  dbPut('messages', { id: Date.now().toString(), role, text, projectId: activeProject, ai: activeAI, timestamp: Date.now() });
   return div;
 }
 
@@ -354,25 +233,58 @@ function addResponseCard() {
   return card;
 }
 
-function sendMessage() {
+function showTyping() {
+  const conv = document.getElementById('conversation');
+  const div = document.createElement('div');
+  div.className = 'msg ai';
+  div.id = 'typingIndicator';
+  div.innerHTML = `<div class="ai-label"><span class="ai-dot ${activeAI}"></span> ${AI_CONFIG[activeAI]?.name || activeAI}</div><div class="typing-dots"><span></span><span></span><span></span></div>`;
+  conv.appendChild(div);
+  conv.scrollTop = conv.scrollHeight;
+}
+function removeTyping() { const el = document.getElementById('typingIndicator'); if (el) el.remove(); }
+
+// ═══════════ SEND MESSAGE TO AI ═══════════
+async function sendMessage() {
   const input = document.getElementById('mainInput');
   const text = input.value.trim();
   if (!text) return;
   addMessage(text, 'user');
   input.value = '';
-  detectAndParse(text);
+  const config = AI_CONFIG[activeAI];
+  if (!config) { addMessage('⚠️ AI not configured. Add API key in Settings.', 'ai'); return; }
+  const key = await dbGet('settings', 'ai_key_' + activeAI);
+  if (!key || !key.value) { addMessage('⚠️ No API key for ' + config.name + '. Add it in Settings.', 'ai'); return; }
+  showTyping();
+  try {
+    const msgs = [{ role: 'user', content: text }];
+    const endpoint = typeof config.endpoint === 'function' ? config.endpoint(key.value) : config.endpoint;
+    const res = await fetch(endpoint, { method: 'POST', headers: config.headers(key.value), body: config.body(msgs) });
+    const data = await res.json();
+    removeTyping();
+    let reply = '';
+    if (activeAI === 'deepseek') reply = data?.choices?.[0]?.message?.content || '';
+    else if (activeAI === 'claude') reply = data?.content?.[0]?.text || '';
+    else if (activeAI === 'gemini') reply = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    else reply = data?.choices?.[0]?.message?.content || JSON.stringify(data);
+    if (!reply) throw new Error('No response');
+    addMessage(reply, 'ai');
+    autoExtract(reply);
+  } catch(e) {
+    removeTyping();
+    addMessage('❌ Error: ' + e.message + '. Check your API key in Settings.', 'ai');
+  }
 }
 
-// ═══════════ FORMAT DETECTION ═══════════
-function detectAndParse(text) {
+// ═══════════ AUTO-EXTRACTION ═══════════
+function autoExtract(text) {
   // mission-json
   const mm = text.match(/```mission-json\s*([\s\S]*?)```/);
   if (mm) {
     try {
       const m = JSON.parse(mm[1].trim());
       if (m.project && m.files) {
-        addMessage('📁 Mission JSON detected — ' + m.files.length + ' files. Running mission...', 'ai');
-        runMissionFromJSON(m);
+        renderApprovalCard('mission', m);
         return;
       }
     } catch(e) {}
@@ -383,8 +295,7 @@ function detectAndParse(text) {
     try {
       const steps = JSON.parse(sm[1].trim());
       if (Array.isArray(steps) && steps.length) {
-        extractedSteps = steps;
-        renderStepCard(steps);
+        renderApprovalCard('steps', steps);
         return;
       }
     } catch(e) {}
@@ -398,97 +309,77 @@ function detectAndParse(text) {
     if (d) {
       try {
         const dec = JSON.parse(decodeURIComponent(atob(d)));
-        if (dec.project && dec.text) {
-          renderAutoSaveCard(dec);
-          return;
-        }
+        if (dec.project && dec.text) { renderAutoSaveCard(dec); return; }
       } catch(e) {}
     }
   }
   // HTML/CSS/JS code
   const cm = text.match(/```(html|htm)\s*([\s\S]*?)```/i) || text.match(/```(css|js|javascript)\s*([\s\S]*?)```/i);
-  if (cm) {
-    previewCode = cm[2].trim();
-    renderPreviewCard(previewCode);
-    return;
-  }
+  if (cm) { previewCode = cm[2].trim(); renderPreviewCard(previewCode); return; }
   // Offline step extraction
   const steps = parseStepsOffline(text);
   if (steps.length) {
     extractedSteps = steps;
-    renderStepCard(steps);
-    return;
+    renderApprovalCard('steps', steps);
   }
-  addMessage('✅ Received. No structured format detected — pasted as conversation.', 'ai');
 }
 
-// ═══════════ MISSION EXECUTION ═══════════
-async function runMissionFromJSON(mission) {
+// ═══════════ APPROVAL CARDS ═══════════
+function renderApprovalCard(type, data) {
   const card = addResponseCard();
+  if (type === 'mission') {
+    card.innerHTML = `<div class="card-header"><span>📁 Mission Detected — ${data.files.length} files</span><button class="close-btn" onclick="this.parentElement.parentElement.remove()">✕</button></div>
+      <div style="max-height:150px;overflow-y:auto;font-family:var(--font-mono);font-size:0.7em;">${data.files.map((f,i) => `<div style="display:flex;align-items:center;gap:0.3em;padding:2px 0;"><input type="checkbox" checked id="mf${i}"><label for="mf${i}">${f.path}</label></div>`).join('')}</div>
+      <div class="btn-row"><button class="btn btn-ghost" onclick="this.closest('.response-card').remove()">CANCEL</button><button class="btn btn-primary" onclick="executeApprovedMission(this)">▶ EXECUTE</button></div>`;
+    card._missionData = data;
+  } else if (type === 'steps') {
+    card.innerHTML = `<div class="card-header"><span>⚡ ${data.length} Action Steps Detected</span><button class="close-btn" onclick="this.parentElement.parentElement.remove()">✕</button></div>
+      <div style="max-height:200px;overflow-y:auto;">${data.map((s,i) => `<div class="step-card" id="as${i}"><span class="step-num">${s.step||i+1}</span><div class="step-body">${s.action}</div><span class="step-type">${s.type||'other'}</span></div>`).join('')}</div>
+      <div class="progress-wrap"><div class="progress-bar" id="spb" style="width:0%"></div></div>
+      <div class="btn-row"><button class="btn btn-ghost" onclick="this.closest('.response-card').remove()">CANCEL</button><button class="btn btn-gold" onclick="executeApprovedSteps(this)">▶ EXECUTE ALL</button></div>`;
+    card._stepsData = data;
+  }
+}
+
+async function executeApprovedMission(btn) {
+  const card = btn.closest('.response-card');
+  const mission = card._missionData;
+  if (!mission) return;
+  const checkedFiles = [];
+  mission.files.forEach((f, i) => { if (document.getElementById('mf' + i)?.checked) checkedFiles.push(f); });
+  if (!checkedFiles.length) { toast('⚠️ No files selected', 'error'); return; }
   card.innerHTML = `<div class="card-header"><span>📁 ${mission.project}</span><button class="close-btn" onclick="this.parentElement.parentElement.remove()">✕</button></div>
     <div class="progress-wrap"><div class="progress-bar" id="mpb" style="width:0%"></div></div>
-    <div class="progress-label" id="mpl">0 / ${mission.files.length}</div>
-    <div id="mfiles"></div>
-    <div class="btn-row" style="margin-top:0.5em"><button class="btn btn-ghost" onclick="this.parentElement.parentElement.remove()">✕ CLOSE</button></div>`;
-  const filesDiv = card.querySelector('#mfiles');
-  const bar = card.querySelector('#mpb');
-  const label = card.querySelector('#mpl');
+    <div class="progress-label" id="mpl">0 / ${checkedFiles.length}</div><div id="mfiles"></div>`;
+  const filesDiv = card.querySelector('#mfiles'); const bar = card.querySelector('#mpb'); const label = card.querySelector('#mpl');
   let created = 0;
-  for (const file of mission.files) {
-    const fc = document.createElement('div');
-    fc.className = 'file-card';
+  for (const file of checkedFiles) {
+    const fc = document.createElement('div'); fc.className = 'file-card';
     fc.innerHTML = `<span class="file-status">⏳</span><span class="file-name">${file.path}</span>`;
     filesDiv.appendChild(fc);
     try {
-      await smartSave(mission.project || activeProject, file.content || '', file.path);
-      fc.innerHTML = `<span class="file-status">✅</span><span class="file-name">${file.path}</span>`;
-      created++;
-      bar.style.width = (created / mission.files.length * 100) + '%';
-      label.textContent = `${created} / ${mission.files.length}`;
-    } catch(e) {
-      fc.innerHTML = `<span class="file-status">❌</span><span class="file-name">${file.path}</span><span class="file-path">${e.message}</span>`;
-    }
+      const fn = await smartSave(mission.project || activeProject, file.content || '', file.path);
+      fc.innerHTML = `<span class="file-status">✅</span><span class="file-name">${file.path}</span><span class="file-path" style="font-size:0.65em;color:var(--green);">→ Downloads/MissionRunner/${mission.project}/${fn}</span>`;
+      created++; bar.style.width = (created / checkedFiles.length * 100) + '%'; label.textContent = `${created} / ${checkedFiles.length}`;
+    } catch(e) { fc.innerHTML = `<span class="file-status">❌</span><span class="file-name">${file.path}</span><span class="file-path">${e.message}</span>`; }
     await new Promise(r => setTimeout(r, 200));
   }
   toast(`✅ ${created} files created`, 'success');
-  const closeBtn = card.querySelector('.btn-ghost');
-  if (closeBtn) closeBtn.textContent = '📂 FILES SAVED — CLOSE';
-  // Save history link
   await dbPut('steps', { id: 'mission-' + Date.now(), projectId: mission.project || activeProject, message: `Mission: ${created} files created`, timestamp: Date.now(), type: 'ok' });
 }
 
-// ═══════════ STEP CARD ═══════════
-function renderStepCard(steps) {
-  const card = addResponseCard();
-  card.innerHTML = `<div class="card-header"><span>⚡ ${steps.length} Action Steps</span><button class="close-btn" onclick="this.parentElement.parentElement.remove()">✕</button></div>
-    <div class="progress-wrap"><div class="progress-bar" id="spb" style="width:0%"></div></div>
-    <div id="slist"></div>
-    <div class="btn-row" style="margin-top:0.5em"><button class="btn btn-gold" onclick="executeAllSteps(this)">▶ EXECUTE ALL</button><button class="btn btn-ghost" onclick="this.parentElement.parentElement.remove()">✕ CLOSE</button></div>`;
-  const list = card.querySelector('#slist');
-  steps.forEach((s, i) => {
-    const sc = document.createElement('div');
-    sc.className = 'step-card';
-    sc.id = 'step-' + i;
-    sc.innerHTML = `<span class="step-num">${s.step||i+1}</span><div class="step-body">${s.action}</div><span class="step-type">${s.type||'other'}</span>`;
-    list.appendChild(sc);
-  });
-}
-
-async function executeAllSteps(btn) {
-  if (!extractedSteps.length) return;
-  btn.disabled = true;
+async function executeApprovedSteps(btn) {
   const card = btn.closest('.response-card');
+  const steps = card._stepsData; if (!steps) return;
   const bar = card.querySelector('#spb');
-  for (let i = 0; i < extractedSteps.length; i++) {
-    const el = document.getElementById('step-' + i);
-    if (el) el.classList.add('running');
-    try { await executeStep(extractedSteps[i], i); if (el) { el.classList.remove('running'); el.classList.add('done'); } }
+  for (let i = 0; i < steps.length; i++) {
+    const el = document.getElementById('as' + i); if (el) el.classList.add('running');
+    try { await executeStep(steps[i], i); if (el) { el.classList.remove('running'); el.classList.add('done'); } }
     catch(e) { if (el) el.classList.add('done'); }
-    bar.style.width = ((i + 1) / extractedSteps.length * 100) + '%';
+    bar.style.width = ((i + 1) / steps.length * 100) + '%';
     await new Promise(r => setTimeout(r, 300));
   }
   toast('✅ All steps complete', 'success');
-  btn.disabled = false;
 }
 
 async function executeStep(step, idx) {
@@ -499,7 +390,7 @@ async function executeStep(step, idx) {
   else if (t==='cloud') await triggerCloudBrainTask(d);
 }
 
-// ═══════════ AUTO-SAVE CARD ═══════════
+// ═══════════ AUTO-SAVE & PREVIEW CARDS ═══════════
 function renderAutoSaveCard(data) {
   const card = addResponseCard();
   card.innerHTML = `<div class="card-header"><span>📥 Auto-Save Ready</span><button class="close-btn" onclick="this.parentElement.parentElement.remove()">✕</button></div>
@@ -507,63 +398,38 @@ function renderAutoSaveCard(data) {
     <button class="btn btn-success" onclick="saveAutoSave(this)">⬇️ SAVE TO FOLDER</button>`;
   card._autoSaveData = data;
 }
-async function saveAutoSave(btn) {
-  const card = btn.closest('.response-card');
-  const data = card._autoSaveData;
-  if (!data) return;
-  await smartSave(data.project, data.text);
-  toast('✅ Saved: ' + data.project, 'success');
-  card.remove();
-}
+async function saveAutoSave(btn) { const d = btn.closest('.response-card')._autoSaveData; if (d) { await smartSave(d.project, d.text); toast('✅ Saved', 'success'); btn.closest('.response-card').remove(); } }
 
-// ═══════════ PREVIEW CARD ═══════════
 function renderPreviewCard(code) {
   const card = addResponseCard();
   card.innerHTML = `<div class="card-header"><span>🖼️ Live Preview</span><button class="close-btn" onclick="this.parentElement.parentElement.remove()">✕</button></div>
     <iframe style="width:100%;height:200px;border:1px solid var(--border);border-radius:8px;background:#fff;" sandbox="allow-scripts" srcdoc="${code.replace(/"/g,'&quot;')}"></iframe>
     <div class="btn-row"><button class="btn btn-ghost" onclick="navigator.clipboard.writeText(this.closest('.response-card').querySelector('iframe').srcdoc)">📋 COPY CODE</button>
-    <button class="btn btn-success" onclick="savePreviewToProject(this)">💾 SAVE</button></div>`;
-  card._previewCode = code;
-}
-async function savePreviewToProject(btn) {
-  const code = btn.closest('.response-card')._previewCode;
-  if (!code) return;
-  await smartSave(activeProject, code, `${activeProject}-preview-${Date.now()}.html`);
-  toast('✅ Preview saved', 'success');
+    <button class="btn btn-success" onclick="smartSave(activeProject, this.closest('.response-card').querySelector('iframe').srcdoc, 'preview-'+Date.now()+'.html');toast('✅ Saved','success');">💾 SAVE</button></div>`;
 }
 
 // ═══════════ SMART SAVE ═══════════
 async function smartSave(project, text, customFilename) {
-  const now = new Date();
-  const ts = now.toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const now = new Date(); const ts = now.toISOString().replace(/[:.]/g, '-').slice(0, 19);
   const fn = customFilename || `${project}-${ts}.md`;
   const content = `# ${project}\n\n**Saved:** ${now.toLocaleString()}\n\n---\n\n${text}`;
-  if (isNative) {
-    window.NativeApp.saveFile(content, fn);
-    return fn;
+  if (isNative) { window.NativeApp.saveFile(content, fn); return fn; }
+  if (saveFolderHandle) {
+    try { const perm = await saveFolderHandle.queryPermission({ mode: 'readwrite' }); if (perm !== 'granted') saveFolderHandle = null; } catch(e) { saveFolderHandle = null; }
   }
-  // Folder picker
   if (!saveFolderHandle) {
     const stored = await dbGet('settings', 'saveFolder');
-    if (stored && stored.value) {
-      saveFolderHandle = stored.value;
-      try { const perm = await saveFolderHandle.queryPermission({ mode: 'readwrite' }); if (perm !== 'granted') saveFolderHandle = null; } catch(e) { saveFolderHandle = null; }
-    }
+    if (stored?.value) { saveFolderHandle = stored.value; try { const perm = await saveFolderHandle.queryPermission({ mode: 'readwrite' }); if (perm !== 'granted') saveFolderHandle = null; } catch(e) { saveFolderHandle = null; } }
   }
   if (saveFolderHandle) {
     const pDir = await saveFolderHandle.getDirectoryHandle(project, { create: true });
-    const fh = await pDir.getFileHandle(fn, { create: true });
-    const w = await fh.createWritable();
-    await w.write(content); await w.close();
-    return fn;
+    const fh = await pDir.getFileHandle(fn, { create: true }); const w = await fh.createWritable();
+    await w.write(content); await w.close(); return fn;
   }
-  // Blob fallback
-  downloadBlob(content, fn, 'text/markdown');
-  return fn;
+  downloadBlob(content, fn, 'text/markdown'); return fn;
 }
 function downloadBlob(content, fn, type) {
-  const b = new Blob([content], { type: type || 'text/plain' });
-  const u = URL.createObjectURL(b);
+  const b = new Blob([content], { type: type || 'text/plain' }); const u = URL.createObjectURL(b);
   const a = document.createElement('a'); a.href = u; a.download = fn;
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(u), 1000);
@@ -581,208 +447,142 @@ function loadDemoInCard() {
   if (ta) ta.value = JSON.stringify({ project: activeProject, files: [
     { path: 'index.html', content: '<!DOCTYPE html>\n<html>\n<head><title>' + activeProject + '</title></head>\n<body><h1>Hello!</h1></body>\n</html>' },
     { path: 'css/style.css', content: 'body { font-family: sans-serif; }' },
-    { path: 'README.md', content: '# ' + activeProject + '\nCreated by Mission Runner v10.0' }
+    { path: 'README.md', content: '# ' + activeProject + '\nCreated by Mission Runner v11.0' }
   ]}, null, 2);
 }
 async function runMissionFromCard(btn) {
-  const ta = document.getElementById('missionTA');
-  if (!ta) return;
-  try {
-    const m = JSON.parse(ta.value.trim());
-    if (m.project && m.files) {
-      btn.closest('.response-card').remove();
-      await runMissionFromJSON(m);
-    }
-  } catch(e) { toast('❌ Invalid JSON', 'error'); }
+  const ta = document.getElementById('missionTA'); if (!ta) return;
+  try { const m = JSON.parse(ta.value.trim()); if (m.project && m.files) { btn.closest('.response-card').remove(); renderApprovalCard('mission', m); } }
+  catch(e) { toast('❌ Invalid JSON', 'error'); }
 }
 
-function showCaptureCard() {
+function showCaptureMenuCard() {
   const card = addResponseCard();
-  card.innerHTML = `<div class="card-header"><span>💾 Capture</span><button class="close-btn" onclick="this.parentElement.parentElement.remove()">✕</button></div>
-    <input type="text" id="captureProject" placeholder="Project name" value="${activeProject}" style="width:100%;padding:0.5em;border:1px solid var(--border);border-radius:8px;">
-    <textarea id="captureTA" rows="4" placeholder="Paste conversation..." style="width:100%;font-family:var(--font-mono);font-size:0.75em;padding:0.5em;border:1px solid var(--border);border-radius:8px;"></textarea>
-    <button class="btn btn-success" onclick="saveCapture(this)">💾 SAVE</button>`;
+  card.innerHTML = `<div class="card-header"><span>📸 Capture</span><button class="close-btn" onclick="this.parentElement.parentElement.remove()">✕</button></div>
+    <button class="btn btn-primary" onclick="takeScreenshot()">🖼️ Take Screenshot</button>
+    <button class="btn btn-ghost" onclick="captureLastResponse()">💬 Capture Last AI Response</button>
+    <button class="btn btn-ghost" onclick="scanWithCamera()">📷 Scan with Camera</button>`;
 }
-async function saveCapture(btn) {
-  const p = document.getElementById('captureProject')?.value?.trim() || activeProject;
-  const t = document.getElementById('captureTA')?.value?.trim();
-  if (!t) { toast('⚠️ Paste something', 'error'); return; }
-  await smartSave(p, t);
-  toast('✅ Saved', 'success');
-  btn.closest('.response-card').remove();
+function takeScreenshot() {
+  if (isNative) { toast('📸 Use phone screenshot (Power + Volume Down)', 'info', 5000); }
+  else { toast('📸 Take a screenshot and share it to Mission Runner', 'info', 5000); }
 }
+function captureLastResponse() {
+  const msgs = document.querySelectorAll('.msg.ai');
+  if (!msgs.length) { toast('⚠️ No AI response to capture', 'error'); return; }
+  const last = msgs[msgs.length - 1].textContent;
+  smartSave(activeProject + '/Important', last, 'response-' + Date.now() + '.md');
+  toast('✅ Last response saved to Important/', 'success');
+}
+function scanWithCamera() { showCameraCard(); }
 
 function showCameraCard() {
   const card = addResponseCard();
-  card.innerHTML = `<div class="card-header"><span>📸 Camera</span><button class="close-btn" onclick="stopCamera();this.parentElement.parentElement.remove();">✕</button></div>
-    <video id="camVideo" class="camera-preview" autoplay playsinline></video>
-    <canvas id="camCanvas" style="display:none;"></canvas>
+  card.innerHTML = `<div class="card-header"><span>📷 Camera Scanner</span><button class="close-btn" onclick="stopCamera();this.parentElement.parentElement.remove();">✕</button></div>
+    <video id="camVideo" class="camera-preview" autoplay playsinline></video><canvas id="camCanvas" style="display:none;"></canvas>
     <div class="btn-row"><button class="btn btn-primary" id="startCamBtn" onclick="startCamera()">📷 START</button><button class="btn btn-ghost" id="capCamBtn" onclick="captureCamera()" disabled>📸 CAPTURE</button></div>
     <textarea id="camResult" rows="3" placeholder="OCR result..." readonly style="width:100%;font-family:var(--font-mono);font-size:0.7em;padding:0.5em;border:1px solid var(--border);border-radius:8px;"></textarea>
     <button class="btn btn-gold" id="sendCamBtn" onclick="sendCameraText()" disabled>📤 SEND TO EXTRACTOR</button>`;
 }
 async function startCamera() {
-  try {
-    cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-    document.getElementById('camVideo').srcObject = cameraStream;
-    document.getElementById('camVideo').classList.add('show');
-    document.getElementById('startCamBtn').disabled = true;
-    document.getElementById('capCamBtn').disabled = false;
-    toast('📷 Camera active', '');
-  } catch(e) { toast('❌ Camera denied', 'error'); }
+  try { cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }); document.getElementById('camVideo').srcObject = cameraStream; document.getElementById('camVideo').classList.add('show'); document.getElementById('startCamBtn').disabled = true; document.getElementById('capCamBtn').disabled = false; }
+  catch(e) { toast('❌ Camera denied', 'error'); }
 }
-function stopCamera() {
-  if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
-  const v = document.getElementById('camVideo'); if (v) v.classList.remove('show');
-}
+function stopCamera() { if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; } }
 function captureCamera() {
   const v = document.getElementById('camVideo'), c = document.getElementById('camCanvas');
   c.width = v.videoWidth || 640; c.height = v.videoHeight || 360;
   c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
   document.getElementById('sendCamBtn').disabled = false;
-  toast('📸 Captured! Reading...', '');
   runOCR(c.toDataURL('image/png'));
 }
 async function runOCR(imgData) {
-  try {
-    if (!ocrReady) { ocrWorker = await Tesseract.createWorker('eng'); ocrReady = true; }
-    const { data: { text } } = await ocrWorker.recognize(imgData);
-    document.getElementById('camResult').value = text.trim();
-    document.getElementById('sendCamBtn').disabled = false;
-    toast('✅ Text extracted', 'success');
-  } catch(e) { toast('❌ OCR error', 'error'); }
+  try { if (!ocrReady) { ocrWorker = await Tesseract.createWorker('eng'); ocrReady = true; } const { data: { text } } = await ocrWorker.recognize(imgData); document.getElementById('camResult').value = text.trim(); document.getElementById('sendCamBtn').disabled = false; toast('✅ Text extracted', 'success'); }
+  catch(e) { toast('❌ OCR error', 'error'); }
 }
-function sendCameraText() {
-  const t = document.getElementById('camResult')?.value?.trim();
-  if (!t) { toast('⚠️ No text', 'error'); return; }
-  document.getElementById('mainInput').value = t;
-  toast('📤 Sent to input', 'success');
-}
-function stopOCR() { if (ocrWorker) { try { ocrWorker.terminate(); } catch(e) {} ocrWorker = null; ocrReady = false; } }
+function sendCameraText() { const t = document.getElementById('camResult')?.value?.trim(); if (t) { document.getElementById('mainInput').value = t; toast('📤 Sent to input', 'success'); } }
 
 function showHistoryCard() {
   const card = addResponseCard();
-  card.innerHTML = `<div class="card-header"><span>🕐 History — ${activeProject}</span><button class="close-btn" onclick="this.parentElement.parentElement.remove()">✕</button></div>
-    <div id="histContent" style="max-height:200px;overflow-y:auto;font-size:0.7em;color:var(--muted);">Loading...</div>`;
+  card.innerHTML = `<div class="card-header"><span>🕐 History — ${activeProject}</span><button class="close-btn" onclick="this.parentElement.parentElement.remove()">✕</button></div><div id="histContent" style="max-height:250px;overflow-y:auto;font-size:0.7em;color:var(--muted);">Loading...</div>`;
   loadHistoryContent();
 }
 async function loadHistoryContent() {
-  const el = document.getElementById('histContent');
-  if (!el) return;
-  try {
-    const steps = await dbGetAll('steps');
-    const msgs = await dbGetAll('messages');
-    const all = [...(steps||[]), ...(msgs||[])].filter(s => s.projectId === activeProject).sort((a,b) => (b.timestamp||0) - (a.timestamp||0)).slice(0, 30);
-    el.innerHTML = all.length ? all.map(s => `<div style="padding:3px 0;">[${new Date(s.timestamp||0).toLocaleTimeString('en',{hour12:false})}] ${s.message||s.text||''}</div>`).join('') : '<div>No history yet.</div>';
-  } catch(e) { el.innerHTML = '<div>Error loading history.</div>'; }
+  const el = document.getElementById('histContent'); if (!el) return;
+  const steps = await dbGetAll('steps'); const msgs = await dbGetAll('messages');
+  const all = [...(steps||[]), ...(msgs||[])].filter(s => s.projectId === activeProject).sort((a,b) => (b.timestamp||0) - (a.timestamp||0)).slice(0, 50);
+  el.innerHTML = all.length ? all.map(s => `<div style="padding:3px 0;">[${new Date(s.timestamp||0).toLocaleTimeString('en',{hour12:false})}] ${s.message||s.text||''}</div>`).join('') : '<div>No history yet.</div>';
 }
 
 function showBrowserCard() {
   const card = addResponseCard();
   card.innerHTML = `<div class="card-header"><span>🌐 Browser</span><button class="close-btn" onclick="this.parentElement.parentElement.remove()">✕</button></div>
     <input type="text" id="browserURL" placeholder="https://..." value="https://" style="width:100%;padding:0.5em;border:1px solid var(--border);border-radius:8px;">
-    <button class="btn btn-primary" onclick="loadBrowserURL()">🌐 GO</button>
-    <iframe id="browserFrame" class="browser-iframe" style="display:none;"></iframe>`;
+    <button class="btn btn-primary" onclick="loadBrowserURL()">🌐 GO</button><iframe id="browserFrame" class="browser-iframe" style="display:none;"></iframe>`;
 }
-function loadBrowserURL() {
-  const url = document.getElementById('browserURL')?.value?.trim();
-  if (!url) return;
-  const frame = document.getElementById('browserFrame');
-  frame.src = url; frame.style.display = 'block';
-}
+function loadBrowserURL() { const u = document.getElementById('browserURL')?.value?.trim(); if (u) { const f = document.getElementById('browserFrame'); f.src = u; f.style.display = 'block'; } }
 
 function showSettingsCard() {
   const card = addResponseCard();
   card.innerHTML = `<div class="card-header"><span>⚙️ Settings</span><button class="close-btn" onclick="this.parentElement.parentElement.remove()">✕</button></div>
-    <div style="font-weight:700;font-size:0.8em;">Projects</div>
-    <div id="settingsChips" style="display:flex;gap:0.3em;flex-wrap:wrap;"></div>
-    <input type="text" id="newProjName" placeholder="New project name..." style="width:100%;">
-    <button class="btn btn-primary" onclick="addProjectFromSettings()">➕ ADD PROJECT</button>
+    <div style="font-weight:700;font-size:0.8em;">Projects</div><div id="settingsChips" style="display:flex;gap:0.3em;flex-wrap:wrap;"></div>
+    <input type="text" id="newProjName" placeholder="New project name..." style="width:100%;"><button class="btn btn-primary" onclick="addProjectFromSettings()">➕ ADD PROJECT</button>
+    <div style="font-weight:700;font-size:0.8em;margin-top:0.5em;">AI API Keys</div>
+    ${['deepseek','claude','gemini'].map(ai => `<input type="password" id="key_${ai}" placeholder="${AI_CONFIG[ai]?.name || ai} API Key" style="width:100%;margin-top:0.3em;">`).join('')}
+    <button class="btn btn-ghost" onclick="saveAllAPIKeys()">🔑 SAVE ALL API KEYS</button>
     <div style="font-weight:700;font-size:0.8em;margin-top:0.5em;">Cloud Token</div>
-    <input type="password" id="settingsToken" placeholder="GitHub token (ghp_...)">
-    <button class="btn btn-ghost" onclick="saveSettingsToken()">🔑 SAVE TOKEN</button>
-    <div style="font-weight:700;font-size:0.8em;margin-top:0.5em;">Save Folder</div>
-    <button class="btn btn-ghost" onclick="selectSaveFolder()">📂 CHOOSE FOLDER</button>
-    <div style="font-weight:700;font-size:0.8em;margin-top:0.5em;">Build APK</div>
+    <input type="password" id="settingsToken" placeholder="GitHub token (ghp_...)"><button class="btn btn-ghost" onclick="saveSettingsToken()">🔑 SAVE TOKEN</button>
+    <div style="font-weight:700;font-size:0.8em;margin-top:0.5em;">Permissions</div>
+    <div style="font-size:0.7em;color:var(--muted);line-height:1.8;">
+      Native Save: ${isNative ? '✅ Active (Downloads/MissionRunner/)' : '⚠️ Browser mode'}<br>
+      Voice: ${('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) ? '✅ Supported' : '❌ Not supported'}<br>
+      Camera: ✅ Supported<br>Storage: ✅ Supported
+    </div>
     <button class="btn btn-gold" onclick="triggerAPKBuild()">🤖 BUILD APK</button>
-    <div style="font-size:0.65em;color:var(--muted);margin-top:0.5em;">v10.0 · AI-Agnostic + Native Bridge</div>`;
+    <div style="font-size:0.65em;color:var(--muted);margin-top:0.5em;">v11.0 · Supervisor Layer</div>`;
   renderSettingsChips();
-  const tok = sessionStorage.getItem('mr_github_token') || '';
-  if (tok) document.getElementById('settingsToken').value = tok;
+  ['deepseek','claude','gemini'].forEach(async ai => { const k = await dbGet('settings', 'ai_key_' + ai); if (k?.value) document.getElementById('key_' + ai).value = k.value; });
+  const tok = (await dbGet('settings', 'github_token'))?.value || ''; if (tok) document.getElementById('settingsToken').value = tok;
 }
 async function renderSettingsChips() {
-  const container = document.getElementById('settingsChips');
-  if (!container) return;
-  const projects = await dbGetAll('projects');
-  const list = projects.length ? projects : DEFAULT_PROJECTS;
+  const container = document.getElementById('settingsChips'); if (!container) return;
+  const projects = await dbGetAll('projects'); const list = projects.length ? projects : DEFAULT_PROJECTS;
   container.innerHTML = '';
-  list.forEach(p => {
-    const chip = document.createElement('span');
-    chip.className = 'project-chip' + (activeProject === p.id ? ' active' : '');
-    chip.textContent = p.name;
-    chip.onclick = async () => { activeProject = p.id; document.getElementById('projectPill').textContent = p.name; await dbPut('settings', { id: 'activeProject', value: p.id }); renderSettingsChips(); };
-    container.appendChild(chip);
-  });
+  list.forEach(p => { const chip = document.createElement('span'); chip.className = 'project-chip' + (activeProject === p.id ? ' active' : ''); chip.textContent = p.name; chip.onclick = async () => { activeProject = p.id; document.getElementById('projectPill').textContent = p.name; await dbPut('settings', { id: 'activeProject', value: p.id }); renderSettingsChips(); }; container.appendChild(chip); });
 }
-async function addProjectFromSettings() {
-  const name = document.getElementById('newProjName')?.value?.trim();
-  if (!name) { toast('⚠️ Enter a name', 'error'); return; }
-  const id = name.toLowerCase().replace(/\s+/g, '-');
-  await dbPut('projects', { id, name, description: '', color: '#4D6BFE' });
-  document.getElementById('newProjName').value = '';
-  renderSettingsChips();
-  toast('✅ Project added', 'success');
-}
-function saveSettingsToken() {
-  const t = document.getElementById('settingsToken')?.value?.trim();
-  if (!t) return;
-  sessionStorage.setItem('mr_github_token', t);
-  toast('✅ Token saved', 'success');
-}
-async function selectSaveFolder() {
-  if (typeof window.showDirectoryPicker !== 'function') { toast('⚠️ Not supported', 'error'); return; }
-  try {
-    saveFolderHandle = await window.showDirectoryPicker();
-    await dbPut('settings', { id: 'saveFolder', value: saveFolderHandle });
-    toast('✅ Folder: ' + saveFolderHandle.name, 'success');
-  } catch(e) { if (e.name !== 'AbortError') toast('❌ Error', 'error'); }
-}
+async function addProjectFromSettings() { const n = document.getElementById('newProjName')?.value?.trim(); if (!n) return; const id = n.toLowerCase().replace(/\s+/g, '-'); await dbPut('projects', { id, name: n, description: '', color: '#4D6BFE' }); document.getElementById('newProjName').value = ''; renderSettingsChips(); toast('✅ Project added', 'success'); }
+async function saveAllAPIKeys() { for (const ai of ['deepseek','claude','gemini']) { const v = document.getElementById('key_' + ai)?.value?.trim(); if (v) await dbPut('settings', { id: 'ai_key_' + ai, value: v }); } toast('✅ API keys saved', 'success'); }
+async function saveSettingsToken() { const t = document.getElementById('settingsToken')?.value?.trim(); if (t) { await dbPut('settings', { id: 'github_token', value: t }); toast('✅ Token saved', 'success'); } }
 
 // ═══════════ CLOUD BRAIN ═══════════
 async function triggerCloudBrainTask(task, payload={}) {
-  const token = sessionStorage.getItem('mr_github_token');
-  if (!token) { toast('🔑 Save token in Settings', 'error', 4000); return; }
+  const token = (await dbGet('settings', 'github_token'))?.value;
+  if (!token) { toast('🔑 Save GitHub token in Settings', 'error', 4000); return; }
   try {
     const r = await fetch('https://api.github.com/repos/madnessgate44-debug/Mission-runner/dispatches', {
-      method:'POST',
-      headers:{ 'Authorization':'token '+token, 'Accept':'application/vnd.github.v3+json', 'Content-Type':'application/json' },
+      method:'POST', headers:{ 'Authorization':'token '+token, 'Accept':'application/vnd.github.v3+json', 'Content-Type':'application/json' },
       body: JSON.stringify({ event_type:'mission', client_payload:{ task, ...payload } })
     });
-    if (r.status===204) toast('✅ Cloud task triggered!', 'success');
+    if (r.status===204) { toast('✅ Cloud task triggered!', 'success'); showNotification('Cloud task: ' + task + ' — running...'); }
     else toast('❌ API error: '+r.status, 'error');
   } catch(e) { toast('❌ Network error', 'error'); }
 }
 async function triggerAPKBuild() {
-  const APK_PAYLOAD = {"files":[{"path":"build.gradle","content":"buildscript {\n    repositories {\n        google()\n        mavenCentral()\n    }\n    dependencies {\n        classpath 'com.android.tools.build:gradle:8.2.0'\n    }\n}\n\ntask clean(type: Delete) {\n    delete rootProject.buildDir\n}\n"},{"path":"settings.gradle","content":"pluginManagement {\n    repositories {\n        google()\n        mavenCentral()\n        gradlePluginPortal()\n    }\n}\ndependencyResolutionManagement {\n    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)\n    repositories {\n        google()\n        mavenCentral()\n    }\n}\nrootProject.name = 'MissionRunner'\ninclude ':app'\n"},{"path":"gradle.properties","content":"org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8\nandroid.useAndroidX=true\nandroid.nonTransitiveRClass=true\n"},{"path":"app/build.gradle","content":"plugins {\n    id 'com.android.application'\n}\n\nandroid {\n    namespace 'com.missionrunner.app'\n    compileSdk 34\n\n    defaultConfig {\n        applicationId 'com.missionrunner.app'\n        minSdk 26\n        targetSdk 34\n        versionCode 1\n        versionName '1.0'\n    }\n\n    buildTypes {\n        release {\n            minifyEnabled false\n        }\n    }\n\n    compileOptions {\n        sourceCompatibility JavaVersion.VERSION_17\n        targetCompatibility JavaVersion.VERSION_17\n    }\n}\n\ndependencies {\n    implementation 'androidx.appcompat:appcompat:1.6.1'\n    implementation 'androidx.webkit:webkit:1.8.0'\n}\n"},{"path":"app/src/main/AndroidManifest.xml","content":"<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">\n\n    <uses-permission android:name=\"android.permission.INTERNET\"/>\n    <uses-permission android:name=\"android.permission.CAMERA\"/>\n    <uses-permission android:name=\"android.permission.READ_EXTERNAL_STORAGE\"/>\n    <uses-permission android:name=\"android.permission.WRITE_EXTERNAL_STORAGE\"/>\n    <uses-permission android:name=\"android.permission.FOREGROUND_SERVICE\"/>\n    <uses-permission android:name=\"android.permission.SYSTEM_ALERT_WINDOW\"/>\n\n    <application\n        android:allowBackup=\"true\"\n        android:label=\"Mission Runner\"\n        android:supportsRtl=\"true\"\n        android:theme=\"@style/Theme.MissionRunner\"\n        android:usesCleartextTraffic=\"true\">\n\n        <activity\n            android:name=\".MainActivity\"\n            android:exported=\"true\"\n            android:configChanges=\"orientation|screenSize\">\n            <intent-filter>\n                <action android:name=\"android.intent.action.MAIN\"/>\n                <category android:name=\"android.intent.category.LAUNCHER\"/>\n            </intent-filter>\n            <intent-filter>\n                <action android:name=\"android.intent.action.SEND\"/>\n                <category android:name=\"android.intent.category.DEFAULT\"/>\n                <data android:mimeType=\"text/plain\"/>\n            </intent-filter>\n        </activity>\n\n    </application>\n</manifest>\n"},{"path":"app/src/main/java/com/missionrunner/app/MainActivity.java","content":"package com.missionrunner.app;\n\nimport android.content.ClipData;\nimport android.content.ClipboardManager;\nimport android.content.Context;\nimport android.content.Intent;\nimport android.os.Bundle;\nimport android.os.Environment;\nimport android.webkit.JavascriptInterface;\nimport android.webkit.WebChromeClient;\nimport android.webkit.WebSettings;\nimport android.webkit.WebView;\nimport android.webkit.WebViewClient;\nimport android.widget.Toast;\nimport androidx.appcompat.app.AppCompatActivity;\nimport java.io.File;\nimport java.io.FileWriter;\n\npublic class MainActivity extends AppCompatActivity {\n    private WebView webView;\n    @Override\n    protected void onCreate(Bundle savedInstanceState) {\n        super.onCreate(savedInstanceState);\n        setContentView(R.layout.activity_main);\n        webView = findViewById(R.id.webview);\n        WebSettings s = webView.getSettings();\n        s.setJavaScriptEnabled(true); s.setDomStorageEnabled(true);\n        s.setAllowFileAccess(true); s.setAllowContentAccess(true);\n        s.setMediaPlaybackRequiresUserGesture(false);\n        s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);\n        s.setUserAgentString(s.getUserAgentString() + \" MissionRunnerApp/1.0\");\n        webView.addJavascriptInterface(new NativeBridge(this), \"NativeApp\");\n        webView.setWebViewClient(new WebViewClient());\n        webView.setWebChromeClient(new WebChromeClient());\n        webView.loadUrl(\"https://madnessgate44-debug.github.io/Mission-runner/\");\n        handleShareIntent(getIntent());\n    }\n    @Override\n    protected void onNewIntent(Intent i) { super.onNewIntent(i); handleShareIntent(i); }\n    private void handleShareIntent(Intent i) {\n        if (i != null && Intent.ACTION_SEND.equals(i.getAction())) {\n            String t = i.getStringExtra(Intent.EXTRA_TEXT);\n            if (t != null) {\n                String e = t.replace(\"\\\\\", \"\\\\\\\\\").replace(\"'\", \"\\\\'\").replace(\"\\n\", \"\\\\n\");\n                webView.evaluateJavascript(\"window.processSharedText('\" + e + \"')\", null);\n            }\n        }\n    }\n    public class NativeBridge {\n        private Context c;\n        public NativeBridge(Context ctx) { c = ctx; }\n        @JavascriptInterface\n        public void saveFile(String content, String filename) {\n            try {\n                File dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), \"MissionRunner\");\n                dir.mkdirs();\n                FileWriter w = new FileWriter(new File(dir, filename));\n                w.write(content); w.close();\n                runOnUiThread(() -> {\n                    webView.evaluateJavascript(\"window.nativeFileSaved('\" + filename + \"')\", null);\n                    Toast.makeText(c, \"Saved: \" + filename, Toast.LENGTH_SHORT).show();\n                });\n            } catch (Exception e) {\n                runOnUiThread(() -> Toast.makeText(c, \"Error: \" + e.getMessage(), Toast.LENGTH_SHORT).show());\n            }\n        }\n        @JavascriptInterface\n        public void copyToClipboard(String text) {\n            ClipboardManager cm = (ClipboardManager) c.getSystemService(Context.CLIPBOARD_SERVICE);\n            cm.setPrimaryClip(ClipData.newPlainText(\"MissionRunner\", text));\n            runOnUiThread(() -> Toast.makeText(c, \"Copied!\", Toast.LENGTH_SHORT).show());\n        }\n        @JavascriptInterface\n        public String getVersion() { return \"1.0.0\"; }\n    }\n}\n"},{"path":"app/src/main/res/layout/activity_main.xml","content":"<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<LinearLayout xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    android:layout_width=\"match_parent\"\n    android:layout_height=\"match_parent\"\n    android:orientation=\"vertical\">\n    <WebView\n        android:id=\"@+id/webview\"\n        android:layout_width=\"match_parent\"\n        android:layout_height=\"match_parent\"/>\n</LinearLayout>\n"},{"path":"app/src/main/res/values/strings.xml","content":"<resources>\n    <string name=\"app_name\">Mission Runner</string>\n</resources>\n"},{"path":"app/src/main/res/values/styles.xml","content":"<resources>\n    <style name=\"Theme.MissionRunner\" parent=\"Theme.AppCompat.NoActionBar\">\n        <item name=\"android:windowBackground\">@android:color/black</item>\n        <item name=\"android:statusBarColor\">@android:color/black</item>\n        <item name=\"android:navigationBarColor\">@android:color/black</item>\n    </style>\n</resources>\n"}]};
+  const APK_PAYLOAD = {"files":[{"path":"build.gradle","content":"buildscript {\n    repositories {\n        google()\n        mavenCentral()\n    }\n    dependencies {\n        classpath 'com.android.tools.build:gradle:8.2.0'\n    }\n}\n\ntask clean(type: Delete) {\n    delete rootProject.buildDir\n}\n"},{"path":"settings.gradle","content":"pluginManagement {\n    repositories {\n        google()\n        mavenCentral()\n        gradlePluginPortal()\n    }\n}\ndependencyResolutionManagement {\n    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)\n    repositories {\n        google()\n        mavenCentral()\n    }\n}\nrootProject.name = 'MissionRunner'\ninclude ':app'\n"},{"path":"gradle.properties","content":"org.gradle.jvmargs=-Xmx2048m -Dfile.encoding=UTF-8\nandroid.useAndroidX=true\nandroid.nonTransitiveRClass=true\n"},{"path":"app/build.gradle","content":"plugins {\n    id 'com.android.application'\n}\n\nandroid {\n    namespace 'com.missionrunner.app'\n    compileSdk 34\n\n    defaultConfig {\n        applicationId 'com.missionrunner.app'\n        minSdk 26\n        targetSdk 34\n        versionCode 1\n        versionName '1.0'\n    }\n\n    buildTypes {\n        release {\n            minifyEnabled false\n        }\n    }\n\n    compileOptions {\n        sourceCompatibility JavaVersion.VERSION_17\n        targetCompatibility JavaVersion.VERSION_17\n    }\n}\n\ndependencies {\n    implementation 'androidx.appcompat:appcompat:1.6.1'\n    implementation 'androidx.webkit:webkit:1.8.0'\n}\n"},{"path":"app/src/main/AndroidManifest.xml","content":"<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<manifest xmlns:android=\"http://schemas.android.com/apk/res/android\">\n\n    <uses-permission android:name=\"android.permission.INTERNET\"/>\n    <uses-permission android:name=\"android.permission.CAMERA\"/>\n    <uses-permission android:name=\"android.permission.READ_EXTERNAL_STORAGE\"/>\n    <uses-permission android:name=\"android.permission.WRITE_EXTERNAL_STORAGE\"/>\n    <uses-permission android:name=\"android.permission.FOREGROUND_SERVICE\"/>\n    <uses-permission android:name=\"android.permission.SYSTEM_ALERT_WINDOW\"/>\n\n    <application\n        android:allowBackup=\"true\"\n        android:label=\"Mission Runner\"\n        android:supportsRtl=\"true\"\n        android:theme=\"@style/Theme.MissionRunner\"\n        android:usesCleartextTraffic=\"true\">\n\n        <activity\n            android:name=\".MainActivity\"\n            android:exported=\"true\"\n            android:configChanges=\"orientation|screenSize\">\n            <intent-filter>\n                <action android:name=\"android.intent.action.MAIN\"/>\n                <category android:name=\"android.intent.category.LAUNCHER\"/>\n            </intent-filter>\n            <intent-filter>\n                <action android:name=\"android.intent.action.SEND\"/>\n                <category android:name=\"android.intent.category.DEFAULT\"/>\n                <data android:mimeType=\"text/plain\"/>\n            </intent-filter>\n        </activity>\n    </application>\n</manifest>\n"},{"path":"app/src/main/java/com/missionrunner/app/MainActivity.java","content":"package com.missionrunner.app;\n\nimport android.content.ClipData;\nimport android.content.ClipboardManager;\nimport android.content.Context;\nimport android.content.Intent;\nimport android.os.Bundle;\nimport android.os.Environment;\nimport android.webkit.JavascriptInterface;\nimport android.webkit.WebChromeClient;\nimport android.webkit.WebSettings;\nimport android.webkit.WebView;\nimport android.webkit.WebViewClient;\nimport android.widget.Toast;\nimport androidx.appcompat.app.AppCompatActivity;\nimport java.io.File;\nimport java.io.FileWriter;\n\npublic class MainActivity extends AppCompatActivity {\n    private WebView webView;\n    @Override\n    protected void onCreate(Bundle savedInstanceState) {\n        super.onCreate(savedInstanceState);\n        setContentView(R.layout.activity_main);\n        webView = findViewById(R.id.webview);\n        WebSettings s = webView.getSettings();\n        s.setJavaScriptEnabled(true); s.setDomStorageEnabled(true);\n        s.setAllowFileAccess(true); s.setAllowContentAccess(true);\n        s.setMediaPlaybackRequiresUserGesture(false);\n        s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);\n        s.setUserAgentString(s.getUserAgentString() + \" MissionRunnerApp/1.0\");\n        webView.addJavascriptInterface(new NativeBridge(this), \"NativeApp\");\n        webView.setWebViewClient(new WebViewClient());\n        webView.setWebChromeClient(new WebChromeClient());\n        webView.loadUrl(\"https://madnessgate44-debug.github.io/Mission-runner/?v=\" + System.currentTimeMillis());\n        handleShareIntent(getIntent());\n    }\n    @Override\n    protected void onNewIntent(Intent i) { super.onNewIntent(i); handleShareIntent(i); }\n    private void handleShareIntent(Intent i) {\n        if (i != null && Intent.ACTION_SEND.equals(i.getAction())) {\n            String t = i.getStringExtra(Intent.EXTRA_TEXT);\n            if (t != null) {\n                String e = t.replace(\"\\\\\", \"\\\\\\\\\").replace(\"'\", \"\\\\'\").replace(\"\\n\", \"\\\\n\");\n                webView.evaluateJavascript(\"window.processSharedText('\" + e + \"')\", null);\n            }\n        }\n    }\n    public class NativeBridge {\n        private Context c;\n        public NativeBridge(Context ctx) { c = ctx; }\n        @JavascriptInterface\n        public void saveFile(String content, String filename) {\n            try {\n                File dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), \"MissionRunner\");\n                dir.mkdirs();\n                FileWriter w = new FileWriter(new File(dir, filename));\n                w.write(content); w.close();\n                runOnUiThread(() -> {\n                    webView.evaluateJavascript(\"window.nativeFileSaved('\" + filename + \"')\", null);\n                    Toast.makeText(c, \"Saved: \" + filename, Toast.LENGTH_SHORT).show();\n                });\n            } catch (Exception e) {\n                runOnUiThread(() -> Toast.makeText(c, \"Error: \" + e.getMessage(), Toast.LENGTH_SHORT).show());\n            }\n        }\n        @JavascriptInterface\n        public void copyToClipboard(String text) {\n            ClipboardManager cm = (ClipboardManager) c.getSystemService(Context.CLIPBOARD_SERVICE);\n            cm.setPrimaryClip(ClipData.newPlainText(\"MissionRunner\", text));\n            runOnUiThread(() -> Toast.makeText(c, \"Copied!\", Toast.LENGTH_SHORT).show());\n        }\n        @JavascriptInterface\n        public String getVersion() { return \"1.0.0\"; }\n    }\n}\n"},{"path":"app/src/main/res/layout/activity_main.xml","content":"<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<LinearLayout xmlns:android=\"http://schemas.android.com/apk/res/android\"\n    android:layout_width=\"match_parent\"\n    android:layout_height=\"match_parent\"\n    android:orientation=\"vertical\">\n    <WebView\n        android:id=\"@+id/webview\"\n        android:layout_width=\"match_parent\"\n        android:layout_height=\"match_parent\"/>\n</LinearLayout>\n"},{"path":"app/src/main/res/values/strings.xml","content":"<resources>\n    <string name=\"app_name\">Mission Runner</string>\n</resources>\n"},{"path":"app/src/main/res/values/styles.xml","content":"<resources>\n    <style name=\"Theme.MissionRunner\" parent=\"Theme.AppCompat.NoActionBar\">\n        <item name=\"android:windowBackground\">@android:color/black</item>\n        <item name=\"android:statusBarColor\">@android:color/black</item>\n        <item name=\"android:navigationBarColor\">@android:color/black</item>\n    </style>\n</resources>\n"}]};
   toast('🤖 Building APK...', '', 5000);
   await triggerCloudBrainTask('build_apk', APK_PAYLOAD);
 }
 
+// ═══════════ NOTIFICATION ═══════════
+function showNotification(msg) { const b = document.getElementById('notifBanner'); b.textContent = msg; b.classList.add('show'); }
+function dismissNotif() { document.getElementById('notifBanner').classList.remove('show'); }
+
 // ═══════════ OFFLINE STEP EXTRACTOR ═══════════
 function parseStepsOffline(text) {
-  const steps = []; let idx = 1;
-  const nr = /^(?:\d+[\.\)\-]|Step\s*\d+[\.\:\)\-])\s*(.+?)$/gmi;
-  let m;
+  const steps = []; let idx = 1; const nr = /^(?:\d+[\.\)\-]|Step\s*\d+[\.\:\)\-])\s*(.+?)$/gmi; let m;
   while ((m = nr.exec(text)) !== null) { const a = m[1].trim(); if (a.length>3) steps.push({ step: idx++, action: a, type: detectType(a), detail: extractDetail(a) }); }
-  if (!steps.length) {
-    const br = /^[\-\*•]\s*(.+?)$/gmi;
-    while ((m = br.exec(text)) !== null) { const a = m[1].trim(); if (a.length>3) steps.push({ step: idx++, action: a, type: detectType(a), detail: extractDetail(a) }); }
-  }
-  if (!steps.length) {
-    const verbs = /\b(navigate|open|go to|download|copy|paste|click|tap|type|write|save|create|run|deploy|search|clone|preview)\b/i;
-    const lines = text.split(/\n/);
-    for (const l of lines) { if (verbs.test(l.trim()) && l.trim().length>5) steps.push({ step: idx++, action: l.trim(), type: detectType(l), detail: extractDetail(l) }); }
-  }
+  if (!steps.length) { const br = /^[\-\*•]\s*(.+?)$/gmi; while ((m = br.exec(text)) !== null) { const a = m[1].trim(); if (a.length>3) steps.push({ step: idx++, action: a, type: detectType(a), detail: extractDetail(a) }); } }
+  if (!steps.length) { const verbs = /\b(navigate|open|go to|download|copy|paste|click|tap|type|write|save|create|run|deploy|search|clone|preview)\b/i; const lines = text.split(/\n/); for (const l of lines) { if (verbs.test(l.trim()) && l.trim().length>5) steps.push({ step: idx++, action: l.trim(), type: detectType(l), detail: extractDetail(l) }); } }
   return steps;
 }
 function detectType(a) { const t = a.toLowerCase(); if (/navigate|go to|open|visit|browse/.test(t) && /\.(com|org|io|net|dev|app)/.test(t)) return 'navigate'; if (/download/.test(t)) return 'download'; if (/copy/.test(t)) return 'copy'; if (/paste/.test(t)) return 'paste'; if (/click|tap/.test(t)) return 'click'; if (/type|write/.test(t)) return 'write'; if (/save/.test(t)) return 'save'; if (/run|execute|deploy/.test(t)) return 'cloud'; if (/preview|render/.test(t)) return 'preview'; return 'other'; }
@@ -796,52 +596,32 @@ function toggleVoice() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!recognition) {
     recognition = new SR(); recognition.continuous = false; recognition.lang = 'en-US';
-    recognition.onresult = (e) => {
-      document.getElementById(currentVoiceTarget).value += (document.getElementById(currentVoiceTarget).value ? ' ' : '') + e.results[0][0].transcript;
-      document.getElementById('voiceBtn').classList.remove('listening');
-    };
-    recognition.onerror = () => document.getElementById('voiceBtn').classList.remove('listening');
-    recognition.onend = () => document.getElementById('voiceBtn').classList.remove('listening');
+    recognition.onresult = (e) => { document.getElementById(currentVoiceTarget).value += (document.getElementById(currentVoiceTarget).value ? ' ' : '') + e.results[0][0].transcript; btn.classList.remove('listening'); };
+    recognition.onerror = () => btn.classList.remove('listening');
+    recognition.onend = () => btn.classList.remove('listening');
   }
-  currentVoiceTarget = 'mainInput';
-  btn.classList.add('listening');
-  recognition.start();
+  currentVoiceTarget = 'mainInput'; btn.classList.add('listening'); recognition.start();
 }
 
 // ═══════════ CLIPBOARD ═══════════
-async function pasteFromClipboard(id) {
-  try { document.getElementById(id).value = await navigator.clipboard.readText(); toast('✅ Pasted', 'success'); }
-  catch(e) { toast('⚠️ Paste manually', 'error'); }
-}
+async function pasteFromClipboard(id) { try { document.getElementById(id).value = await navigator.clipboard.readText(); toast('✅ Pasted', 'success'); } catch(e) { toast('⚠️ Paste manually', 'error'); } }
+
+// ═══════════ ATTACHMENT ═══════════
+function triggerAttachment() { const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*,.pdf,.txt,.md,.json,.html,.css,.js'; i.onchange = async (e) => { const f = e.target.files[0]; if (f) { const t = await f.text(); document.getElementById('mainInput').value += '\n[Attached: ' + f.name + ']\n' + t.slice(0, 5000); toast('✅ File attached', 'success'); } }; i.click(); }
 
 // ═══════════ AUTO-SAVE & SHARE ═══════════
 function processAutoSaveLink() {
-  const p = new URLSearchParams(window.location.search);
-  const d = p.get('autosave');
-  if (!d) return;
-  try {
-    const dec = JSON.parse(decodeURIComponent(atob(d)));
-    if (dec.project && dec.text) { renderAutoSaveCard(dec); if (window.history?.replaceState) window.history.replaceState({}, document.title, window.location.origin + window.location.pathname); }
-  } catch(e) {}
+  const p = new URLSearchParams(window.location.search); const d = p.get('autosave'); if (!d) return;
+  try { const dec = JSON.parse(decodeURIComponent(atob(d))); if (dec.project && dec.text) { renderAutoSaveCard(dec); if (window.history?.replaceState) window.history.replaceState({}, document.title, window.location.origin + window.location.pathname); } } catch(e) {}
 }
 function processSharedText() {
-  const p = new URLSearchParams(window.location.search);
-  const parts = [p.get('title'), p.get('text'), p.get('url')].filter(Boolean);
-  const combined = parts.join('\n\n').trim();
-  if (!combined) return;
-  renderAutoSaveCard({ project: activeProject, text: combined });
+  const p = new URLSearchParams(window.location.search); const parts = [p.get('title'), p.get('text'), p.get('url')].filter(Boolean); const combined = parts.join('\n\n').trim();
+  if (combined) renderAutoSaveCard({ project: activeProject, text: combined });
 }
 
 // ═══════════ SELF-UPDATE ═══════════
 async function checkForUpdates() {
-  try {
-    const r = await fetch('https://api.github.com/repos/madnessgate44-debug/Mission-runner/releases/latest');
-    const d = await r.json();
-    if (d.tag_name && d.tag_name !== 'v10.0') {
-      document.getElementById('updateBanner').classList.add('show');
-      document.getElementById('updateBanner').textContent = '⬆️ New version ' + d.tag_name + ' available — tap to update';
-    }
-  } catch(e) {}
+  try { const r = await fetch('https://api.github.com/repos/madnessgate44-debug/Mission-runner/releases/latest'); const d = await r.json(); if (d.tag_name && d.tag_name !== 'v11.0') { document.getElementById('updateBanner').classList.add('show'); document.getElementById('updateBanner').textContent = '⬆️ New version ' + d.tag_name + ' available — tap to update'; } } catch(e) {}
 }
 
 // ═══════════ STARTUP ═══════════
@@ -851,11 +631,11 @@ async function checkForUpdates() {
     const projects = await dbGetAll('projects');
     if (!projects.length) for (const p of DEFAULT_PROJECTS) await dbPut('projects', p);
     const saved = await dbGet('settings', 'activeProject');
-    if (saved && saved.value) { activeProject = saved.value; document.getElementById('projectPill').textContent = saved.value.charAt(0).toUpperCase() + saved.value.slice(1); }
+    if (saved?.value) { activeProject = saved.value; document.getElementById('projectPill').textContent = saved.value.charAt(0).toUpperCase() + saved.value.slice(1); }
   } catch(e) {}
   processAutoSaveLink();
   processSharedText();
-  addMessage('👋 Welcome to Mission Runner v10.0 — DeepSeek Edition. Type or paste anything. I\'ll detect missions, steps, code, and auto-save links automatically.', 'ai');
+  addMessage('👋 Welcome to Mission Runner v11.0 — Supervisor Layer. I listen to every conversation, auto-extract missions, steps, and code, and route them for your approval. Select an AI from the sidebar (☰) and start chatting.', 'ai');
   setTimeout(checkForUpdates, 2000);
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 })();
