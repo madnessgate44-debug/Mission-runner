@@ -2,828 +2,230 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>Mission Runner v11.0</title>
-  <!-- Google Fonts: Inter -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mission Runner · Self-Updater</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 700px;
+      margin: 2rem auto;
+      padding: 1rem;
+      background: #f4f6fa;
+    }
+    .card {
+      background: white;
+      border-radius: 20px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 {
+      font-size: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+    textarea {
+      width: 100%;
+      font-family: monospace;
+      font-size: 13px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 12px;
+      margin: 10px 0;
       box-sizing: border-box;
     }
-
-    body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: #f7f9fc;
-      color: #1a2c3e;
-      height: 100vh;
-      overflow: hidden;
-    }
-
-    /* App container */
-    .app {
-      display: flex;
-      height: 100%;
-      position: relative;
-    }
-
-    /* Sidebar (slide from left) */
-    .sidebar {
-      position: fixed;
-      top: 0;
-      left: -300px;
-      width: 300px;
-      height: 100%;
-      background: #0f172a;
-      color: #e2e8f0;
-      z-index: 1000;
-      transition: left 0.25s ease;
-      display: flex;
-      flex-direction: column;
-      overflow-y: auto;
-      box-shadow: 4px 0 20px rgba(0,0,0,0.2);
-    }
-
-    .sidebar.open {
-      left: 0;
-    }
-
-    .sidebar-header {
-      padding: 24px 20px;
-      border-bottom: 1px solid #1e293b;
-    }
-
-    .sidebar-header h2 {
-      font-size: 1.5rem;
-      font-weight: 600;
-      letter-spacing: -0.3px;
-    }
-
-    .sidebar-nav {
-      flex: 1;
-      padding: 20px 0;
-    }
-
-    .nav-item {
-      padding: 12px 20px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      transition: background 0.2s;
-      font-weight: 500;
-    }
-
-    .nav-item:hover {
-      background: #1e293b;
-    }
-
-    .nav-item.active {
-      background: #3b82f6;
-      color: white;
-    }
-
-    /* Overlay */
-    .sidebar-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0,0,0,0.5);
-      z-index: 999;
-      display: none;
-    }
-
-    .sidebar-overlay.open {
-      display: block;
-    }
-
-    /* Main area */
-    .main {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      background: #ffffff;
-      height: 100%;
-    }
-
-    /* Header */
-    .main-header {
-      padding: 12px 20px;
-      border-bottom: 1px solid #e2e8f0;
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      background: white;
-    }
-
-    .hamburger {
-      font-size: 26px;
-      background: none;
-      border: none;
-      cursor: pointer;
-      width: 40px;
-      height: 40px;
-      border-radius: 10px;
-      transition: background 0.2s;
-    }
-
-    .hamburger:hover {
-      background: #f1f5f9;
-    }
-
-    .title {
-      font-weight: 600;
-      font-size: 1.25rem;
-      flex: 1;
-    }
-
-    .ai-selector {
-      background: #f1f5f9;
-      border: none;
-      padding: 6px 12px;
+    input, button {
+      padding: 10px;
+      font-size: 14px;
       border-radius: 30px;
-      font-family: 'Inter', sans-serif;
-      font-weight: 500;
-      cursor: pointer;
+      border: 1px solid #ccc;
     }
-
-    .native-badge {
-      background: #10b981;
-      color: white;
-      padding: 4px 12px;
-      border-radius: 30px;
-      font-size: 0.7rem;
-      font-weight: 600;
-    }
-
-    /* Conversation area */
-    .conversation {
-      flex: 1;
-      overflow-y: auto;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      background: #fafcff;
-    }
-
-    .message {
-      max-width: 80%;
-      padding: 10px 16px;
-      border-radius: 20px;
-      line-height: 1.45;
-      font-size: 0.95rem;
-      animation: fadeIn 0.2s ease;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(4px);}
-      to { opacity: 1; transform: translateY(0);}
-    }
-
-    .user-message {
-      background: #3b82f6;
-      color: white;
-      align-self: flex-end;
-      border-bottom-right-radius: 4px;
-    }
-
-    .ai-message {
-      background: #f1f5f9;
-      color: #0f172a;
-      align-self: flex-start;
-      border-bottom-left-radius: 4px;
-    }
-
-    /* Approval card */
-    .approval-card {
-      background: #fffbeb;
-      border-left: 4px solid #f59e0b;
-      border-radius: 12px;
-      padding: 14px;
-      margin: 8px 0;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-    }
-
-    .approval-card pre {
-      background: #fef9e3;
-      padding: 8px;
-      border-radius: 8px;
-      margin: 8px 0;
-      font-size: 0.85rem;
-      white-space: pre-wrap;
-    }
-
-    .card-buttons {
-      display: flex;
-      gap: 10px;
-      margin-top: 8px;
-    }
-
-    .card-buttons button {
-      padding: 6px 14px;
-      border-radius: 30px;
-      border: none;
-      font-weight: 500;
-      cursor: pointer;
-    }
-
-    .btn-execute {
-      background: #10b981;
-      color: white;
-    }
-
-    .btn-cancel {
-      background: #e2e8f0;
-      color: #334155;
-    }
-
-    /* Input bar */
-    .input-bar {
-      background: white;
-      border-top: 1px solid #e2e8f0;
-      padding: 12px 20px;
-      display: flex;
-      gap: 12px;
-      align-items: center;
-    }
-
-    .input-field {
-      flex: 1;
-      padding: 10px 16px;
-      border: 1px solid #cbd5e1;
-      border-radius: 40px;
-      font-family: 'Inter', sans-serif;
-      font-size: 0.9rem;
-      outline: none;
-      transition: 0.2s;
-    }
-
-    .input-field:focus {
-      border-color: #3b82f6;
-      box-shadow: 0 0 0 2px rgba(59,130,246,0.2);
-    }
-
-    .send-btn {
+    button {
       background: #3b82f6;
       color: white;
       border: none;
-      padding: 8px 24px;
-      border-radius: 40px;
-      font-weight: 600;
       cursor: pointer;
-      transition: background 0.2s;
+      font-weight: 600;
+      margin-right: 8px;
     }
-
-    .send-btn:hover {
+    button:hover {
       background: #2563eb;
     }
-
-    /* Inline panels (settings, projects, history) */
-    .inline-panel {
-      background: white;
-      border-radius: 16px;
-      padding: 20px;
-      margin-bottom: 20px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-      border: 1px solid #e2e8f0;
-    }
-
-    .inline-panel h3 {
-      margin-bottom: 16px;
-      font-size: 1.2rem;
-    }
-
-    .inline-panel input, .inline-panel textarea, .inline-panel select {
-      width: 100%;
-      padding: 10px;
-      margin: 8px 0;
-      border: 1px solid #cbd5e1;
-      border-radius: 12px;
-      font-family: 'Inter', sans-serif;
-    }
-
-    .inline-panel button {
-      background: #3b82f6;
-      color: white;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 30px;
-      margin-top: 8px;
-      cursor: pointer;
-    }
-
-    .close-panel {
+    .status {
       background: #e2e8f0;
-      color: #1e293b;
-      margin-left: 8px;
+      padding: 12px;
+      border-radius: 12px;
+      font-family: monospace;
+      font-size: 12px;
+      white-space: pre-wrap;
+      margin-top: 12px;
     }
-
+    .error {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+    .success {
+      background: #dcfce7;
+      color: #166534;
+    }
     hr {
-      margin: 12px 0;
+      margin: 20px 0;
     }
   </style>
 </head>
 <body>
-<div class="app">
-  <div class="sidebar-overlay" id="sidebarOverlay"></div>
-  <div class="sidebar" id="sidebar">
-    <div class="sidebar-header">
-      <h2>Mission Runner</h2>
-      <p style="font-size: 0.75rem; opacity: 0.7;">v11.0 · Supervisor Layer</p>
-    </div>
-    <div class="sidebar-nav">
-      <div class="nav-item" data-panel="projects">📁 Projects</div>
-      <div class="nav-item" data-panel="settings">⚙️ Settings</div>
-      <div class="nav-item" data-panel="history">📜 History</div>
-      <div class="nav-item" data-panel="executor">📝 Manual Executor</div>
-      <div class="nav-item" data-panel="capture">📸 Capture</div>
-      <div class="nav-item" data-panel="browser">🌐 Browser</div>
-      <div class="nav-item" data-panel="selfupdate">🔄 Self-Update</div>
-    </div>
-  </div>
+<div class="card">
+  <h1>🔄 Mission Runner · Self-Updater</h1>
+  <p>This tool updates <strong>index.html</strong> on GitHub directly. No AI, no sidebars — just self-update.</p>
+  <hr>
+  <label><strong>1. GitHub Token (needs 'repo' scope)</strong></label>
+  <input type="password" id="tokenInput" placeholder="ghp_xxxxxxxxxxxx" style="width:100%; margin:8px 0;">
+  <button id="saveTokenBtn">💾 Save Token (localStorage)</button>
+  <button id="clearTokenBtn">🗑 Clear Token</button>
 
-  <div class="main">
-    <div class="main-header">
-      <button class="hamburger" id="hamburgerBtn">☰</button>
-      <div class="title">Mission Runner</div>
-      <select id="aiSelector" class="ai-selector">
-        <option value="deepseek">DeepSeek</option>
-        <option value="claude">Claude</option>
-        <option value="gemini">Gemini</option>
-      </select>
-      <span id="nativeBadge" class="native-badge" style="display: none;">NATIVE</span>
-    </div>
-    <div class="conversation" id="conversationArea"></div>
-    <div class="input-bar">
-      <input type="text" id="messageInput" class="input-field" placeholder="Ask AI or paste AI response with ```action-steps...">
-      <button id="sendButton" class="send-btn">Send</button>
-    </div>
-  </div>
+  <hr>
+  <label><strong>2. New HTML code for index.html</strong></label>
+  <textarea id="newHtml" rows="12" placeholder='Paste the full HTML code here. Must start with "<!DOCTYPE html>" and end with "</html>"'></textarea>
+
+  <button id="updateBtn" style="width:100%; margin:8px 0;">🚀 Commit to GitHub (main branch)</button>
+
+  <div id="status" class="status">Ready. Enter token and paste new HTML, then click commit.</div>
 </div>
 
 <script>
-  (function() {
-    // ------------------------------
-    // 1. DOM Elements
-    // ------------------------------
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('sidebarOverlay');
-    const hamburger = document.getElementById('hamburgerBtn');
-    const conversationDiv = document.getElementById('conversationArea');
-    const messageInput = document.getElementById('messageInput');
-    const sendBtn = document.getElementById('sendButton');
-    const aiSelector = document.getElementById('aiSelector');
-    const nativeBadge = document.getElementById('nativeBadge');
+  // GitHub repo info
+  const owner = 'madnessgate44-debug';
+  const repo = 'Mission-runner';
+  const path = 'index.html';
+  const branch = 'main';
 
-    // ------------------------------
-    // 2. State & Storage
-    // ------------------------------
-    let settings = {
-      apiKeys: {
-        deepseek: '',
-        claude: '',
-        gemini: ''
-      },
-      activeProject: 'gahiz',   // gahiz, contentfactory, wiredleader
-      customAIs: []
+  // DOM elements
+  const tokenInput = document.getElementById('tokenInput');
+  const saveTokenBtn = document.getElementById('saveTokenBtn');
+  const clearTokenBtn = document.getElementById('clearTokenBtn');
+  const newHtmlTextarea = document.getElementById('newHtml');
+  const updateBtn = document.getElementById('updateBtn');
+  const statusDiv = document.getElementById('status');
+
+  // Load saved token from localStorage
+  const savedToken = localStorage.getItem('github_token');
+  if (savedToken) {
+    tokenInput.value = savedToken;
+    statusDiv.innerHTML = '✅ Token loaded from storage. Paste new HTML and click commit.';
+  }
+
+  // Save token
+  saveTokenBtn.onclick = () => {
+    const token = tokenInput.value.trim();
+    if (token.length < 10) {
+      statusDiv.innerHTML = '❌ Invalid token (too short).';
+      return;
+    }
+    localStorage.setItem('github_token', token);
+    statusDiv.innerHTML = '✅ Token saved to localStorage.';
+  };
+
+  // Clear token
+  clearTokenBtn.onclick = () => {
+    localStorage.removeItem('github_token');
+    tokenInput.value = '';
+    statusDiv.innerHTML = '🗑 Token cleared.';
+  };
+
+  // Helper to show status
+  function setStatus(text, isError = false) {
+    statusDiv.innerHTML = text;
+    statusDiv.className = `status ${isError ? 'error' : 'success'}`;
+    setTimeout(() => {
+      if (!isError) statusDiv.className = 'status';
+    }, 4000);
+  }
+
+  // Update file on GitHub
+  async function updateGitHubFile(content, token) {
+    // First, get the current file's SHA
+    const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+    const getResponse = await fetch(url, {
+      headers: {
+        'Authorization': `token ${token}`,
+        'Accept': 'application/vnd.github.v3+json'
+      }
+    });
+
+    let sha = null;
+    if (getResponse.ok) {
+      const data = await getResponse.json();
+      sha = data.sha;
+    } else if (getResponse.status !== 404) {
+      throw new Error(`Failed to get file info: ${getResponse.status}`);
+    }
+
+    // Prepare commit
+    const contentBase64 = btoa(unescape(encodeURIComponent(content))); // handle UTF-8
+    const payload = {
+      message: 'Self-update via Mission Runner',
+      content: contentBase64,
+      branch: branch
     };
+    if (sha) payload.sha = sha;
 
-    let conversationHistory = [];  // store for later history panel
-
-    // Load from localStorage
-    function loadSettings() {
-      const saved = localStorage.getItem('missionRunnerSettings');
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          settings = { ...settings, ...parsed };
-        } catch(e) { console.warn(e); }
-      }
-      // Load API keys into the form if settings panel exists later
-    }
-    function saveSettings() {
-      localStorage.setItem('missionRunnerSettings', JSON.stringify(settings));
-    }
-    loadSettings();
-
-    // Native bridge detection
-    const isNative = !!(window.NativeApp && typeof window.NativeApp.saveFile === 'function');
-    if (isNative) nativeBadge.style.display = 'inline-block';
-
-    // ------------------------------
-    // 3. UI Helpers
-    // ------------------------------
-    function addMessage(text, sender, isHtml = false) {
-      const msgDiv = document.createElement('div');
-      msgDiv.className = `message ${sender === 'user' ? 'user-message' : 'ai-message'}`;
-      if (isHtml) {
-        msgDiv.innerHTML = text;
-      } else {
-        msgDiv.textContent = text;
-      }
-      conversationDiv.appendChild(msgDiv);
-      conversationDiv.scrollTop = conversationDiv.scrollHeight;
-      // store in history (simplified)
-      conversationHistory.push({ role: sender, content: text, timestamp: Date.now() });
-      // limit history size
-      if (conversationHistory.length > 200) conversationHistory.shift();
-      localStorage.setItem('missionRunnerHistory', JSON.stringify(conversationHistory.slice(-100)));
-    }
-
-    // Show approval card from extracted steps
-    function showApprovalCard(stepsText, sourceUrl = null) {
-      const card = document.createElement('div');
-      card.className = 'approval-card';
-      card.innerHTML = `
-        <strong>✅ Mission Ready</strong>
-        <pre>${escapeHtml(stepsText)}</pre>
-        <div class="card-buttons">
-          <button class="btn-execute">✔ Execute</button>
-          <button class="btn-cancel">✖ Cancel</button>
-        </div>
-      `;
-      conversationDiv.appendChild(card);
-      const execBtn = card.querySelector('.btn-execute');
-      const cancelBtn = card.querySelector('.btn-cancel');
-      execBtn.onclick = () => {
-        // For now, demo: show alert as last resort? No — we'll add a note in chat.
-        addMessage(`✅ Executed mission:\n${stepsText.substring(0, 200)}`, 'ai');
-        card.remove();
-        // If there's a save link, also handle it (optional)
-      };
-      cancelBtn.onclick = () => card.remove();
-    }
-
-    function escapeHtml(str) {
-      return str.replace(/[&<>]/g, function(m) {
-        if (m === '&') return '&amp;';
-        if (m === '<') return '&lt;';
-        if (m === '>') return '&gt;';
-        return m;
-      });
-    }
-
-    // Extract missions from AI response (action-steps, auto-save-link, mission-json)
-    function extractMissionsFromText(text) {
-      // action-steps
-      const actionRegex = /```action-steps\s*([\s\S]*?)```/gi;
-      let match;
-      while ((match = actionRegex.exec(text)) !== null) {
-        const steps = match[1].trim();
-        if (steps) showApprovalCard(steps);
-      }
-      // auto-save-link
-      const saveRegex = /```auto-save-link\s*([\s\S]*?)```/gi;
-      while ((match = saveRegex.exec(text)) !== null) {
-        const url = match[1].trim();
-        if (url) saveFromLink(url);
-      }
-      // mission-json
-      const jsonRegex = /```mission-json\s*([\s\S]*?)```/gi;
-      while ((match = jsonRegex.exec(text)) !== null) {
-        try {
-          const mission = JSON.parse(match[1].trim());
-          showApprovalCard(JSON.stringify(mission, null, 2));
-        } catch(e) { /* ignore invalid json */ }
-      }
-    }
-
-    // Save file via native bridge or fallback
-    function saveFromLink(url) {
-      if (isNative) {
-        fetch(url).then(res => res.text()).then(data => {
-          window.NativeApp.saveFile(data, `mission_save_${Date.now()}.txt`);
-          addMessage(`✅ File saved via native bridge: ${url}`, 'ai');
-        }).catch(err => {
-          addMessage(`❌ Failed to fetch file: ${url}`, 'ai');
-        });
-      } else {
-        // Browser fallback: trigger download
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = url.split('/').pop() || 'download.txt';
-        a.target = '_blank';
-        a.click();
-        addMessage(`📥 Download started: ${url}`, 'ai');
-      }
-    }
-
-    // ------------------------------
-    // 4. Real AI Calls (DeepSeek, Claude, Gemini)
-    // ------------------------------
-    async function callAI(userMessage) {
-      const selected = aiSelector.value;
-      const apiKey = settings.apiKeys[selected];
-      if (!apiKey) {
-        addMessage(`⚠️ No API key found for ${selected}. Please add your key in Settings (sidebar).`, 'ai');
-        return;
-      }
-      addMessage(userMessage, 'user');
-      messageInput.value = '';
-      // Show typing indicator (simple)
-      const typingMsg = document.createElement('div');
-      typingMsg.className = 'message ai-message';
-      typingMsg.textContent = '✍️ Thinking...';
-      conversationDiv.appendChild(typingMsg);
-      conversationDiv.scrollTop = conversationDiv.scrollHeight;
-
-      try {
-        let responseText = '';
-        if (selected === 'deepseek') {
-          const res = await fetch('https://api.deepseek.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${apiKey}`
-            },
-            body: JSON.stringify({
-              model: 'deepseek-chat',
-              messages: [{ role: 'user', content: userMessage }],
-              temperature: 0.7
-            })
-          });
-          const data = await res.json();
-          responseText = data.choices?.[0]?.message?.content || 'No response from DeepSeek.';
-        } 
-        else if (selected === 'claude') {
-          const res = await fetch('https://api.anthropic.com/v1/messages', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-api-key': apiKey,
-              'anthropic-version': '2023-06-01'
-            },
-            body: JSON.stringify({
-              model: 'claude-3-sonnet-20240229',
-              max_tokens: 1024,
-              messages: [{ role: 'user', content: userMessage }]
-            })
-          });
-          const data = await res.json();
-          responseText = data.content?.[0]?.text || 'Claude response empty.';
-        }
-        else if (selected === 'gemini') {
-          const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`;
-          const res = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: userMessage }] }] })
-          });
-          const data = await res.json();
-          responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Gemini response error.';
-        }
-        // Remove typing indicator
-        typingMsg.remove();
-        addMessage(responseText, 'ai');
-        // Extract missions
-        extractMissionsFromText(responseText);
-      } catch (error) {
-        typingMsg.remove();
-        addMessage(`❌ API error: ${error.message}. Check your key and network.`, 'ai');
-      }
-    }
-
-    // Demo/AI fallback if no keys (will prompt user to add keys via settings panel)
-    function demoAIResponse(userMessage) {
-      addMessage(userMessage, 'user');
-      const fake = `I'm a demo response. To use real AI, add your API keys in Settings (sidebar).\n\n\`\`\`action-steps\n1. Open sidebar\n2. Go to Settings\n3. Paste your API key for ${aiSelector.value}\n\`\`\``;
-      addMessage(fake, 'ai');
-      extractMissionsFromText(fake);
-    }
-
-    // ------------------------------
-    // 5. Sidebar + Inline Panels (no alerts)
-    // ------------------------------
-    function closeSidebar() {
-      sidebar.classList.remove('open');
-      overlay.classList.remove('open');
-      // Remove any open inline panels from conversation
-      const panels = document.querySelectorAll('.inline-panel');
-      panels.forEach(p => p.remove());
-    }
-
-    function openSidebar() {
-      sidebar.classList.add('open');
-      overlay.classList.add('open');
-    }
-
-    hamburger.onclick = openSidebar;
-    overlay.onclick = closeSidebar;
-
-    // Function to inject an inline panel into conversation area
-    function showInlinePanel(title, contentHtml, onClose = null) {
-      // Remove any existing panel first
-      const oldPanel = document.querySelector('.inline-panel');
-      if (oldPanel) oldPanel.remove();
-      const panel = document.createElement('div');
-      panel.className = 'inline-panel';
-      panel.innerHTML = `
-        <h3>${title}</h3>
-        ${contentHtml}
-        <div style="margin-top: 12px;">
-          <button class="save-panel-btn">Save</button>
-          <button class="close-panel-btn close-panel">Close</button>
-        </div>
-      `;
-      conversationDiv.insertBefore(panel, conversationDiv.firstChild);
-      const closeBtn = panel.querySelector('.close-panel-btn');
-      closeBtn.onclick = () => {
-        panel.remove();
-        if (onClose) onClose();
-      };
-      return panel;
-    }
-
-    // Settings panel
-    function showSettingsPanel() {
-      const deepVal = settings.apiKeys.deepseek || '';
-      const claudeVal = settings.apiKeys.claude || '';
-      const geminiVal = settings.apiKeys.gemini || '';
-      const content = `
-        <label>DeepSeek API Key</label>
-        <input type="password" id="deepKey" placeholder="sk-..." value="${deepVal.replace(/./g, '*')}" autocomplete="off">
-        <label>Claude API Key</label>
-        <input type="password" id="claudeKey" placeholder="sk-ant-..." value="${claudeVal ? '••••••' : ''}">
-        <label>Gemini API Key</label>
-        <input type="password" id="geminiKey" placeholder="AIza..." value="${geminiVal ? '••••••' : ''}">
-        <hr>
-        <label>Default AI: </label>
-        <select id="defaultAI">
-          <option value="deepseek" ${aiSelector.value === 'deepseek' ? 'selected' : ''}>DeepSeek</option>
-          <option value="claude" ${aiSelector.value === 'claude' ? 'selected' : ''}>Claude</option>
-          <option value="gemini" ${aiSelector.value === 'gemini' ? 'selected' : ''}>Gemini</option>
-        </select>
-      `;
-      const panel = showInlinePanel('⚙️ Settings', content);
-      const saveBtn = panel.querySelector('.save-panel-btn');
-      saveBtn.onclick = () => {
-        const newDeep = panel.querySelector('#deepKey').value.trim();
-        const newClaude = panel.querySelector('#claudeKey').value.trim();
-        const newGemini = panel.querySelector('#geminiKey').value.trim();
-        if (newDeep) settings.apiKeys.deepseek = newDeep;
-        if (newClaude) settings.apiKeys.claude = newClaude;
-        if (newGemini) settings.apiKeys.gemini = newGemini;
-        const defaultAI = panel.querySelector('#defaultAI').value;
-        aiSelector.value = defaultAI;
-        saveSettings();
-        addMessage('✅ Settings saved. API keys stored locally.', 'ai');
-        panel.remove();
-      };
-    }
-
-    // Projects panel
-    function showProjectsPanel() {
-      const projects = {
-        gahiz: 'Gahiz (جاهز) — AI interview simulation for BPO job seekers',
-        contentfactory: 'Content Factory — AI content production for client brands',
-        wiredleader: 'The Wired Leader — ADHD coaching brand (client: Hesham Elansari)'
-      };
-      let content = `<select id="projectSelect">`;
-      for (const [key, desc] of Object.entries(projects)) {
-        content += `<option value="${key}" ${settings.activeProject === key ? 'selected' : ''}>${desc.split('—')[0]}</option>`;
-      }
-      content += `</select><p id="projectDesc" style="margin-top:12px;">${projects[settings.activeProject] || ''}</p>`;
-      const panel = showInlinePanel('📁 Projects', content);
-      const select = panel.querySelector('#projectSelect');
-      const descP = panel.querySelector('#projectDesc');
-      select.onchange = () => {
-        const val = select.value;
-        settings.activeProject = val;
-        descP.innerText = projects[val] || '';
-        saveSettings();
-        addMessage(`Switched to project: ${val}`, 'ai');
-      };
-      const saveBtn = panel.querySelector('.save-panel-btn');
-      saveBtn.onclick = () => {
-        saveSettings();
-        addMessage('Project saved.', 'ai');
-        panel.remove();
-      };
-    }
-
-    // History panel: show recent messages
-    function showHistoryPanel() {
-      const stored = localStorage.getItem('missionRunnerHistory');
-      let historyItems = [];
-      if (stored) {
-        try { historyItems = JSON.parse(stored); } catch(e) {}
-      }
-      let html = `<div style="max-height: 300px; overflow-y: auto;">`;
-      if (historyItems.length === 0) html += '<p>No history yet.</p>';
-      else {
-        historyItems.slice().reverse().forEach(item => {
-          const short = item.content.length > 150 ? item.content.substring(0,150)+'…' : item.content;
-          html += `<div style="border-bottom:1px solid #e2e8f0; padding:6px 0;"><strong>${item.role}:</strong> ${escapeHtml(short)}</div>`;
-        });
-      }
-      html += `</div><button id="clearHistoryBtn" style="background:#ef4444; margin-top:10px;">Clear History</button>`;
-      const panel = showInlinePanel('📜 History', html);
-      panel.querySelector('#clearHistoryBtn')?.addEventListener('click', () => {
-        conversationHistory = [];
-        localStorage.setItem('missionRunnerHistory', '[]');
-        addMessage('Conversation history cleared.', 'ai');
-        panel.remove();
-      });
-      const saveBtn = panel.querySelector('.save-panel-btn');
-      saveBtn.onclick = () => panel.remove();
-    }
-
-    // Manual Executor panel
-    function showManualExecutor() {
-      const content = `<textarea id="manualSteps" rows="5" placeholder="Paste any text with ```action-steps blocks..."></textarea>`;
-      const panel = showInlinePanel('📝 Manual Executor', content);
-      const saveBtn = panel.querySelector('.save-panel-btn');
-      saveBtn.innerText = 'Extract Missions';
-      saveBtn.onclick = () => {
-        const raw = panel.querySelector('#manualSteps').value;
-        if (raw.trim()) {
-          extractMissionsFromText(raw);
-          addMessage('Manual extraction completed.', 'ai');
-        } else {
-          addMessage('Nothing to extract.', 'ai');
-        }
-        panel.remove();
-      };
-    }
-
-    // Capture panel (screenshot reminder)
-    function showCapturePanel() {
-      const content = `<p>Use your device's screenshot feature, then paste the image or text into the chat. Mission Runner will auto-detect action blocks.</p><button id="testPasteBtn">📋 Paste from Clipboard</button>`;
-      const panel = showInlinePanel('📸 Capture', content);
-      panel.querySelector('#testPasteBtn').onclick = async () => {
-        try {
-          const text = await navigator.clipboard.readText();
-          messageInput.value = text;
-          addMessage('Clipboard content pasted into input.', 'ai');
-        } catch(e) { addMessage('Could not read clipboard. Grant permission or paste manually.', 'ai'); }
-        panel.remove();
-      };
-      const saveBtn = panel.querySelector('.save-panel-btn');
-      saveBtn.onclick = () => panel.remove();
-    }
-
-    function showBrowserPanel() {
-      const content = `<input id="urlInput" placeholder="https://..."><button id="goBtn">Open in Browser</button>`;
-      const panel = showInlinePanel('🌐 Browser', content);
-      panel.querySelector('#goBtn').onclick = () => {
-        const url = panel.querySelector('#urlInput').value;
-        if (url) window.open(url, '_blank');
-      };
-      panel.querySelector('.save-panel-btn').onclick = () => panel.remove();
-    }
-
-    function showSelfUpdatePanel() {
-      const content = `<p>Check for updates at <a href="https://github.com/madnessgate44-debug/Mission-runner/releases" target="_blank">GitHub Releases</a>. Self-update will be implemented via GitHub Contents API later.</p>`;
-      const panel = showInlinePanel('🔄 Self-Update', content);
-      panel.querySelector('.save-panel-btn').onclick = () => panel.remove();
-    }
-
-    // Attach sidebar nav listeners
-    document.querySelectorAll('.nav-item').forEach(item => {
-      item.addEventListener('click', (e) => {
-        const panel = item.dataset.panel;
-        closeSidebar();
-        switch (panel) {
-          case 'settings': showSettingsPanel(); break;
-          case 'projects': showProjectsPanel(); break;
-          case 'history': showHistoryPanel(); break;
-          case 'executor': showManualExecutor(); break;
-          case 'capture': showCapturePanel(); break;
-          case 'browser': showBrowserPanel(); break;
-          case 'selfupdate': showSelfUpdatePanel(); break;
-          default: break;
-        }
-      });
+    const putResponse = await fetch(url, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `token ${token}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/vnd.github.v3+json'
+      },
+      body: JSON.stringify(payload)
     });
 
-    // ------------------------------
-    // 6. Send message handler
-    // ------------------------------
-    async function onSend() {
-      const msg = messageInput.value.trim();
-      if (!msg) return;
-      // Check if any API key exists for selected AI
-      const selected = aiSelector.value;
-      const hasKey = settings.apiKeys[selected] && settings.apiKeys[selected].length > 0;
-      if (hasKey) {
-        await callAI(msg);
-      } else {
-        demoAIResponse(msg);
-      }
+    if (!putResponse.ok) {
+      const errData = await putResponse.json();
+      throw new Error(`GitHub API error: ${errData.message || putResponse.status}`);
+    }
+    return await putResponse.json();
+  }
+
+  // Commit button
+  updateBtn.onclick = async () => {
+    const token = tokenInput.value.trim();
+    if (!token) {
+      setStatus('❌ Please enter your GitHub token.', true);
+      return;
+    }
+    const newHtml = newHtmlTextarea.value;
+    if (!newHtml.trim()) {
+      setStatus('❌ Please paste new HTML code.', true);
+      return;
+    }
+    if (!newHtml.includes('<!DOCTYPE html>') || !newHtml.includes('</html>')) {
+      setStatus('❌ HTML seems invalid (missing <!DOCTYPE html> or </html>)', true);
+      return;
     }
 
-    sendBtn.onclick = onSend;
-    messageInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') onSend();
-    });
+    setStatus('⏳ Updating index.html on GitHub...', false);
+    try {
+      const result = await updateGitHubFile(newHtml, token);
+      setStatus(`✅ Success! Commit: ${result.commit.sha.substring(0,7)}. Page will auto-reload in 5 seconds.`);
+      // Optional: reload after 5 seconds to see the new version
+      setTimeout(() => {
+        location.reload();
+      }, 5000);
+    } catch (err) {
+      setStatus(`❌ Failed: ${err.message}`, true);
+    }
+  };
 
-    // Welcome message
-    addMessage('👋 Mission Runner v11.0 ready. Use sidebar (☰) to add API keys, switch projects. Paste AI responses with ```action-steps to see approval cards.', 'ai');
-  })();
+  // Pre-fill a demo minimal HTML as example (optional)
+  const demoHtml = `<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>Mission Runner - Minimal</title></head>
+<body>
+<h1>Mission Runner v1.0</h1>
+<p>Self-updater installed successfully.</p>
+<button onclick="alert('Hello')">Test</button>
+</body>
+</html>`;
+  newHtmlTextarea.placeholder = `Example:\n${demoHtml}`;
 </script>
 </body>
 </html>
