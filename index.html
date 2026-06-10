@@ -3,20 +3,31 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Self-Updater</title>
+  <title>Self‑Updater</title>
   <style>
-    body{font-family:system-ui;max-width:500px;margin:2rem auto;padding:1rem;}
-    textarea, input, button{width:100%;margin:0.5rem 0;padding:0.5rem;}
+    body{font-family:system-ui;max-width:600px;margin:2rem auto;padding:1rem;}
+    textarea,input,button{width:100%;margin:0.5rem 0;padding:0.5rem;box-sizing:border-box;}
     button{background:#3b82f6;color:white;border:none;cursor:pointer;}
-    .status{margin-top:1rem;padding:0.5rem;background:#e2e8f0;}
+    .status{margin-top:1rem;padding:0.5rem;background:#e2e8f0;border-radius:8px;}
+    .flex{display:flex;gap:0.5rem;}
+    .flex button{flex:1;}
   </style>
 </head>
 <body>
-<h1>🔄 Self-Updater</h1>
+<h1>🔄 Self‑Updater</h1>
 <p>Update index.html on GitHub. No cache clearing needed.</p>
-<input type="password" id="token" placeholder="GitHub token (repo scope)">
-<textarea id="code" rows="12" placeholder="Paste full HTML code here"></textarea>
-<button id="update">Commit to GitHub</button>
+
+<label>GitHub Token (repo scope)</label>
+<input type="password" id="token" placeholder="ghp_...">
+<div class="flex">
+  <button id="saveTokenBtn">💾 Save Token</button>
+  <button id="clearTokenBtn">🗑 Clear Token</button>
+</div>
+
+<label>New HTML code</label>
+<textarea id="code" rows="12" placeholder="Paste full index.html here"></textarea>
+
+<button id="updateBtn">🚀 Commit to GitHub</button>
 <div id="status" class="status">Ready</div>
 
 <script>
@@ -27,34 +38,67 @@
 
   const tokenInput = document.getElementById('token');
   const codeArea = document.getElementById('code');
-  const updateBtn = document.getElementById('update');
+  const saveTokenBtn = document.getElementById('saveTokenBtn');
+  const clearTokenBtn = document.getElementById('clearTokenBtn');
+  const updateBtn = document.getElementById('updateBtn');
   const statusDiv = document.getElementById('status');
 
-  const saved = localStorage.getItem('github_token');
-  if (saved) tokenInput.value = saved;
+  // Load saved token on page load
+  const savedToken = localStorage.getItem('github_token');
+  if (savedToken) tokenInput.value = savedToken;
 
   function setStatus(msg, isErr) {
     statusDiv.innerHTML = msg;
     statusDiv.style.background = isErr ? '#fee2e2' : '#dcfce7';
   }
 
+  saveTokenBtn.onclick = () => {
+    const token = tokenInput.value.trim();
+    if (token.length < 10) {
+      setStatus('❌ Token too short (must be a valid GitHub token)', true);
+      return;
+    }
+    localStorage.setItem('github_token', token);
+    setStatus('✅ Token saved to localStorage');
+  };
+
+  clearTokenBtn.onclick = () => {
+    localStorage.removeItem('github_token');
+    tokenInput.value = '';
+    setStatus('🗑 Token cleared');
+  };
+
   updateBtn.onclick = async () => {
     const token = tokenInput.value.trim();
-    if (!token) { setStatus('❌ Enter token', true); return; }
+    if (!token) {
+      setStatus('❌ No token. Please save your token first.', true);
+      return;
+    }
+    // Also save to localStorage if not already (so user doesn't need to click Save separately)
     localStorage.setItem('github_token', token);
 
-    const html = codeArea.value;
+    const html = codeArea.value.trim();
+    if (!html) {
+      setStatus('❌ Please paste HTML code', true);
+      return;
+    }
     if (!html.includes('<!DOCTYPE html>') || !html.includes('</html>')) {
-      setStatus('❌ Invalid HTML', true);
+      setStatus('❌ Invalid HTML: missing <!DOCTYPE html> or </html>', true);
       return;
     }
 
-    setStatus('⏳ Updating...');
+    setStatus('⏳ Updating on GitHub...');
     try {
       const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+      // Get current file SHA
       const getRes = await fetch(url, { headers: { 'Authorization': `token ${token}` } });
       let sha = null;
-      if (getRes.ok) sha = (await getRes.json()).sha;
+      if (getRes.ok) {
+        const data = await getRes.json();
+        sha = data.sha;
+      } else if (getRes.status !== 404) {
+        throw new Error(`Failed to get file: ${getRes.status}`);
+      }
 
       const content = btoa(unescape(encodeURIComponent(html)));
       const putRes = await fetch(url, {
@@ -62,11 +106,16 @@
         headers: { 'Authorization': `token ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: 'Self-update', content, sha, branch })
       });
-      if (!putRes.ok) throw new Error(await putRes.text());
-      setStatus('✅ Updated! Reloading with cache-buster...');
-      setTimeout(() => { window.location.href = `/?v=${Date.now()}`; }, 1500);
+      if (!putRes.ok) {
+        const err = await putRes.json();
+        throw new Error(err.message || `HTTP ${putRes.status}`);
+      }
+      setStatus('✅ Update successful! Reloading with cache-buster...');
+      setTimeout(() => {
+        window.location.href = `/?v=${Date.now()}`;
+      }, 1500);
     } catch (err) {
-      setStatus(`❌ ${err.message}`, true);
+      setStatus(`❌ Commit failed: ${err.message}`, true);
     }
   };
 </script>
