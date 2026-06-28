@@ -14,11 +14,15 @@
     .message{padding:10px 14px;border-radius:16px;max-width:85%;font-size:14px;line-height:1.5;word-break:break-word;}
     .user{background:#3b82f6;color:white;align-self:flex-end;}
     .ai{background:white;border:1px solid #e2e8f0;align-self:flex-start;}
+    .wizard{background:#1e293b;color:#e2e8f0;border:1px solid #3b82f6;align-self:flex-start;}
+    .wizard .wizard-name{color:#60a5fa;font-weight:bold;}
     .ai.error{border-color:#fca5a5;background:#fff5f5;}
     .ai.success{border-color:#86efac;background:#f0fdf4;}
-    .input-bar{display:flex;gap:8px;padding:12px 16px;background:white;border-top:1px solid #ddd;}
-    .input-field{flex:1;padding:10px 14px;border-radius:40px;border:1px solid #ccc;font-size:14px;}
+    .ai.warning{border-color:#fbbf24;background:#fffbeb;}
+    .input-bar{display:flex;gap:8px;padding:12px 16px;background:white;border-top:1px solid #ddd;flex-wrap:wrap;}
+    .input-field{flex:1;padding:10px 14px;border-radius:40px;border:1px solid #ccc;font-size:14px;min-width:150px;}
     .send-btn{background:#3b82f6;color:white;border:none;padding:8px 18px;border-radius:40px;cursor:pointer;font-size:14px;}
+    .file-attach-btn{background:#64748b;color:white;border:none;padding:8px 14px;border-radius:40px;cursor:pointer;font-size:13px;}
     .sidebar{position:fixed;top:0;left:-300px;width:300px;height:100%;background:#0f172a;color:white;transition:left 0.2s;z-index:1000;padding:20px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;}
     .sidebar.open{left:0;}
     .overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:999;display:none;}
@@ -26,6 +30,7 @@
     .sidebar h3{margin-bottom:4px;font-size:16px;}
     .sidebar label{font-size:11px;color:#94a3b8;margin-top:6px;display:block;}
     .sidebar input{width:100%;padding:8px 10px;border-radius:10px;border:none;background:#1e293b;color:white;font-size:13px;margin-top:3px;}
+    .sidebar textarea{width:100%;padding:8px 10px;border-radius:10px;border:none;background:#1e293b;color:white;font-size:13px;margin-top:3px;font-family:monospace;min-height:60px;}
     .sidebar button{display:block;width:100%;margin-top:6px;padding:10px;background:#1e293b;border:none;color:white;border-radius:12px;cursor:pointer;font-size:13px;text-align:left;}
     .sidebar button.primary{background:#3b82f6;}
     .sidebar .divider{border:none;border-top:1px solid #1e293b;margin:8px 0;}
@@ -38,6 +43,15 @@
     .zip-info{font-size:11px;color:#94a3b8;margin-top:4px;}
     .checkbox-label{font-size:11px;color:#94a3b8;display:flex;align-items:center;gap:6px;margin-top:4px;cursor:pointer;}
     .checkbox-label input[type="checkbox"]{width:16px;height:16px;accent-color:#3b82f6;}
+    .health-detail{font-size:12px;color:#94a3b8;margin-top:2px;padding-left:12px;border-left:2px solid #334155;}
+    .health-detail.missing{color:#f87171;border-left-color:#f87171;}
+    .health-detail.extra{color:#fbbf24;border-left-color:#fbbf24;}
+    .health-detail.match{color:#34d399;border-left-color:#34d399;}
+    .wizard-thinking{display:inline-block;animation:dots 1.5s steps(4) infinite;}
+    @keyframes dots{0%{content:"";}25%{content:".";}50%{content:"..";}75%{content:"...";}100%{content:"";}}
+    .wizard-msg{margin-top:4px;font-size:13px;color:#94a3b8;}
+    .wizard-msg .file-ref{color:#60a5fa;cursor:pointer;text-decoration:underline;}
+    .chat-file-preview{font-size:11px;color:#94a3b8;padding:4px 8px;background:#1e293b;border-radius:8px;display:inline-block;margin-top:4px;}
   </style>
 </head>
 <body>
@@ -62,6 +76,19 @@
 
   <hr class="divider">
 
+  <label>🤖 Wizard Settings</label>
+  <label>System Prompt (how Wizard should behave)</label>
+  <textarea id="wizardPrompt" rows="3">You are a helpful coding assistant. Help users manage their GitHub repository. You can suggest file changes, help debug issues, and explain code. Keep responses concise and actionable.</textarea>
+  <label>API Endpoint (OpenAI-compatible)</label>
+  <input type="text" id="apiEndpoint" placeholder="https://api.openai.com/v1/chat/completions" value="https://api.openai.com/v1/chat/completions">
+  <label>API Key</label>
+  <input type="password" id="apiKey" placeholder="sk-...">
+  <label>Model</label>
+  <input type="text" id="modelName" placeholder="gpt-3.5-turbo" value="gpt-3.5-turbo">
+  <button class="primary" id="saveWizardBtn">🧙 Save Wizard Settings</button>
+
+  <hr class="divider">
+
   <label>Upload files to repo</label>
   <div class="upload-area" id="uploadArea">📁 Tap to select files<input type="file" id="fileInput" multiple style="display:none;"></div>
   <div class="upload-area upload-zip" id="uploadZipArea">📦 Tap to select a ZIP file<input type="file" id="zipInput" accept=".zip" style="display:none;"></div>
@@ -78,6 +105,7 @@
 
   <hr class="divider">
 
+  <button id="healthCheckBtn">🏥 Health Check (Compare with ZIP)</button>
   <button id="triggerBuildBtn">🔨 Trigger Build</button>
   <button id="checkStatusBtn">📊 Check Build Status</button>
 
@@ -90,14 +118,22 @@
     <button id="menuBtn" style="background:none;border:none;font-size:22px;cursor:pointer;">☰</button>
     <div class="title">Mission Runner</div>
     <div class="repo-badge" id="repoBadge">No repo set</div>
+    <span style="font-size:11px;background:#1e293b;color:#60a5fa;padding:2px 10px;border-radius:20px;" id="wizardStatus">🧙 Offline</span>
   </div>
   <div class="conversation" id="conversation">
     <div class="message ai">👋 Open ☰ sidebar → set your token and repo → then upload files or paste action-steps.</div>
+    <div class="message wizard">
+      <span class="wizard-name">🧙 Wizard:</span><br>
+      Hello! I'm your coding assistant. I can help you manage files, write code, and debug issues. Just chat with me and upload files!
+    </div>
   </div>
   <div class="input-bar">
-    <input class="input-field" id="messageInput" placeholder="Paste ```action-steps block...">
+    <input class="input-field" id="messageInput" placeholder="Ask Wizard for help...">
+    <button class="file-attach-btn" id="chatAttachBtn">📎</button>
+    <input type="file" id="chatFileInput" style="display:none;" multiple>
     <button class="send-btn" id="sendBtn">Send</button>
   </div>
+  <div id="chatFilePreview" style="padding:0 16px 8px;font-size:11px;color:#64748b;display:none;"></div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -108,6 +144,14 @@
   let branch = localStorage.getItem("mr_branch") || "main";
   let selectedFiles = [];
   let zipFile = null;
+  let lastZipContents = null;
+
+  // Wizard settings
+  let wizardPrompt = localStorage.getItem("wizard_prompt") || "You are a helpful coding assistant. Help users manage their GitHub repository. You can suggest file changes, help debug issues, and explain code. Keep responses concise and actionable.";
+  let apiEndpoint = localStorage.getItem("api_endpoint") || "https://api.openai.com/v1/chat/completions";
+  let apiKey = localStorage.getItem("api_key") || "";
+  let modelName = localStorage.getItem("model_name") || "gpt-3.5-turbo";
+  let chatFiles = [];
 
   const conversation = document.getElementById("conversation");
   const messageInput = document.getElementById("messageInput");
@@ -125,6 +169,16 @@
   const progressBar  = document.getElementById("progressBar");
   const progressFill = document.getElementById("progressFill");
   const cleanDuplicates = document.getElementById("cleanDuplicates");
+  const chatFileInput = document.getElementById("chatFileInput");
+  const chatFilePreview = document.getElementById("chatFilePreview");
+  const wizardStatus = document.getElementById("wizardStatus");
+
+  // Load wizard settings
+  if (wizardPrompt) document.getElementById("wizardPrompt").value = wizardPrompt;
+  if (apiEndpoint) document.getElementById("apiEndpoint").value = apiEndpoint;
+  if (apiKey) document.getElementById("apiKey").value = apiKey;
+  if (modelName) document.getElementById("modelName").value = modelName;
+  updateWizardStatus();
 
   if (githubToken) tokenInput.value = githubToken;
   if (owner)  ownerInput.value  = owner;
@@ -132,12 +186,36 @@
   if (branch) branchInput.value = branch;
   updateBadge();
 
+  function updateWizardStatus() {
+    wizardStatus.textContent = apiKey ? "🧙 Online" : "🧙 Offline";
+    wizardStatus.style.color = apiKey ? "#34d399" : "#f87171";
+  }
+
   function addMsg(html, type) {
     const d = document.createElement("div");
     d.className = "message ai" + (type ? " " + type : "");
     d.innerHTML = html.replace(/\n/g,"<br>");
     conversation.appendChild(d);
     d.scrollIntoView({behavior:"smooth"});
+    return d;
+  }
+
+  function addWizardMsg(html, type) {
+    const d = document.createElement("div");
+    d.className = "message wizard" + (type ? " " + type : "");
+    d.innerHTML = '<span class="wizard-name">🧙 Wizard:</span><br>' + html.replace(/\n/g,"<br>");
+    conversation.appendChild(d);
+    d.scrollIntoView({behavior:"smooth"});
+    return d;
+  }
+
+  function addUserMsg(text) {
+    const d = document.createElement("div");
+    d.className = "message user";
+    d.textContent = text.slice(0, 500) + (text.length > 500 ? "..." : "");
+    conversation.appendChild(d);
+    d.scrollIntoView({behavior:"smooth"});
+    return d;
   }
 
   function updateBadge() {
@@ -149,6 +227,24 @@
   document.getElementById("menuBtn").onclick = openSidebar;
   overlay.onclick = closeSidebar;
   document.getElementById("closeSidebarBtn").onclick = closeSidebar;
+
+  // Save Wizard Settings
+  document.getElementById("saveWizardBtn").onclick = () => {
+    wizardPrompt = document.getElementById("wizardPrompt").value.trim() || wizardPrompt;
+    apiEndpoint = document.getElementById("apiEndpoint").value.trim() || apiEndpoint;
+    apiKey = document.getElementById("apiKey").value.trim() || "";
+    modelName = document.getElementById("modelName").value.trim() || "gpt-3.5-turbo";
+    
+    localStorage.setItem("wizard_prompt", wizardPrompt);
+    localStorage.setItem("api_endpoint", apiEndpoint);
+    localStorage.setItem("api_key", apiKey);
+    localStorage.setItem("model_name", modelName);
+    
+    updateWizardStatus();
+    addMsg("✅ Wizard settings saved!","success");
+    addWizardMsg("Settings updated! I'm ready to help. 🧙");
+    closeSidebar();
+  };
 
   document.getElementById("saveTokenBtn").onclick = () => {
     const t = tokenInput.value.trim();
@@ -172,6 +268,18 @@
     closeSidebar();
   };
 
+  // Chat file attachment
+  document.getElementById("chatAttachBtn").onclick = () => chatFileInput.click();
+  chatFileInput.onchange = () => {
+    chatFiles = Array.from(chatFileInput.files);
+    if (chatFiles.length > 0) {
+      chatFilePreview.style.display = "block";
+      chatFilePreview.innerHTML = "📎 " + chatFiles.map(f => f.name).join(", ") + " (" + chatFiles.reduce((sum, f) => sum + f.size, 0)/1024 + "kb)";
+    } else {
+      chatFilePreview.style.display = "none";
+    }
+  };
+
   async function ghReq(path, method, body) {
     const url = "https://api.github.com/repos/"+owner+"/"+repo+path;
     const h = { Authorization:"token "+githubToken, Accept:"application/vnd.github.v3+json" };
@@ -192,33 +300,201 @@
     return new Promise((res,rej) => { const r=new FileReader(); r.onload=e=>res(e.target.result.split(",")[1]); r.onerror=rej; r.readAsDataURL(file); });
   }
 
-  // Check if file exists in repo
-  async function fileExists(path) {
-    try {
-      await ghReq("/contents/"+path);
-      return true;
-    } catch(e) {
-      return false;
+  // ---- WIZARD CHAT ----
+  document.getElementById("sendBtn").onclick = async () => {
+    const msg = messageInput.value.trim();
+    if (!msg && chatFiles.length === 0) return;
+    
+    // Show user message
+    let userText = msg || "📎 " + chatFiles.map(f => f.name).join(", ");
+    addUserMsg(userText);
+    
+    // Clear input
+    messageInput.value = "";
+    const filesToProcess = [...chatFiles];
+    chatFiles = [];
+    chatFilePreview.style.display = "none";
+    chatFileInput.value = "";
+
+    // Check if it's an action-steps command
+    const match = msg.match(/```action-steps([\s\S]*?)```/);
+    if (match) {
+      await runSteps(match[1].trim());
+      return;
     }
+
+    // If no API key, use local responses
+    if (!apiKey) {
+      addWizardMsg("⚠️ Please set your API key in the sidebar (☰ → Wizard Settings) to use AI chat. For now, I can still help with:\n\n• Upload files\n• Run action-steps\n• Health checks\n• Trigger builds");
+      return;
+    }
+
+    // Show thinking indicator
+    const thinkingEl = addWizardMsg("⏳ Thinking...");
+
+    try {
+      // Prepare file context
+      let fileContext = "";
+      if (filesToProcess.length > 0) {
+        fileContext = "\n\n📎 **Attached Files:**\n";
+        for (const file of filesToProcess) {
+          const isText = /\.(kt|xml|gradle|kts|toml|md|json|txt|yml|yaml|properties|java|js|html|css|gitignore|env|pro|sh|bat|cmd|conf|config|ini|cfg|xml|xsd|dtd|ent|key|pem|crt|csr|pub|asc|gpg|sig|asc|md|markdown|rst|tex|bib|sty|cls|bst|bst|bib|bbx|cbx|dbx|lbx|bbx|cbx|dbx|lbx)$/i.test(file.name);
+          if (isText && file.size < 50000) {
+            const content = await readText(file);
+            fileContext += `\n### ${file.name}\n\`\`\`\n${content.slice(0, 2000)}${content.length > 2000 ? "\n... (truncated)" : ""}\n\`\`\`\n`;
+          } else {
+            fileContext += `\n• ${file.name} (${Math.round(file.size/1024)}kb) - ${isText ? "text file" : "binary file"}`;
+          }
+        }
+      }
+
+      // Get repo context
+      let repoContext = "";
+      if (owner && repo && githubToken) {
+        try {
+          const files = await getRepoFiles("");
+          repoContext = `\n\n📁 **Repository:** ${owner}/${repo}\n**Files:** ${files.slice(0, 20).join(", ")}${files.length > 20 ? ` and ${files.length-20} more` : ""}`;
+        } catch(e) {}
+      }
+
+      const messages = [
+        {role: "system", content: wizardPrompt + "\n\nYou are helping a user manage their GitHub repository. Be helpful, concise, and actionable. If they ask about code, provide examples."},
+        {role: "user", content: msg + "\n\nContext:" + fileContext + repoContext}
+      ];
+
+      const response = await fetch(apiEndpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + apiKey
+        },
+        body: JSON.stringify({
+          model: modelName,
+          messages: messages,
+          max_tokens: 1000,
+          temperature: 0.7
+        })
+      });
+
+      if (!response.ok) {
+        const err = await response.text();
+        throw new Error(err.slice(0, 200));
+      }
+
+      const data = await response.json();
+      const reply = data.choices?.[0]?.message?.content || "No response from AI.";
+      
+      // Remove thinking indicator and show response
+      thinkingEl.remove();
+      addWizardMsg(reply);
+
+    } catch(e) {
+      thinkingEl.remove();
+      addWizardMsg("❌ Error: " + e.message.slice(0, 300));
+    }
+  };
+
+  messageInput.addEventListener("keypress", e => { if(e.key==="Enter") document.getElementById("sendBtn").click(); });
+
+  // ---- REST OF FUNCTIONS (health check, upload, etc) ----
+  
+  async function fileExists(path) {
+    try { await ghReq("/contents/"+path); return true; } catch(e) { return false; }
   }
 
-  // Delete file from repo
   async function deleteFile(path) {
     try {
       const ex = await ghReq("/contents/"+path);
       await ghReq("/contents/"+path,"DELETE",{message:"Cleanup: delete "+path,sha:ex.sha,branch});
       return true;
-    } catch(e) {
-      return false;
-    }
+    } catch(e) { return false; }
   }
 
-  // Upload a single file
   async function uploadFile(path, content, isText) {
     let sha = null;
     try { sha = (await ghReq("/contents/"+path)).sha; } catch(e){}
     const contentB64 = isText ? b64(content) : content;
     await ghReq("/contents/"+path,"PUT",{message:"Upload "+path,content:contentB64,sha,branch});
+  }
+
+  document.getElementById("healthCheckBtn").onclick = async () => {
+    if (!githubToken||!owner||!repo) { addMsg("❌ Set token and repo first.","error"); return; }
+    if (!lastZipContents) { addMsg("❌ No ZIP loaded. Please load a ZIP file first.","error"); return; }
+    closeSidebar();
+    
+    addMsg("🏥 Running health check... comparing ZIP with <b>"+owner+"/"+repo+"</b>");
+    
+    try {
+      const repoFiles = await getRepoFiles("");
+      const repoPathSet = new Set(repoFiles);
+      const zipPathSet = new Set(lastZipContents.map(f => f.path));
+      const missing = lastZipContents.filter(f => !repoPathSet.has(f.path)).map(f => f.path);
+      const extra = repoFiles.filter(p => !zipPathSet.has(p));
+      
+      let mismatched = [];
+      const commonFiles = lastZipContents.filter(f => repoPathSet.has(f.path));
+      for (const zipFile of commonFiles.slice(0, 20)) {
+        try {
+          const repoContent = await ghReq("/contents/"+zipFile.path);
+          const decodedRepo = unb64(repoContent.content);
+          if (decodedRepo !== zipFile.content) mismatched.push(zipFile.path);
+        } catch(e) {}
+      }
+      
+      let report = "<b>📊 Health Check Report:</b>\n";
+      report += "📦 ZIP has: "+lastZipContents.length+" files\n";
+      report += "📁 Repo has: "+repoFiles.length+" files\n\n";
+      
+      if (missing.length === 0 && extra.length === 0 && mismatched.length === 0) {
+        report += "✅ <b>All files match perfectly!</b> The repo matches your ZIP file.";
+        addMsg(report, "success");
+      } else {
+        if (missing.length > 0) {
+          report += "❌ <b>Missing files:</b> "+missing.length+"\n";
+          report += missing.slice(0, 10).map(p => "  • "+p).join("\n");
+          if (missing.length > 10) report += "\n  ... and "+(missing.length-10)+" more";
+          report += "\n\n";
+        }
+        if (extra.length > 0) {
+          report += "⚠️ <b>Extra files:</b> "+extra.length+"\n";
+          report += extra.slice(0, 10).map(p => "  • "+p).join("\n");
+          if (extra.length > 10) report += "\n  ... and "+(extra.length-10)+" more";
+          report += "\n\n";
+        }
+        if (mismatched.length > 0) {
+          report += "🔄 <b>Mismatched content:</b> "+mismatched.length+" files\n";
+          report += mismatched.slice(0, 10).map(p => "  • "+p).join("\n");
+          if (mismatched.length > 10) report += "\n  ... and "+(mismatched.length-10)+" more";
+          report += "\n\n";
+        }
+        report += "💡 <b>Recommendation:</b> ";
+        if (missing.length > 0 || mismatched.length > 0) {
+          report += "Re-upload the ZIP to fix missing/mismatched files.";
+        } else if (extra.length > 0) {
+          report += "You have extra files that aren't in the ZIP. They may be safe to keep or delete manually.";
+        }
+        addMsg(report, missing.length > 0 || mismatched.length > 0 ? "error" : "warning");
+      }
+    } catch(e) {
+      addMsg("❌ Health check failed: "+e.message.slice(0,200),"error");
+    }
+  };
+
+  async function getRepoFiles(path) {
+    let results = [];
+    try {
+      const contents = await ghReq("/contents/"+path);
+      if (Array.isArray(contents)) {
+        for (const item of contents) {
+          if (item.type === "file") results.push(item.path);
+          else if (item.type === "dir") {
+            const subFiles = await getRepoFiles(item.path);
+            results = results.concat(subFiles);
+          }
+        }
+      }
+    } catch(e) {}
+    return results;
   }
 
   document.getElementById("uploadArea").onclick = () => fileInput.click();
@@ -236,8 +512,26 @@
       zipInfo.textContent = "📦 ZIP loaded: "+zipFile.name+" ("+Math.round(zipFile.size/1024)+"kb)";
       selectedFiles = [];
       fileList.innerHTML = "";
+      loadZipContents(zipFile);
     }
   };
+
+  async function loadZipContents(zipFile) {
+    try {
+      const zip = await JSZip.loadAsync(zipFile);
+      const files = [];
+      for (const [path, file] of Object.entries(zip.files)) {
+        if (!file.dir && path && path.trim() !== "") {
+          try {
+            const content = await file.async("string");
+            const isText = /\.(kt|xml|gradle|kts|toml|md|json|txt|yml|yaml|properties|java|js|html|css|gitignore|env|pro|sh|bat|cmd|conf|config|ini|cfg|xml|xsd|dtd|ent|key|pem|crt|csr|pub|asc|gpg|sig|asc|md|markdown|rst|tex|bib|sty|cls|bst|bst|bib|bbx|cbx|dbx|lbx|bbx|cbx|dbx|lbx)$/i.test(path);
+            files.push({path, content, isText});
+          } catch(e) {}
+        }
+      }
+      lastZipContents = files;
+    } catch(e) { console.error("Failed to load ZIP contents:", e); }
+  }
 
   document.getElementById("uploadBtn").onclick = async () => {
     if (!githubToken) { addMsg("❌ Save token first.","error"); return; }
@@ -259,24 +553,17 @@
       const files = [];
       
       for (const [path, file] of Object.entries(zip.files)) {
-        // Skip directories and files with undefined path
         if (!file.dir && path && path.trim() !== "") {
           try {
             const content = await file.async("string");
-            // Determine if file is text based on extension
             const isText = /\.(kt|xml|gradle|kts|toml|md|json|txt|yml|yaml|properties|java|js|html|css|gitignore|env|pro|sh|bat|cmd|conf|config|ini|cfg|xml|xsd|dtd|ent|key|pem|crt|csr|pub|asc|gpg|sig|asc|md|markdown|rst|tex|bib|sty|cls|bst|bst|bib|bbx|cbx|dbx|lbx|bbx|cbx|dbx|lbx)$/i.test(path);
             files.push({path, content, isText});
-          } catch(e) {
-            console.warn("Failed to read file:", path, e);
-          }
+          } catch(e) { console.warn("Failed to read file:", path, e); }
         }
       }
       
-      if (files.length === 0) {
-        addMsg("❌ No valid files found in ZIP.","error");
-        return;
-      }
-      
+      if (files.length === 0) { addMsg("❌ No valid files found in ZIP.","error"); return; }
+      lastZipContents = files;
       addMsg("📦 Found "+files.length+" files in ZIP");
       await uploadFilesToRepo(files, true);
     } catch(e) {
@@ -288,7 +575,6 @@
   async function uploadFilesToRepo(files, isZip) {
     let fileList = files;
     if (!isZip) {
-      // Convert File objects to our format
       fileList = [];
       for (const file of files) {
         const path = file.webkitRelativePath || file.name;
@@ -308,7 +594,6 @@
     let uploaded=0, deleted=0, errors=[];
     const paths = fileList.map(f => f.path).filter(p => p && p.trim() !== "");
     
-    // Clean duplicates if enabled
     if (cleanDuplicates.checked) {
       addMsg("🧹 Checking for duplicates...");
       for (const path of paths) {
@@ -324,7 +609,6 @@
       if (deleted > 0) addMsg("🧹 Deleted "+deleted+" existing file(s)","success");
     }
     
-    // Upload files
     for (let i = 0; i < fileList.length; i++) {
       try {
         const {path, content, isText} = fileList[i];
@@ -341,16 +625,14 @@
     progressBar.classList.remove("active");
     progressFill.style.width="0%";
     
-    // Clear selections
     selectedFiles = [];
     fileList.innerHTML = "";
-    zipFile = null;
-    zipInfo.textContent = "";
     fileInput.value = "";
     zipInput.value = "";
     
     if (!errors.length) {
       addMsg("✅ Uploaded "+uploaded+" file(s)"+(deleted>0?" (deleted "+deleted+" duplicates)":"")+"!","success");
+      addMsg("💡 Run <b>🏥 Health Check</b> to verify everything matches!","success");
     } else {
       addMsg("⚠️ "+uploaded+" uploaded, "+errors.length+" failed:\n"+errors.slice(0,5).join("\n"),"error");
     }
@@ -381,20 +663,6 @@
       addMsg("<b>Last builds on "+owner+"/"+repo+":</b>\n"+lines.join("\n"));
     } catch(e) { addMsg("❌ "+e.message.slice(0,200),"error"); }
   };
-
-  document.getElementById("sendBtn").onclick = async () => {
-    const msg = messageInput.value.trim();
-    if (!msg) return;
-    const ud = document.createElement("div");
-    ud.className="message user"; ud.textContent=msg.slice(0,200)+(msg.length>200?"...":"");
-    conversation.appendChild(ud); ud.scrollIntoView({behavior:"smooth"});
-    messageInput.value="";
-    const match = msg.match(/```action-steps([\s\S]*?)```/);
-    if (match) await runSteps(match[1].trim());
-    else addMsg("💬 No action-steps block detected.\n\nFormat:\n```action-steps\nCREATE path/file.kt\n[content]\nEND\n```");
-  };
-
-  messageInput.addEventListener("keypress", e => { if(e.key==="Enter") document.getElementById("sendBtn").click(); });
 
   async function runSteps(text) {
     if (!githubToken) { addMsg("❌ No token.","error"); return; }
