@@ -1,216 +1,303 @@
-<!-- TEST DEPLOY 1 --><!-- TEST DEPLOY 1 --><!-- TEST DEPLOY 1 --><!-- TEST DEPLOY 1 --><!-- TEST DEPLOY 1 --><!-- test --><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mission Runner · Auto-Fix</title>
+  <title>Mission Runner</title>
   <style>
     *{margin:0;padding:0;box-sizing:border-box;}
-    body{font-family:system-ui;background:#f4f6fa;height:100vh;display:<!-- TEST DEPLOY 1 --><!-- TEST DEPLOY 1 --><!-- TEST DEPLOY 1 -->flex;flex-direction:column;}
+    body{font-family:system-ui;background:#f4f6fa;height:100vh;display:flex;flex-direction:column;}
     .header{display:flex;align-items:center;gap:12px;padding:12px 20px;background:white;border-bottom:1px solid #ddd;}
-    .title{font-weight:600;flex:1;}
-    .conversation{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:12px;}
-    .message{padding:10px 16px;border-radius:20px;max-width:80%;}
+    .title{font-weight:600;flex:1;font-size:16px;}
+    .repo-badge{font-size:11px;background:#e2e8f0;padding:2px 8px;border-radius:20px;color:#475569;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .conversation{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;}
+    .message{padding:10px 14px;border-radius:16px;max-width:85%;font-size:14px;line-height:1.5;word-break:break-word;}
     .user{background:#3b82f6;color:white;align-self:flex-end;}
-    .ai{background:#f1f5f9;align-self:flex-start;}
-    .input-bar{display:flex;gap:12px;padding:12px 20px;background:white;border-top:1px solid #ddd;}
-    .input-field{flex:1;padding:10px;border-radius:40px;border:1px solid #ccc;}
-    .send-btn{background:#3b82f6;color:white;border:none;padding:8px 20px;border-radius:40px;cursor:pointer;}
-    .sidebar{position:fixed;top:0;left:-280px;width:280px;height:100%;background:#0f172a;color:white;transition:left 0.2s;z-index:1000;padding:20px;}
+    .ai{background:white;border:1px solid #e2e8f0;align-self:flex-start;}
+    .ai.error{border-color:#fca5a5;background:#fff5f5;}
+    .ai.success{border-color:#86efac;background:#f0fdf4;}
+    .input-bar{display:flex;gap:8px;padding:12px 16px;background:white;border-top:1px solid #ddd;}
+    .input-field{flex:1;padding:10px 14px;border-radius:40px;border:1px solid #ccc;font-size:14px;}
+    .send-btn{background:#3b82f6;color:white;border:none;padding:8px 18px;border-radius:40px;cursor:pointer;font-size:14px;}
+    .sidebar{position:fixed;top:0;left:-300px;width:300px;height:100%;background:#0f172a;color:white;transition:left 0.2s;z-index:1000;padding:20px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;}
     .sidebar.open{left:0;}
     .overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:999;display:none;}
     .overlay.open{display:block;}
-    .sidebar button{display:block;width:100%;margin:8px 0;padding:8px;background:#1e293b;border:none;color:white;border-radius:12px;cursor:pointer;}
-    .token-input{width:100%;padding:6px;margin-bottom:12px;border-radius:20px;border:none;}
+    .sidebar h3{margin-bottom:4px;font-size:16px;}
+    .sidebar label{font-size:11px;color:#94a3b8;margin-top:6px;display:block;}
+    .sidebar input{width:100%;padding:8px 10px;border-radius:10px;border:none;background:#1e293b;color:white;font-size:13px;margin-top:3px;}
+    .sidebar button{display:block;width:100%;margin-top:6px;padding:10px;background:#1e293b;border:none;color:white;border-radius:12px;cursor:pointer;font-size:13px;text-align:left;}
+    .sidebar button.primary{background:#3b82f6;}
+    .sidebar .divider{border:none;border-top:1px solid #1e293b;margin:8px 0;}
+    .upload-area{border:2px dashed #334155;border-radius:10px;padding:14px;text-align:center;cursor:pointer;font-size:12px;color:#94a3b8;margin-top:4px;}
+    .file-list{font-size:11px;color:#64748b;margin-top:4px;max-height:70px;overflow-y:auto;}
+    .progress-bar{width:100%;height:4px;background:#1e293b;border-radius:2px;margin-top:6px;overflow:hidden;display:none;}
+    .progress-bar.active{display:block;}
+    .progress-fill{height:100%;background:#3b82f6;transition:width 0.3s;width:0%;}
   </style>
 </head>
 <body>
+
 <div class="overlay" id="overlay"></div>
 <div class="sidebar" id="sidebar">
   <h3>⚙️ Mission Runner</h3>
-  <input type="password" id="tokenInput" class="token-input" placeholder="GitHub token (repo + pages:write)">
-  <button id="saveTokenBtn">💾 Save Token</button>
-  <button id="fixPagesBtn">🔧 Fix GitHub Pages (Auto)</button>
+
+  <label>GitHub Token</label>
+  <input type="password" id="tokenInput" placeholder="ghp_...">
+  <button class="primary" id="saveTokenBtn">💾 Save Token</button>
+
+  <hr class="divider">
+
+  <label>Owner (GitHub username)</label>
+  <input type="text" id="ownerInput" placeholder="e.g. madnessgate44-debug">
+  <label>Repository name</label>
+  <input type="text" id="repoInput" placeholder="e.g. Mazra3a">
+  <label>Branch</label>
+  <input type="text" id="branchInput" placeholder="main" value="main">
+  <button class="primary" id="saveRepoBtn">✅ Save Repo Settings</button>
+
+  <hr class="divider">
+
+  <label>Upload files to repo</label>
+  <div class="upload-area" id="uploadArea">Tap to select files<input type="file" id="fileInput" multiple style="display:none;"></div>
+  <div class="file-list" id="fileList"></div>
+  <div class="progress-bar" id="progressBar"><div class="progress-fill" id="progressFill"></div></div>
+  <button id="uploadBtn">📤 Upload Selected Files</button>
+
+  <hr class="divider">
+
+  <button id="triggerBuildBtn">🔨 Trigger Build</button>
+  <button id="checkStatusBtn">📊 Check Build Status</button>
+
+  <hr class="divider">
   <button id="closeSidebarBtn">✖ Close</button>
 </div>
-<div class="main" style="flex:1;display:flex;flex-direction:column;">
+
+<div style="flex:1;display:flex;flex-direction:column;">
   <div class="header">
-    <button id="menuBtn" style="background:none;font-size:24px;">☰</button>
-    <div class="title">Mission Runner · Auto-Fix</div>
+    <button id="menuBtn" style="background:none;border:none;font-size:22px;cursor:pointer;">☰</button>
+    <div class="title">Mission Runner</div>
+    <div class="repo-badge" id="repoBadge">No repo set</div>
   </div>
   <div class="conversation" id="conversation">
-    <div class="message ai">✅ Ready. Open sidebar, paste your GitHub token (repo + pages:write), then click "Fix GitHub Pages".</div>
+    <div class="message ai">👋 Open ☰ sidebar → set your token and repo → then upload files or paste action-steps.</div>
   </div>
   <div class="input-bar">
-    <input class="input-field" id="messageInput" placeholder="Ask or paste ```action-steps...">
+    <input class="input-field" id="messageInput" placeholder="Paste ```action-steps block...">
     <button class="send-btn" id="sendBtn">Send</button>
   </div>
 </div>
 
 <script>
-  const owner = "madnessgate44-debug";
-  const repo = "Mission-runner";
-  let githubToken = "";
+  let githubToken = localStorage.getItem("mr_token") || "";
+  let owner  = localStorage.getItem("mr_owner")  || "";
+  let repo   = localStorage.getItem("mr_repo")   || "";
+  let branch = localStorage.getItem("mr_branch") || "main";
+  let selectedFiles = [];
 
-  // DOM elements
   const conversation = document.getElementById("conversation");
   const messageInput = document.getElementById("messageInput");
-  const sendBtn = document.getElementById("sendBtn");
-  const menuBtn = document.getElementById("menuBtn");
-  const sidebar = document.getElementById("sidebar");
-  const overlay = document.getElementById("overlay");
-  const tokenInput = document.getElementById("tokenInput");
-  const saveTokenBtn = document.getElementById("saveTokenBtn");
-  const fixPagesBtn = document.getElementById("fixPagesBtn");
-  const closeSidebarBtn = document.getElementById("closeSidebarBtn");
+  const repoBadge    = document.getElementById("repoBadge");
+  const sidebar      = document.getElementById("sidebar");
+  const overlay      = document.getElementById("overlay");
+  const tokenInput   = document.getElementById("tokenInput");
+  const ownerInput   = document.getElementById("ownerInput");
+  const repoInput    = document.getElementById("repoInput");
+  const branchInput  = document.getElementById("branchInput");
+  const fileInput    = document.getElementById("fileInput");
+  const fileList     = document.getElementById("fileList");
+  const progressBar  = document.getElementById("progressBar");
+  const progressFill = document.getElementById("progressFill");
 
-  // Helper: add message
-  function addMessage(text, sender) {
-    const div = document.createElement("div");
-    div.className = `message ${sender === "user" ? "user" : "ai"}`;
-    div.innerHTML = text.replace(/\n/g, "<br>");
-    conversation.appendChild(div);
-    div.scrollIntoView();
+  if (githubToken) tokenInput.value = githubToken;
+  if (owner)  ownerInput.value  = owner;
+  if (repo)   repoInput.value   = repo;
+  if (branch) branchInput.value = branch;
+  updateBadge();
+
+  function addMsg(html, type) {
+    const d = document.createElement("div");
+    d.className = "message ai" + (type ? " " + type : "");
+    d.innerHTML = html.replace(/\n/g,"<br>");
+    conversation.appendChild(d);
+    d.scrollIntoView({behavior:"smooth"});
   }
 
-  // Sidebar logic
-  function openSidebar() { sidebar.classList.add("open"); overlay.classList.add("open"); }
+  function updateBadge() {
+    repoBadge.textContent = (owner && repo) ? owner+"/"+repo : "No repo set";
+  }
+
+  function openSidebar()  { sidebar.classList.add("open");    overlay.classList.add("open"); }
   function closeSidebar() { sidebar.classList.remove("open"); overlay.classList.remove("open"); }
-  menuBtn.onclick = openSidebar;
+  document.getElementById("menuBtn").onclick = openSidebar;
   overlay.onclick = closeSidebar;
-  closeSidebarBtn.onclick = closeSidebar;
+  document.getElementById("closeSidebarBtn").onclick = closeSidebar;
 
-  // Token storage
-  const savedToken = localStorage.getItem("github_token");
-  if (savedToken) {
-    tokenInput.value = savedToken;
-    githubToken = savedToken;
-  }
-  saveTokenBtn.onclick = () => {
-    const token = tokenInput.value.trim();
-    if (token.length < 10) { addMessage("❌ Invalid token", "ai"); return; }
-    localStorage.setItem("github_token", token);
-    githubToken = token;
-    addMessage("✅ Token saved", "ai");
+  document.getElementById("saveTokenBtn").onclick = () => {
+    const t = tokenInput.value.trim();
+    if (t.length < 10) { addMsg("❌ Token too short.","error"); return; }
+    githubToken = t;
+    localStorage.setItem("mr_token", t);
+    addMsg("✅ Token saved.","success");
     closeSidebar();
   };
 
-  // Helper: GitHub API request
-  async function githubRequest(endpoint, method, body = null) {
-    const url = `https://api.github.com/repos/${owner}/${repo}${endpoint}`;
-    const headers = { Authorization: `token ${githubToken}`, Accept: "application/vnd.github.v3+json" };
-    if (body) headers["Content-Type"] = "application/json";
-    const res = await fetch(url, { method, headers, body: body ? JSON.stringify(body) : undefined });
-    if (!res.ok) throw new Error(await res.text());
-    return res.json();
+  document.getElementById("saveRepoBtn").onclick = () => {
+    owner  = ownerInput.value.trim();
+    repo   = repoInput.value.trim();
+    branch = branchInput.value.trim() || "main";
+    if (!owner || !repo) { addMsg("❌ Owner and repo required.","error"); return; }
+    localStorage.setItem("mr_owner",  owner);
+    localStorage.setItem("mr_repo",   repo);
+    localStorage.setItem("mr_branch", branch);
+    updateBadge();
+    addMsg("✅ Repo set to <b>"+owner+"/"+repo+"</b> (branch: "+branch+")","success");
+    closeSidebar();
+  };
+
+  async function ghReq(path, method, body) {
+    const url = "https://api.github.com/repos/"+owner+"/"+repo+path;
+    const h = { Authorization:"token "+githubToken, Accept:"application/vnd.github.v3+json" };
+    if (body) h["Content-Type"] = "application/json";
+    const r = await fetch(url, {method:method||"GET", headers:h, body:body?JSON.stringify(body):undefined});
+    const txt = await r.text();
+    if (!r.ok) throw new Error(txt);
+    return txt ? JSON.parse(txt) : {};
   }
 
-  // 1. Create .github/workflows/deploy.yml
-  async function createWorkflow() {
-    const workflowContent = `name: Deploy to GitHub Pages
-on:
-  push:
-    branches: [ "main" ]
-  workflow_dispatch:
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
-jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: \${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: '.'
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4`;
-    const path = ".github/workflows/deploy.yml";
-    // Get existing file SHA if any
-    let sha = null;
-    try {
-      const existing = await githubRequest(`/contents/${path}`, "GET");
-      sha = existing.sha;
-    } catch(e) { /* file doesn't exist */ }
-    const contentBase64 = btoa(unescape(encodeURIComponent(workflowContent)));
-    await githubRequest(`/contents/${path}`, "PUT", {
-      message: "Add GitHub Actions workflow for Pages",
-      content: contentBase64,
-      sha: sha,
-      branch: "main"
-    });
+  function b64(str) { return btoa(unescape(encodeURIComponent(str))); }
+  function unb64(str) { return decodeURIComponent(escape(atob(str.replace(/\n/g,"")))); }
+
+  function readText(file) {
+    return new Promise((res,rej) => { const r=new FileReader(); r.onload=e=>res(e.target.result); r.onerror=rej; r.readAsText(file); });
+  }
+  function readB64(file) {
+    return new Promise((res,rej) => { const r=new FileReader(); r.onload=e=>res(e.target.result.split(",")[1]); r.onerror=rej; r.readAsDataURL(file); });
   }
 
-  // 2. Ensure Pages source is set to branch (we'll rely on Actions)
-  async function configurePages() {
-    // Set source to main branch (required for Actions to take over)
-    await fetch(`https://api.github.com/repos/${owner}/${repo}/pages`, {
-      method: "PATCH",
-      headers: { Authorization: `token ${githubToken}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ source: { branch: "main", path: "/" } })
-    });
-    // Trigger a Pages build (optional)
-    await fetch(`https://api.github.com/repos/${owner}/${repo}/pages/builds`, {
-      method: "POST",
-      headers: { Authorization: `token ${githubToken}` }
-    });
-  }
+  document.getElementById("uploadArea").onclick = () => fileInput.click();
+  fileInput.onchange = () => {
+    selectedFiles = Array.from(fileInput.files);
+    fileList.innerHTML = selectedFiles.map(f=>"<div>📄 "+f.name+" ("+Math.round(f.size/1024)+"kb)</div>").join("");
+  };
 
-  // 3. Main fix function
-  async function fixGitHubPages() {
-    if (!githubToken) {
-      addMessage("❌ No GitHub token. Please save your token first.", "ai");
-      return;
+  document.getElementById("uploadBtn").onclick = async () => {
+    if (!githubToken) { addMsg("❌ Save token first.","error"); return; }
+    if (!owner||!repo) { addMsg("❌ Save repo settings first.","error"); return; }
+    if (!selectedFiles.length) { addMsg("❌ No files selected.","error"); return; }
+    closeSidebar();
+    addMsg("📤 Uploading "+selectedFiles.length+" file(s) to <b>"+owner+"/"+repo+"</b>...");
+    progressBar.classList.add("active");
+    let done=0, errors=[];
+    for (const file of selectedFiles) {
+      try {
+        const fp = file.webkitRelativePath || file.name;
+        let sha = null;
+        try { sha = (await ghReq("/contents/"+fp)).sha; } catch(e){}
+        const isText = /\.(kt|xml|gradle|kts|toml|md|json|txt|yml|yaml|properties|java|js|html|css|gitignore|env|pro)$/i.test(file.name);
+        const content = isText ? b64(await readText(file)) : await readB64(file);
+        await ghReq("/contents/"+fp,"PUT",{message:"Upload "+fp,content,sha,branch});
+        done++;
+        progressFill.style.width = Math.round(done/selectedFiles.length*100)+"%";
+      } catch(e) { errors.push(file.name+": "+e.message.slice(0,120)); }
     }
-    addMessage("🔧 Starting auto-fix...", "ai");
+    progressBar.classList.remove("active");
+    progressFill.style.width="0%";
+    selectedFiles=[]; fileList.innerHTML=""; fileInput.value="";
+    if (!errors.length) addMsg("✅ All "+done+" file(s) uploaded!","success");
+    else addMsg("⚠️ "+done+" ok, "+errors.length+" failed:\n"+errors.slice(0,5).join("\n"),"error");
+  };
+
+  document.getElementById("triggerBuildBtn").onclick = async () => {
+    if (!githubToken||!owner||!repo) { addMsg("❌ Set token and repo first.","error"); return; }
+    closeSidebar();
     try {
-      addMessage("📁 Creating workflow file...", "ai");
-      await createWorkflow();
-      addMessage("✅ Workflow created.", "ai");
-      addMessage("⚙️ Configuring Pages source...", "ai");
-      await configurePages();
-      addMessage("✅ Pages configured.", "ai");
-      addMessage("🔄 Triggering a test commit (updating index.html timestamp)...", "ai");
-      // Make a dummy commit to index.html to trigger the workflow
-      const currentHtml = document.documentElement.outerHTML;
-      const contentBase64 = btoa(unescape(encodeURIComponent(currentHtml)));
-      const fileSha = await githubRequest(`/contents/index.html`, "GET").then(d => d.sha);
-      await githubRequest(`/contents/index.html`, "PUT", {
-        message: "Trigger workflow after Pages fix",
-        content: contentBase64,
-        sha: fileSha,
-        branch: "main"
+      const wfs = await ghReq("/actions/workflows");
+      if (!wfs.workflows||!wfs.workflows.length) { addMsg("❌ No workflows found. Upload build.yml first.","error"); return; }
+      const wf = wfs.workflows[0];
+      await ghReq("/actions/workflows/"+wf.id+"/dispatches","POST",{ref:branch});
+      addMsg("🔨 Build triggered! (<b>"+wf.name+"</b>)\nWatch: github.com/"+owner+"/"+repo+"/actions","success");
+    } catch(e) { addMsg("❌ "+e.message.slice(0,300),"error"); }
+  };
+
+  document.getElementById("checkStatusBtn").onclick = async () => {
+    if (!githubToken||!owner||!repo) { addMsg("❌ Set token and repo first.","error"); return; }
+    closeSidebar();
+    try {
+      const runs = await ghReq("/actions/runs?per_page=5");
+      if (!runs.workflow_runs||!runs.workflow_runs.length) { addMsg("No builds found yet."); return; }
+      const lines = runs.workflow_runs.slice(0,5).map(r=>{
+        const icon = r.conclusion==="success"?"✅":r.conclusion==="failure"?"❌":r.status==="in_progress"?"🔄":"⏳";
+        return icon+" "+r.name+" — "+(r.conclusion||r.status)+" ("+new Date(r.created_at).toLocaleString()+")";
       });
-      addMessage("✅ Test commit made. Watch Actions tab for workflow runs.", "ai");
-      addMessage("🎉 Fix complete! GitHub Pages should now deploy via Actions on every commit (including API commits).", "ai");
-    } catch (err) {
-      addMessage(`❌ Error: ${err.message}`, "ai");
-    }
-  }
+      addMsg("<b>Last builds on "+owner+"/"+repo+":</b>\n"+lines.join("\n"));
+    } catch(e) { addMsg("❌ "+e.message.slice(0,200),"error"); }
+  };
 
-  fixPagesBtn.onclick = () => { closeSidebar(); fixGitHubPages(); };
-
-  // Simple send (placeholder for AI)
-  sendBtn.onclick = () => {
+  document.getElementById("sendBtn").onclick = async () => {
     const msg = messageInput.value.trim();
     if (!msg) return;
-    addMessage(msg, "user");
-    addMessage("Demo reply. Add your API key in a future version.", "ai");
-    messageInput.value = "";
+    const ud = document.createElement("div");
+    ud.className="message user"; ud.textContent=msg.slice(0,200)+(msg.length>200?"...":"");
+    conversation.appendChild(ud); ud.scrollIntoView({behavior:"smooth"});
+    messageInput.value="";
+    const match = msg.match(/```action-steps([\s\S]*?)```/);
+    if (match) await runSteps(match[1].trim());
+    else addMsg("💬 No action-steps block detected.\n\nFormat:\n```action-steps\nCREATE path/file.kt\n[content]\nEND\n```");
   };
-  messageInput.addEventListener("keypress", e => { if (e.key === "Enter") sendBtn.click(); });
+
+  messageInput.addEventListener("keypress", e => { if(e.key==="Enter") document.getElementById("sendBtn").click(); });
+
+  async function runSteps(text) {
+    if (!githubToken) { addMsg("❌ No token.","error"); return; }
+    if (!owner||!repo) { addMsg("❌ No repo set.","error"); return; }
+    const lines = text.split("\n");
+    const ops=[]; let i=0;
+    while(i<lines.length){
+      const line=lines[i].trim();
+      if(line.startsWith("CREATE ")){
+        const fp=line.slice(7).trim(); const cl=[]; i++;
+        while(i<lines.length&&lines[i].trim()!=="END"){cl.push(lines[i]);i++;}
+        ops.push({type:"create",path:fp,content:cl.join("\n")});
+      } else if(line.startsWith("DELETE ")){
+        ops.push({type:"delete",path:line.slice(7).trim()});
+      } else if(line.startsWith("REPLACE ")){
+        const fp=line.slice(8).trim(); let find="",repl=""; i++;
+        while(i<lines.length&&lines[i].trim()!=="END"){
+          if(lines[i].startsWith("FIND: ")) find=lines[i].slice(6);
+          else if(lines[i].startsWith("WITH: ")) repl=lines[i].slice(6);
+          i++;
+        }
+        ops.push({type:"replace",path:fp,find,with:repl});
+      }
+      i++;
+    }
+    if(!ops.length){addMsg("⚠️ No valid operations found."); return;}
+    addMsg("🚀 Running "+ops.length+" operation(s) on <b>"+owner+"/"+repo+"</b>...");
+    let done=0,errors=[];
+    for(const op of ops){
+      try{
+        if(op.type==="create"){
+          let sha=null; try{sha=(await ghReq("/contents/"+op.path)).sha;}catch(e){}
+          await ghReq("/contents/"+op.path,"PUT",{message:"Mission Runner: create "+op.path,content:b64(op.content),sha,branch});
+          addMsg("✅ Created: "+op.path,"success");
+        } else if(op.type==="delete"){
+          const ex=await ghReq("/contents/"+op.path);
+          await ghReq("/contents/"+op.path,"DELETE",{message:"Mission Runner: delete "+op.path,sha:ex.sha,branch});
+          addMsg("🗑️ Deleted: "+op.path,"success");
+        } else if(op.type==="replace"){
+          const ex=await ghReq("/contents/"+op.path);
+          const decoded=unb64(ex.content);
+          if(!decoded.includes(op.find)){errors.push(op.path+": FIND text not found");continue;}
+          const updated=decoded.replace(op.find,op.with);
+          await ghReq("/contents/"+op.path,"PUT",{message:"Mission Runner: update "+op.path,content:b64(updated),sha:ex.sha,branch});
+          addMsg("✏️ Updated: "+op.path,"success");
+        }
+        done++;
+      }catch(e){errors.push(op.path+": "+e.message.slice(0,150)); addMsg("❌ Failed: "+op.path,"error");}
+    }
+    addMsg("Done: "+done+"/"+ops.length+(errors.length?"\n\nErrors:\n"+errors.join("\n"):""),errors.length?"error":"success");
+  }
 </script>
 </body>
 </html>
