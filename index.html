@@ -259,17 +259,29 @@
       const files = [];
       
       for (const [path, file] of Object.entries(zip.files)) {
-        if (!file.dir) {
-          const content = await file.async("string");
-          const isText = /\.(kt|xml|gradle|kts|toml|md|json|txt|yml|yaml|properties|java|js|html|css|gitignore|env|pro)$/i.test(path);
-          files.push({path, content, isText});
+        // Skip directories and files with undefined path
+        if (!file.dir && path && path.trim() !== "") {
+          try {
+            const content = await file.async("string");
+            // Determine if file is text based on extension
+            const isText = /\.(kt|xml|gradle|kts|toml|md|json|txt|yml|yaml|properties|java|js|html|css|gitignore|env|pro|sh|bat|cmd|conf|config|ini|cfg|xml|xsd|dtd|ent|key|pem|crt|csr|pub|asc|gpg|sig|asc|md|markdown|rst|tex|bib|sty|cls|bst|bst|bib|bbx|cbx|dbx|lbx|bbx|cbx|dbx|lbx)$/i.test(path);
+            files.push({path, content, isText});
+          } catch(e) {
+            console.warn("Failed to read file:", path, e);
+          }
         }
+      }
+      
+      if (files.length === 0) {
+        addMsg("❌ No valid files found in ZIP.","error");
+        return;
       }
       
       addMsg("📦 Found "+files.length+" files in ZIP");
       await uploadFilesToRepo(files, true);
     } catch(e) {
       addMsg("❌ Error extracting ZIP: "+e.message,"error");
+      console.error(e);
     }
   };
 
@@ -279,9 +291,12 @@
       // Convert File objects to our format
       fileList = [];
       for (const file of files) {
-        const isText = /\.(kt|xml|gradle|kts|toml|md|json|txt|yml|yaml|properties|java|js|html|css|gitignore|env|pro)$/i.test(file.name);
-        const content = isText ? await readText(file) : await readB64(file);
-        fileList.push({path: file.webkitRelativePath || file.name, content, isText});
+        const path = file.webkitRelativePath || file.name;
+        if (path && path.trim() !== "") {
+          const isText = /\.(kt|xml|gradle|kts|toml|md|json|txt|yml|yaml|properties|java|js|html|css|gitignore|env|pro|sh|bat|cmd|conf|config|ini|cfg|xml|xsd|dtd|ent|key|pem|crt|csr|pub|asc|gpg|sig|asc|md|markdown|rst|tex|bib|sty|cls|bst|bst|bib|bbx|cbx|dbx|lbx|bbx|cbx|dbx|lbx)$/i.test(path);
+          const content = isText ? await readText(file) : await readB64(file);
+          fileList.push({path, content, isText});
+        }
       }
     }
 
@@ -291,7 +306,7 @@
     progressBar.classList.add("active");
     
     let uploaded=0, deleted=0, errors=[];
-    const paths = fileList.map(f => f.path);
+    const paths = fileList.map(f => f.path).filter(p => p && p.trim() !== "");
     
     // Clean duplicates if enabled
     if (cleanDuplicates.checked) {
@@ -313,11 +328,13 @@
     for (let i = 0; i < fileList.length; i++) {
       try {
         const {path, content, isText} = fileList[i];
-        await uploadFile(path, content, isText);
-        uploaded++;
+        if (path && path.trim() !== "") {
+          await uploadFile(path, content, isText);
+          uploaded++;
+        }
         progressFill.style.width = Math.round((i+1)/fileList.length*100)+"%";
       } catch(e) {
-        errors.push(path+": "+e.message.slice(0,120));
+        errors.push((fileList[i].path || "unknown")+": "+e.message.slice(0,120));
       }
     }
     
