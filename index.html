@@ -30,10 +30,14 @@
     .sidebar button.primary{background:#3b82f6;}
     .sidebar .divider{border:none;border-top:1px solid #1e293b;margin:8px 0;}
     .upload-area{border:2px dashed #334155;border-radius:10px;padding:14px;text-align:center;cursor:pointer;font-size:12px;color:#94a3b8;margin-top:4px;}
+    .upload-area.upload-zip{border-color:#3b82f6;background:#1e293b;}
     .file-list{font-size:11px;color:#64748b;margin-top:4px;max-height:70px;overflow-y:auto;}
     .progress-bar{width:100%;height:4px;background:#1e293b;border-radius:2px;margin-top:6px;overflow:hidden;display:none;}
     .progress-bar.active{display:block;}
     .progress-fill{height:100%;background:#3b82f6;transition:width 0.3s;width:0%;}
+    .zip-info{font-size:11px;color:#94a3b8;margin-top:4px;}
+    .checkbox-label{font-size:11px;color:#94a3b8;display:flex;align-items:center;gap:6px;margin-top:4px;cursor:pointer;}
+    .checkbox-label input[type="checkbox"]{width:16px;height:16px;accent-color:#3b82f6;}
   </style>
 </head>
 <body>
@@ -59,10 +63,18 @@
   <hr class="divider">
 
   <label>Upload files to repo</label>
-  <div class="upload-area" id="uploadArea">Tap to select files<input type="file" id="fileInput" multiple style="display:none;"></div>
+  <div class="upload-area" id="uploadArea">📁 Tap to select files<input type="file" id="fileInput" multiple style="display:none;"></div>
+  <div class="upload-area upload-zip" id="uploadZipArea">📦 Tap to select a ZIP file<input type="file" id="zipInput" accept=".zip" style="display:none;"></div>
   <div class="file-list" id="fileList"></div>
+  <div class="zip-info" id="zipInfo"></div>
+  
+  <label class="checkbox-label">
+    <input type="checkbox" id="cleanDuplicates" checked> 🧹 Clean duplicates (delete existing before upload)
+  </label>
+  
   <div class="progress-bar" id="progressBar"><div class="progress-fill" id="progressFill"></div></div>
   <button id="uploadBtn">📤 Upload Selected Files</button>
+  <button id="uploadZipBtn" style="margin-top:4px;">📦 Upload & Extract ZIP</button>
 
   <hr class="divider">
 
@@ -88,12 +100,14 @@
   </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
   let githubToken = localStorage.getItem("mr_token") || "";
   let owner  = localStorage.getItem("mr_owner")  || "";
   let repo   = localStorage.getItem("mr_repo")   || "";
   let branch = localStorage.getItem("mr_branch") || "main";
   let selectedFiles = [];
+  let zipFile = null;
 
   const conversation = document.getElementById("conversation");
   const messageInput = document.getElementById("messageInput");
@@ -105,9 +119,12 @@
   const repoInput    = document.getElementById("repoInput");
   const branchInput  = document.getElementById("branchInput");
   const fileInput    = document.getElementById("fileInput");
+  const zipInput     = document.getElementById("zipInput");
   const fileList     = document.getElementById("fileList");
+  const zipInfo      = document.getElementById("zipInfo");
   const progressBar  = document.getElementById("progressBar");
   const progressFill = document.getElementById("progressFill");
+  const cleanDuplicates = document.getElementById("cleanDuplicates");
 
   if (githubToken) tokenInput.value = githubToken;
   if (owner)  ownerInput.value  = owner;
@@ -175,10 +192,51 @@
     return new Promise((res,rej) => { const r=new FileReader(); r.onload=e=>res(e.target.result.split(",")[1]); r.onerror=rej; r.readAsDataURL(file); });
   }
 
+  // Check if file exists in repo
+  async function fileExists(path) {
+    try {
+      await ghReq("/contents/"+path);
+      return true;
+    } catch(e) {
+      return false;
+    }
+  }
+
+  // Delete file from repo
+  async function deleteFile(path) {
+    try {
+      const ex = await ghReq("/contents/"+path);
+      await ghReq("/contents/"+path,"DELETE",{message:"Cleanup: delete "+path,sha:ex.sha,branch});
+      return true;
+    } catch(e) {
+      return false;
+    }
+  }
+
+  // Upload a single file
+  async function uploadFile(path, content, isText) {
+    let sha = null;
+    try { sha = (await ghReq("/contents/"+path)).sha; } catch(e){}
+    const contentB64 = isText ? b64(content) : content;
+    await ghReq("/contents/"+path,"PUT",{message:"Upload "+path,content:contentB64,sha,branch});
+  }
+
   document.getElementById("uploadArea").onclick = () => fileInput.click();
   fileInput.onchange = () => {
     selectedFiles = Array.from(fileInput.files);
     fileList.innerHTML = selectedFiles.map(f=>"<div>📄 "+f.name+" ("+Math.round(f.size/1024)+"kb)</div>").join("");
+    zipFile = null;
+    zipInfo.textContent = "";
+  };
+
+  document.getElementById("uploadZipArea").onclick = () => zipInput.click();
+  zipInput.onchange = () => {
+    zipFile = zipInput.files[0];
+    if (zipFile) {
+      zipInfo.textContent = "📦 ZIP loaded: "+zipFile.name+" ("+Math.round(zipFile.size/1024)+"kb)";
+      selectedFiles = [];
+      fileList.innerHTML = "";
+    }
   };
 
   document.getElementById("uploadBtn").onclick = async () => {
@@ -186,27 +244,100 @@
     if (!owner||!repo) { addMsg("❌ Save repo settings first.","error"); return; }
     if (!selectedFiles.length) { addMsg("❌ No files selected.","error"); return; }
     closeSidebar();
-    addMsg("📤 Uploading "+selectedFiles.length+" file(s) to <b>"+owner+"/"+repo+"</b>...");
-    progressBar.classList.add("active");
-    let done=0, errors=[];
-    for (const file of selectedFiles) {
-      try {
-        const fp = file.webkitRelativePath || file.name;
-        let sha = null;
-        try { sha = (await ghReq("/contents/"+fp)).sha; } catch(e){}
-        const isText = /\.(kt|xml|gradle|kts|toml|md|json|txt|yml|yaml|properties|java|js|html|css|gitignore|env|pro)$/i.test(file.name);
-        const content = isText ? b64(await readText(file)) : await readB64(file);
-        await ghReq("/contents/"+fp,"PUT",{message:"Upload "+fp,content,sha,branch});
-        done++;
-        progressFill.style.width = Math.round(done/selectedFiles.length*100)+"%";
-      } catch(e) { errors.push(file.name+": "+e.message.slice(0,120)); }
+    await uploadFilesToRepo(selectedFiles, false);
+  };
+
+  document.getElementById("uploadZipBtn").onclick = async () => {
+    if (!githubToken) { addMsg("❌ Save token first.","error"); return; }
+    if (!owner||!repo) { addMsg("❌ Save repo settings first.","error"); return; }
+    if (!zipFile) { addMsg("❌ No ZIP file selected.","error"); return; }
+    closeSidebar();
+    
+    try {
+      addMsg("📦 Extracting ZIP: "+zipFile.name+"...");
+      const zip = await JSZip.loadAsync(zipFile);
+      const files = [];
+      
+      for (const [path, file] of Object.entries(zip.files)) {
+        if (!file.dir) {
+          const content = await file.async("string");
+          const isText = /\.(kt|xml|gradle|kts|toml|md|json|txt|yml|yaml|properties|java|js|html|css|gitignore|env|pro)$/i.test(path);
+          files.push({path, content, isText});
+        }
+      }
+      
+      addMsg("📦 Found "+files.length+" files in ZIP");
+      await uploadFilesToRepo(files, true);
+    } catch(e) {
+      addMsg("❌ Error extracting ZIP: "+e.message,"error");
     }
+  };
+
+  async function uploadFilesToRepo(files, isZip) {
+    let fileList = files;
+    if (!isZip) {
+      // Convert File objects to our format
+      fileList = [];
+      for (const file of files) {
+        const isText = /\.(kt|xml|gradle|kts|toml|md|json|txt|yml|yaml|properties|java|js|html|css|gitignore|env|pro)$/i.test(file.name);
+        const content = isText ? await readText(file) : await readB64(file);
+        fileList.push({path: file.webkitRelativePath || file.name, content, isText});
+      }
+    }
+
+    if (!fileList.length) { addMsg("❌ No files to upload.","error"); return; }
+    
+    addMsg("🚀 Processing "+fileList.length+" file(s) on <b>"+owner+"/"+repo+"</b>...");
+    progressBar.classList.add("active");
+    
+    let uploaded=0, deleted=0, errors=[];
+    const paths = fileList.map(f => f.path);
+    
+    // Clean duplicates if enabled
+    if (cleanDuplicates.checked) {
+      addMsg("🧹 Checking for duplicates...");
+      for (const path of paths) {
+        try {
+          if (await fileExists(path)) {
+            await deleteFile(path);
+            deleted++;
+          }
+        } catch(e) {
+          errors.push("Cleanup failed for "+path+": "+e.message.slice(0,100));
+        }
+      }
+      if (deleted > 0) addMsg("🧹 Deleted "+deleted+" existing file(s)","success");
+    }
+    
+    // Upload files
+    for (let i = 0; i < fileList.length; i++) {
+      try {
+        const {path, content, isText} = fileList[i];
+        await uploadFile(path, content, isText);
+        uploaded++;
+        progressFill.style.width = Math.round((i+1)/fileList.length*100)+"%";
+      } catch(e) {
+        errors.push(path+": "+e.message.slice(0,120));
+      }
+    }
+    
     progressBar.classList.remove("active");
     progressFill.style.width="0%";
-    selectedFiles=[]; fileList.innerHTML=""; fileInput.value="";
-    if (!errors.length) addMsg("✅ All "+done+" file(s) uploaded!","success");
-    else addMsg("⚠️ "+done+" ok, "+errors.length+" failed:\n"+errors.slice(0,5).join("\n"),"error");
-  };
+    
+    // Clear selections
+    selectedFiles = [];
+    fileList.innerHTML = "";
+    zipFile = null;
+    zipInfo.textContent = "";
+    fileInput.value = "";
+    zipInput.value = "";
+    
+    if (!errors.length) {
+      addMsg("✅ Uploaded "+uploaded+" file(s)"+(deleted>0?" (deleted "+deleted+" duplicates)":"")+"!","success");
+    } else {
+      addMsg("⚠️ "+uploaded+" uploaded, "+errors.length+" failed:\n"+errors.slice(0,5).join("\n"),"error");
+    }
+  }
 
   document.getElementById("triggerBuildBtn").onclick = async () => {
     if (!githubToken||!owner||!repo) { addMsg("❌ Set token and repo first.","error"); return; }
