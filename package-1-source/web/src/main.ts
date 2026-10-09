@@ -138,9 +138,8 @@ function attachShellEvents() {
   document.querySelector<HTMLFormElement>("#navigateForm")?.addEventListener("submit", async event => {
     event.preventDefault();
     const url = document.querySelector<HTMLInputElement>("#browserUrl")!.value.trim();
-    try { busy = true; await api("/browser/navigate", { method: "POST", body: JSON.stringify({ url }) }); setNotice("Browser navigated.", "success"); await refreshScreenshot(); }
+    try { await api("/browser/navigate", { method: "POST", body: JSON.stringify({ url }) }); setNotice("Browser navigated.", "success"); await refreshScreenshot(); }
     catch (error) { setNotice((error as Error).message, "error"); }
-    finally { busy = false; }
   });
   document.querySelector<HTMLButtonElement>("#backBtn")?.addEventListener("click", async () => {
     try { await api("/browser/back", { method: "POST", body: "{}" }); await refreshScreenshot(); }
