@@ -33,5 +33,5 @@ CMD ["pnpm","--filter","@mission-runner/browser-worker","start"]
 
 FROM nginx:1.28-alpine AS web-runtime
 COPY deploy/nginx.conf /etc/nginx/conf.d/default.conf
-COPY web/dist /usr/share/nginx/html
+COPY --from=workspace /app/web/dist /usr/share/nginx/html
 EXPOSE 80
