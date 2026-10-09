@@ -110,6 +110,61 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     return { missionId, status: result.status };
   });
 
+
+  app.post("/missions/:missionId/execute", { preHandler: requireAuth }, async (request, reply) => {
+    if (!checkCsrf(request)) return reply.code(403).send({ error: "csrf_invalid" });
+    const { missionId } = request.params as { missionId: string };
+    const item = await store.get(request.ownerId!, missionId);
+    if (!item) return reply.code(404).send({ error: "mission_not_found" });
+    if (!["validated", "approved"].includes(item.status)) return reply.code(409).send({ error: "mission_not_executable", status: item.status });
+    const digest = await missionContentHash(item.mission);
+    if (digest !== item.contentHash) return reply.code(409).send({ error: "content_changed_revalidate" });
+    if (item.approvalRequired && (!item.approval || item.approval.contentHash !== digest)) return reply.code(403).send({ error: "approval_required" });
+    const started = await store.startExecution(request.ownerId!, missionId, digest);
+    if (!started) return reply.code(409).send({ error: "mission_state_changed_retry" });
+    const operationResults: Array<Record<string, unknown>> = [];
+    let requiredFailure = false;
+    for (const operation of item.mission.operations) {
+      const latest = await store.get(request.ownerId!, missionId);
+      if (!latest || latest.status === "cancelled") {
+        operationResults.push({ operationId: operation.operationId, status: "not_run", reason: "mission_cancelled" });
+        break;
+      }
+      if (requiredFailure) {
+        operationResults.push({ operationId: operation.operationId, status: "not_run", reason: "prior_required_operation_failed" });
+        continue;
+      }
+      try {
+        const workerUrl = operation.kind === "github" ? config.githubWorkerUrl : config.browserWorkerUrl;
+        const workerSecret = operation.kind === "github" ? config.githubWorkerSecret : config.browserWorkerSecret;
+        if (!workerUrl || workerSecret.length < 32) throw new Error(operation.kind + "_worker_not_configured");
+        const body = { mission: item.mission, operation, contentHash: digest, ...(item.approval ? { approval: item.approval } : {}) };
+        const timestamp = String(Math.floor(Date.now() / 1000));
+        const nonce = randomUUID();
+        const signature = createHmac("sha256", workerSecret).update(timestamp + "." + nonce + "." + canonicalJson(body)).digest("hex");
+        const response = await fetch(new URL("execute", workerUrl.endsWith("/") ? workerUrl : workerUrl + "/"), {
+          method: "POST",
+          headers: { "content-type": "application/json", "x-worker-timestamp": timestamp, "x-worker-nonce": nonce, "x-worker-signature": signature },
+          body: JSON.stringify(body),
+          signal: AbortSignal.timeout(30000)
+        });
+        const payload = await response.json().catch(() => ({ error: "worker_invalid_response" })) as Record<string, unknown>;
+        if (!response.ok) throw new Error(String(payload.message ?? payload.error ?? "worker_request_failed"));
+        operationResults.push({ operationId: operation.operationId, kind: operation.kind, op: operation.op, status: "succeeded", result: payload.result ?? null });
+      } catch (error) {
+        operationResults.push({ operationId: operation.operationId, kind: operation.kind, op: operation.op, status: "failed", error: (error as Error).message });
+        if (operation.required) requiredFailure = true;
+      }
+    }
+    const finalStatus = requiredFailure ? "failed" : "succeeded";
+    const completed = await store.finishExecution(request.ownerId!, missionId, finalStatus, operationResults);
+    if (!completed) {
+      const current = await store.get(request.ownerId!, missionId);
+      return reply.code(409).send({ error: "mission_state_changed_during_execution", status: current?.status ?? "unknown", operations: operationResults });
+    }
+    return { missionId, status: completed.status, contentHash: completed.contentHash, operations: operationResults };
+  });
+
   async function callBrowserWorker(path: string, body: unknown): Promise<Response> {
     if (!config.browserWorkerUrl || config.browserWorkerSecret.length < 32) throw new Error("browser_worker_not_configured");
     const timestamp = String(Math.floor(Date.now() / 1000));
@@ -210,6 +265,6 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     return typeof supplied === "string" && typeof expected === "string" && supplied.length > 0 && supplied === expected;
   }
   function summarize(item: StoredMission) {
-    return { missionId: item.mission.missionId, objective: item.mission.objective, status: item.status, contentHash: item.contentHash, effectiveRisk: item.effectiveRisk, approvalRequired: item.approvalRequired, createdAt: item.createdAt, updatedAt: item.updatedAt, approval: item.approval ? { approvalId: item.approval.approvalId, contentHash: item.approval.contentHash, approvedAt: item.approval.approvedAt } : null };
+    return { missionId: item.mission.missionId, objective: item.mission.objective, status: item.status, contentHash: item.contentHash, effectiveRisk: item.effectiveRisk, approvalRequired: item.approvalRequired, createdAt: item.createdAt, updatedAt: item.updatedAt, approval: item.approval ? { approvalId: item.approval.approvalId, contentHash: item.approval.contentHash, approvedAt: item.approval.approvedAt } : null, result: item.result ?? null };
   }
 }
