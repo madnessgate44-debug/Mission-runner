@@ -5,6 +5,7 @@ export function domainMatches(hostname: string, allowed: string): boolean {
   const host = hostname.toLowerCase().replace(/\.$/, "");
   const rule = allowed.toLowerCase().trim().replace(/\.$/, "");
   if (!host || !rule) return false;
+  if (rule === "*") return true;
   if (rule.startsWith("*.")) return host.endsWith(rule.slice(1)) && host !== rule.slice(2);
   return host === rule;
 }
@@ -21,10 +22,8 @@ function isPrivateIp(ip: string): boolean {
   }
   if (version === 6) {
     const normalized = ip.toLowerCase();
-    return normalized === "::" || normalized === "::1" || normalized.startsWith("fc") ||
-      normalized.startsWith("fd") || normalized.startsWith("fe8") || normalized.startsWith("fe9") ||
-      normalized.startsWith("fea") || normalized.startsWith("feb") || normalized.startsWith("::ffff:127.") ||
-      normalized.startsWith("::ffff:10.") || normalized.startsWith("::ffff:192.168.");
+    // Only globally routable IPv6 unicast is permitted; mapped/private/local ranges are blocked.
+    return !(normalized.startsWith("2") || normalized.startsWith("3")) || normalized.startsWith("2001:db8") || normalized.startsWith("::ffff:");
   }
   return true;
 }
