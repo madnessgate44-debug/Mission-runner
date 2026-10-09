@@ -14,8 +14,7 @@ and is not a programmer.
 
 ## What this repository is
 
-This is a **source-only** repository. Nothing here has been deployed, tested, or
-uploaded on your behalf. You (or a reviewer) must build, configure, and run it.
+This repository contains Package 1 contracts and project tooling. CI checks type safety, linting, regression tests, and the example against both JSON Schema and runtime validation. It is not deployed, and Packages 2–6 remain unimplemented.
 
 ## Trust model in one paragraph
 
@@ -37,6 +36,20 @@ misleading.
 
 If you later add an official assistant API integration, it must flow through the
 same backend validation and approval pipeline as manual missions.
+
+## Verify Package 1
+
+Requirements: Node.js 20+ and pnpm 9+.
+
+```sh
+pnpm install
+pnpm typecheck
+pnpm lint
+pnpm test
+pnpm validate:example
+```
+
+The example-validation command checks both the normative JSON Schema and the runtime validator. Passing Package 1 checks does not mean the full Mission Runner system is deployable; backend, workers, frontend, and deployment are later packages.
 
 ## Architecture at a glance
 
