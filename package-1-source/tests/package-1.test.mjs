@@ -66,6 +66,13 @@ test("rejects operation counts above effective limits", () => {
   assert.ok(validateMission(candidate).issues.some((issue) => issue.code === "limit_exceeded"));
 });
 
+test("rejects credential-bearing navigation URLs in schema and runtime", () => {
+  const candidate = clone(example);
+  candidate.operations[1].url = "https://user:password@example.com/";
+  assert.equal(validateMission(candidate).ok, false);
+  assert.equal(schemaValidate(candidate), false);
+});
+
 test("rejects operations outside declared mission targets", () => {
   const repoMismatch = clone(example);
   repoMismatch.operations[0].repo = "other-org/other-repo";
