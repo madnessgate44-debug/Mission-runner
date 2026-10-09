@@ -32,6 +32,7 @@ services:
       BROWSER_WORKER_SHARED_SECRET: ${BROWSER_WORKER_SHARED_SECRET:?Set browser worker secret}
       GITHUB_WORKER_URL: http://github-worker:8791/
       GITHUB_WORKER_SHARED_SECRET: ${GITHUB_WORKER_SHARED_SECRET:?Set GitHub worker secret}
+      AI_TOOL_SHARED_SECRET: ${AI_TOOL_SHARED_SECRET:?Set AI tool secret}
     depends_on:
       database:
         condition: service_healthy
@@ -72,13 +73,29 @@ services:
       - browser_evidence:/data/evidence
     expose: ["8792"]
 
+  mcp-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: mcp-runtime
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 8780
+      BACKEND_URL: http://backend:3000/
+      AI_TOOL_SHARED_SECRET: ${AI_TOOL_SHARED_SECRET:?Set AI tool secret}
+      MCP_ACCESS_TOKEN: ${MCP_ACCESS_TOKEN:?Set MCP access token}
+    depends_on: ["backend"]
+    expose: ["8780"]
+
   web:
     build:
       context: .
       dockerfile: Dockerfile
       target: web-runtime
     restart: unless-stopped
-    depends_on: ["backend"]
+    depends_on: ["backend", "mcp-gateway"]
     ports:
       - "${PUBLIC_PORT:-8080}:80"
 
