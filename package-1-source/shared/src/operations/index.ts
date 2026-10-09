@@ -2,8 +2,8 @@ import type { GitHubOperation } from "./github.js";
 import { isGitHubOperation } from "./github.js";
 import type { BrowserOperation } from "./browser.js";
 import { isBrowserOperation } from "./browser.js";
-import type { RiskLevel } from "../risk.js";
-import { maxRisk } from "../risk.js";
+import type { ApprovalPolicy, RiskLevel } from "../risk.js";
+import { DEFAULT_APPROVAL_POLICY, maxRisk, riskAtLeast } from "../risk.js";
 import {
   githubOperationRisk,
   isGitHubWriteOp,
@@ -37,7 +37,31 @@ export function aggregateOperationRisk(
   return risk;
 }
 
-export function operationRequiresApproval(op: MissionOperation): boolean {
-  if (op.kind === "github") return isGitHubWriteOp(op.op);
-  return isBrowserApprovalOp(op.op);
+export function operationRequiresApproval(
+  op: MissionOperation,
+  policy: ApprovalPolicy = DEFAULT_APPROVAL_POLICY,
+): boolean {
+  if (op.kind === "github") return policy.requireApprovalForGitHubWrites && isGitHubWriteOp(op.op);
+  if (op.op === "click") return policy.requireApprovalForBrowserClicks;
+  if (op.op === "type") return policy.requireApprovalForBrowserTyping;
+  if (op.op === "submit_form") return policy.requireApprovalForBrowserSubmits;
+  return false;
+}
+
+/** Computes effective risk from untrusted declaration plus operation risk. */
+export function effectiveMissionRisk(
+  declaredRisk: RiskLevel,
+  operations: readonly MissionOperation[],
+): RiskLevel {
+  return maxRisk(declaredRisk, aggregateOperationRisk(operations));
+}
+
+/** High-risk missions always require approval regardless of author declarations. */
+export function missionRequiresApproval(
+  declaredRisk: RiskLevel,
+  operations: readonly MissionOperation[],
+  policy: ApprovalPolicy = DEFAULT_APPROVAL_POLICY,
+): boolean {
+  return riskAtLeast(effectiveMissionRisk(declaredRisk, operations), policy.requireApprovalAtOrAbove) ||
+    operations.some((operation) => operationRequiresApproval(operation, policy));
 }
