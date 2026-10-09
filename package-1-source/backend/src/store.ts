@@ -12,6 +12,7 @@ export interface StoredMission {
   effectiveRisk: "low" | "medium" | "high";
   approvalRequired: boolean;
   approval?: MissionApproval;
+  result?: unknown;
 }
 
 export class MissionStore {
@@ -58,7 +59,8 @@ export class MissionStore {
       updatedAt: new Date(row.updated_at).toISOString(),
       effectiveRisk: row.effective_risk,
       approvalRequired: row.approval_required,
-      ...(row.approval ? { approval: row.approval as MissionApproval } : {})
+      ...(row.approval ? { approval: row.approval as MissionApproval } : {}),
+      ...(row.result !== null && row.result !== undefined ? { result: row.result as unknown } : {})
     };
   }
 
@@ -74,6 +76,24 @@ export class MissionStore {
        WHERE owner_id=$1 AND mission_id=$2 AND status='awaiting_approval' AND content_hash=$4
        RETURNING mission_id`,
       [ownerId, missionId, JSON.stringify(approval), approval.contentHash]
+    );
+    if (!result.rowCount) return null;
+    return this.get(ownerId, missionId);
+  }
+
+  async startExecution(ownerId: string, missionId: string, contentHash: string): Promise<StoredMission | null> {
+    const result = await this.pool.query(
+      "UPDATE missions SET status='running', updated_at=now() WHERE owner_id=$1 AND mission_id=$2 AND content_hash=$3 AND status IN ('validated','approved') AND (approval_required=false OR status='approved') RETURNING mission_id",
+      [ownerId, missionId, contentHash]
+    );
+    if (!result.rowCount) return null;
+    return this.get(ownerId, missionId);
+  }
+
+  async finishExecution(ownerId: string, missionId: string, status: "succeeded" | "failed", resultValue: unknown): Promise<StoredMission | null> {
+    const result = await this.pool.query(
+      "UPDATE missions SET status=$1, result=$2, updated_at=now() WHERE owner_id=$3 AND mission_id=$4 AND status='running' RETURNING mission_id",
+      [status, JSON.stringify(resultValue), ownerId, missionId]
     );
     if (!result.rowCount) return null;
     return this.get(ownerId, missionId);
