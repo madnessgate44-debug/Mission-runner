@@ -48,7 +48,7 @@ Every mission passes through a **policy engine** before dispatch:
    (`shared/src/limits.ts`). A mission cannot raise its own caps.
 5. Domain allowlist check for browser operations.
 
-A mission cannot escalate its own privileges. The client cannot override policy.
+A mission cannot escalate its own privileges. The client cannot override policy. `declaredRiskLevel`, `declaredRequiresApproval`, and any submitted `contentHash` are untrusted inputs; the server computes effective risk, approval requirement, and SHA-256 content binding. Approval records are stored separately and bind the exact immutable execution payload.
 
 ## 5. Secrets handling
 
