@@ -28,11 +28,9 @@ export interface ValidationResult {
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    !Array.isArray(value)
-  );
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
 }
 
 function isIsoTimestamp(value: unknown): value is string {
@@ -346,6 +344,13 @@ export function validateMission(candidate: unknown): ValidationResult {
     }
   }
 
+  if (Array.isArray(m.operations)) {
+    const effectiveLimits = clampMissionLimits(isPlainObject(m.limits) ? m.limits as Partial<MissionLimits> : undefined);
+    if (m.operations.length > effectiveLimits.maxOperations) {
+      issues.push({ path: "operations", code: "limit_exceeded", message: `operations length exceeds the effective maxOperations limit (${effectiveLimits.maxOperations})` });
+    }
+  }
+
   validateMetadata(m.metadata, issues);
 
   if (m.contentHash !== undefined && (typeof m.contentHash !== "string" || !/^sha256:[a-f0-9]{64}$/.test(m.contentHash))) {
@@ -377,7 +382,7 @@ export function toExecutableMission(candidate: MissionV1): {
   limits: MissionLimits;
 } {
   const limits = clampMissionLimits(candidate.limits);
-  return { mission: candidate, limits };
+  return { mission: { ...candidate, limits }, limits };
 }
 
 export function isMissionV1(value: unknown): value is MissionV1 {
