@@ -169,4 +169,4 @@ object storage, TOTP) is marked "optional" where applicable.
   `domain_not_allowed`. This is a policy failure, not a bug.
 - Approval bypass attempt: policy forces `awaiting_approval` for `high` risk and for
   any operation tagged `write` on GitHub, regardless of the mission's
-  `requiresApproval` value.
+  `declaredRequiresApproval` value.
