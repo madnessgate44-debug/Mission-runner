@@ -277,544 +277,921 @@
       ]
     },
     "githubOperation": {
-      "type": "object",
-      "required": [
-        "kind",
-        "op",
-        "operationId",
-        "required",
-        "description"
-      ],
-      "properties": {
-        "kind": {
-          "const": "github"
-        },
-        "op": {
-          "enum": [
-            "read_file",
-            "list_files",
-            "list_issues",
-            "get_issue",
-            "list_pull_requests",
-            "get_pull_request",
-            "list_commits",
-            "create_branch",
-            "put_file",
-            "open_pull_request",
-            "comment_on_issue",
-            "comment_on_pull_request"
-          ]
-        },
-        "operationId": {
-          "$ref": "#/$defs/commonOperationFields/properties/operationId"
-        },
-        "required": {
-          "$ref": "#/$defs/commonOperationFields/properties/required"
-        },
-        "description": {
-          "$ref": "#/$defs/commonOperationFields/properties/description"
-        },
-        "repo": {
-          "type": "string",
-          "pattern": "^[^/\\\\s]+/[^/\\\\s]+$"
-        },
-        "path": {
-          "type": "string"
-        },
-        "ref": {
-          "$ref": "#/$defs/gitHubRef"
-        },
-        "encoding": {
-          "enum": [
-            "utf8",
-            "base64"
-          ]
-        },
-        "state": {
-          "enum": [
-            "open",
-            "closed",
-            "all"
-          ]
-        },
-        "labels": {
-          "type": "array",
-          "items": {
-            "type": "string"
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "op",
+            "operationId",
+            "required",
+            "description",
+            "repo",
+            "path"
+          ],
+          "properties": {
+            "kind": {
+              "const": "github"
+            },
+            "op": {
+              "const": "read_file"
+            },
+            "operationId": {
+              "$ref": "#/$defs/commonOperationFields/properties/operationId"
+            },
+            "required": {
+              "$ref": "#/$defs/commonOperationFields/properties/required"
+            },
+            "description": {
+              "$ref": "#/$defs/commonOperationFields/properties/description"
+            },
+            "repo": {
+              "type": "string",
+              "pattern": "^[^/\\\\s]+/[^/\\\\s]+$"
+            },
+            "path": {
+              "type": "string"
+            },
+            "ref": {
+              "$ref": "#/$defs/gitHubRef"
+            },
+            "encoding": {
+              "enum": [
+                "utf8",
+                "base64"
+              ]
+            }
           }
         },
-        "limit": {
-          "type": "integer",
-          "minimum": 1
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "op",
+            "operationId",
+            "required",
+            "description",
+            "repo",
+            "path"
+          ],
+          "properties": {
+            "kind": {
+              "const": "github"
+            },
+            "op": {
+              "const": "list_files"
+            },
+            "operationId": {
+              "$ref": "#/$defs/commonOperationFields/properties/operationId"
+            },
+            "required": {
+              "$ref": "#/$defs/commonOperationFields/properties/required"
+            },
+            "description": {
+              "$ref": "#/$defs/commonOperationFields/properties/description"
+            },
+            "repo": {
+              "type": "string",
+              "pattern": "^[^/\\\\s]+/[^/\\\\s]+$"
+            },
+            "path": {
+              "type": "string"
+            },
+            "ref": {
+              "$ref": "#/$defs/gitHubRef"
+            }
+          }
         },
-        "issueNumber": {
-          "type": "integer",
-          "minimum": 1
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "op",
+            "operationId",
+            "required",
+            "description",
+            "repo"
+          ],
+          "properties": {
+            "kind": {
+              "const": "github"
+            },
+            "op": {
+              "const": "list_issues"
+            },
+            "operationId": {
+              "$ref": "#/$defs/commonOperationFields/properties/operationId"
+            },
+            "required": {
+              "$ref": "#/$defs/commonOperationFields/properties/required"
+            },
+            "description": {
+              "$ref": "#/$defs/commonOperationFields/properties/description"
+            },
+            "repo": {
+              "type": "string",
+              "pattern": "^[^/\\\\s]+/[^/\\\\s]+$"
+            },
+            "state": {
+              "enum": [
+                "open",
+                "closed",
+                "all"
+              ]
+            },
+            "labels": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
         },
-        "pullNumber": {
-          "type": "integer",
-          "minimum": 1
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "op",
+            "operationId",
+            "required",
+            "description",
+            "repo",
+            "issueNumber"
+          ],
+          "properties": {
+            "kind": {
+              "const": "github"
+            },
+            "op": {
+              "const": "get_issue"
+            },
+            "operationId": {
+              "$ref": "#/$defs/commonOperationFields/properties/operationId"
+            },
+            "required": {
+              "$ref": "#/$defs/commonOperationFields/properties/required"
+            },
+            "description": {
+              "$ref": "#/$defs/commonOperationFields/properties/description"
+            },
+            "repo": {
+              "type": "string",
+              "pattern": "^[^/\\\\s]+/[^/\\\\s]+$"
+            },
+            "issueNumber": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
         },
-        "branch": {
-          "type": "string",
-          "minLength": 1
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "op",
+            "operationId",
+            "required",
+            "description",
+            "repo"
+          ],
+          "properties": {
+            "kind": {
+              "const": "github"
+            },
+            "op": {
+              "const": "list_pull_requests"
+            },
+            "operationId": {
+              "$ref": "#/$defs/commonOperationFields/properties/operationId"
+            },
+            "required": {
+              "$ref": "#/$defs/commonOperationFields/properties/required"
+            },
+            "description": {
+              "$ref": "#/$defs/commonOperationFields/properties/description"
+            },
+            "repo": {
+              "type": "string",
+              "pattern": "^[^/\\\\s]+/[^/\\\\s]+$"
+            },
+            "state": {
+              "enum": [
+                "open",
+                "closed",
+                "all"
+              ]
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
         },
-        "fromRef": {
-          "$ref": "#/$defs/gitHubRef"
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "op",
+            "operationId",
+            "required",
+            "description",
+            "repo",
+            "pullNumber"
+          ],
+          "properties": {
+            "kind": {
+              "const": "github"
+            },
+            "op": {
+              "const": "get_pull_request"
+            },
+            "operationId": {
+              "$ref": "#/$defs/commonOperationFields/properties/operationId"
+            },
+            "required": {
+              "$ref": "#/$defs/commonOperationFields/properties/required"
+            },
+            "description": {
+              "$ref": "#/$defs/commonOperationFields/properties/description"
+            },
+            "repo": {
+              "type": "string",
+              "pattern": "^[^/\\\\s]+/[^/\\\\s]+$"
+            },
+            "pullNumber": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
         },
-        "content": {
-          "type": "string"
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "op",
+            "operationId",
+            "required",
+            "description",
+            "repo"
+          ],
+          "properties": {
+            "kind": {
+              "const": "github"
+            },
+            "op": {
+              "const": "list_commits"
+            },
+            "operationId": {
+              "$ref": "#/$defs/commonOperationFields/properties/operationId"
+            },
+            "required": {
+              "$ref": "#/$defs/commonOperationFields/properties/required"
+            },
+            "description": {
+              "$ref": "#/$defs/commonOperationFields/properties/description"
+            },
+            "repo": {
+              "type": "string",
+              "pattern": "^[^/\\\\s]+/[^/\\\\s]+$"
+            },
+            "ref": {
+              "$ref": "#/$defs/gitHubRef"
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
         },
-        "commitMessage": {
-          "type": "string",
-          "minLength": 1
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "op",
+            "operationId",
+            "required",
+            "description",
+            "repo",
+            "branch",
+            "fromRef"
+          ],
+          "properties": {
+            "kind": {
+              "const": "github"
+            },
+            "op": {
+              "const": "create_branch"
+            },
+            "operationId": {
+              "$ref": "#/$defs/commonOperationFields/properties/operationId"
+            },
+            "required": {
+              "$ref": "#/$defs/commonOperationFields/properties/required"
+            },
+            "description": {
+              "$ref": "#/$defs/commonOperationFields/properties/description"
+            },
+            "repo": {
+              "type": "string",
+              "pattern": "^[^/\\\\s]+/[^/\\\\s]+$"
+            },
+            "branch": {
+              "type": "string",
+              "minLength": 1
+            },
+            "fromRef": {
+              "$ref": "#/$defs/gitHubRef"
+            }
+          }
         },
-        "expectedSha": {
-          "type": "string"
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "op",
+            "operationId",
+            "required",
+            "description",
+            "repo",
+            "path",
+            "branch",
+            "content",
+            "commitMessage"
+          ],
+          "properties": {
+            "kind": {
+              "const": "github"
+            },
+            "op": {
+              "const": "put_file"
+            },
+            "operationId": {
+              "$ref": "#/$defs/commonOperationFields/properties/operationId"
+            },
+            "required": {
+              "$ref": "#/$defs/commonOperationFields/properties/required"
+            },
+            "description": {
+              "$ref": "#/$defs/commonOperationFields/properties/description"
+            },
+            "repo": {
+              "type": "string",
+              "pattern": "^[^/\\\\s]+/[^/\\\\s]+$"
+            },
+            "path": {
+              "type": "string"
+            },
+            "branch": {
+              "type": "string",
+              "minLength": 1
+            },
+            "content": {
+              "type": "string"
+            },
+            "commitMessage": {
+              "type": "string",
+              "minLength": 1
+            },
+            "expectedSha": {
+              "type": "string"
+            }
+          }
         },
-        "head": {
-          "type": "string",
-          "minLength": 1
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "op",
+            "operationId",
+            "required",
+            "description",
+            "repo",
+            "head",
+            "base",
+            "title"
+          ],
+          "properties": {
+            "kind": {
+              "const": "github"
+            },
+            "op": {
+              "const": "open_pull_request"
+            },
+            "operationId": {
+              "$ref": "#/$defs/commonOperationFields/properties/operationId"
+            },
+            "required": {
+              "$ref": "#/$defs/commonOperationFields/properties/required"
+            },
+            "description": {
+              "$ref": "#/$defs/commonOperationFields/properties/description"
+            },
+            "repo": {
+              "type": "string",
+              "pattern": "^[^/\\\\s]+/[^/\\\\s]+$"
+            },
+            "head": {
+              "type": "string",
+              "minLength": 1
+            },
+            "base": {
+              "type": "string",
+              "minLength": 1
+            },
+            "title": {
+              "type": "string",
+              "minLength": 1
+            },
+            "body": {
+              "type": "string"
+            },
+            "draft": {
+              "type": "boolean"
+            }
+          }
         },
-        "base": {
-          "type": "string",
-          "minLength": 1
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "op",
+            "operationId",
+            "required",
+            "description",
+            "repo",
+            "issueNumber",
+            "body"
+          ],
+          "properties": {
+            "kind": {
+              "const": "github"
+            },
+            "op": {
+              "const": "comment_on_issue"
+            },
+            "operationId": {
+              "$ref": "#/$defs/commonOperationFields/properties/operationId"
+            },
+            "required": {
+              "$ref": "#/$defs/commonOperationFields/properties/required"
+            },
+            "description": {
+              "$ref": "#/$defs/commonOperationFields/properties/description"
+            },
+            "repo": {
+              "type": "string",
+              "pattern": "^[^/\\\\s]+/[^/\\\\s]+$"
+            },
+            "issueNumber": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "body": {
+              "type": "string"
+            }
+          }
         },
-        "title": {
-          "type": "string",
-          "minLength": 1
-        },
-        "body": {
-          "type": "string"
-        },
-        "draft": {
-          "type": "boolean"
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "op",
+            "operationId",
+            "required",
+            "description",
+            "repo",
+            "pullNumber",
+            "body"
+          ],
+          "properties": {
+            "kind": {
+              "const": "github"
+            },
+            "op": {
+              "const": "comment_on_pull_request"
+            },
+            "operationId": {
+              "$ref": "#/$defs/commonOperationFields/properties/operationId"
+            },
+            "required": {
+              "$ref": "#/$defs/commonOperationFields/properties/required"
+            },
+            "description": {
+              "$ref": "#/$defs/commonOperationFields/properties/description"
+            },
+            "repo": {
+              "type": "string",
+              "pattern": "^[^/\\\\s]+/[^/\\\\s]+$"
+            },
+            "pullNumber": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "body": {
+              "type": "string"
+            }
+          }
         }
-      },
-      "allOf": [
-        {
-          "if": {
-            "properties": {
-              "op": {
-                "const": "read_file"
-              }
-            },
-            "required": [
-              "op"
-            ]
-          },
-          "then": {
-            "required": [
-              "repo",
-              "path"
-            ]
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "op": {
-                "const": "list_files"
-              }
-            },
-            "required": [
-              "op"
-            ]
-          },
-          "then": {
-            "required": [
-              "repo",
-              "path"
-            ]
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "op": {
-                "const": "list_issues"
-              }
-            },
-            "required": [
-              "op"
-            ]
-          },
-          "then": {
-            "required": [
-              "repo"
-            ]
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "op": {
-                "const": "get_issue"
-              }
-            },
-            "required": [
-              "op"
-            ]
-          },
-          "then": {
-            "required": [
-              "repo",
-              "issueNumber"
-            ]
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "op": {
-                "const": "list_pull_requests"
-              }
-            },
-            "required": [
-              "op"
-            ]
-          },
-          "then": {
-            "required": [
-              "repo"
-            ]
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "op": {
-                "const": "get_pull_request"
-              }
-            },
-            "required": [
-              "op"
-            ]
-          },
-          "then": {
-            "required": [
-              "repo",
-              "pullNumber"
-            ]
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "op": {
-                "const": "list_commits"
-              }
-            },
-            "required": [
-              "op"
-            ]
-          },
-          "then": {
-            "required": [
-              "repo"
-            ]
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "op": {
-                "const": "create_branch"
-              }
-            },
-            "required": [
-              "op"
-            ]
-          },
-          "then": {
-            "required": [
-              "repo",
-              "branch",
-              "fromRef"
-            ]
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "op": {
-                "const": "put_file"
-              }
-            },
-            "required": [
-              "op"
-            ]
-          },
-          "then": {
-            "required": [
-              "repo",
-              "path",
-              "branch",
-              "content",
-              "commitMessage"
-            ]
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "op": {
-                "const": "open_pull_request"
-              }
-            },
-            "required": [
-              "op"
-            ]
-          },
-          "then": {
-            "required": [
-              "repo",
-              "head",
-              "base",
-              "title"
-            ]
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "op": {
-                "const": "comment_on_issue"
-              }
-            },
-            "required": [
-              "op"
-            ]
-          },
-          "then": {
-            "required": [
-              "repo",
-              "issueNumber",
-              "body"
-            ]
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "op": {
-                "const": "comment_on_pull_request"
-              }
-            },
-            "required": [
-              "op"
-            ]
-          },
-          "then": {
-            "required": [
-              "repo",
-              "pullNumber",
-              "body"
-            ]
-          }
-        }
-      ],
-      "additionalProperties": false
+      ]
     },
     "browserOperation": {
-      "type": "object",
-      "required": [
-        "kind",
-        "op",
-        "operationId",
-        "required",
-        "description"
-      ],
-      "properties": {
-        "kind": {
-          "const": "browser"
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "op",
+            "operationId",
+            "required",
+            "description",
+            "url"
+          ],
+          "properties": {
+            "kind": {
+              "const": "browser"
+            },
+            "op": {
+              "const": "navigate"
+            },
+            "operationId": {
+              "$ref": "#/$defs/commonOperationFields/properties/operationId"
+            },
+            "required": {
+              "$ref": "#/$defs/commonOperationFields/properties/required"
+            },
+            "description": {
+              "$ref": "#/$defs/commonOperationFields/properties/description"
+            },
+            "url": {
+              "type": "string",
+              "minLength": 1,
+              "format": "uri",
+              "pattern": "^https?://"
+            },
+            "waitUntil": {
+              "enum": [
+                "load",
+                "domcontentloaded",
+                "networkidle"
+              ]
+            },
+            "settleMs": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
         },
-        "op": {
-          "enum": [
-            "navigate",
-            "screenshot",
-            "extract_text",
-            "click",
-            "type",
-            "wait_for_selector",
-            "submit_form",
-            "assert_text",
-            "get_url",
-            "get_title"
-          ]
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "op",
+            "operationId",
+            "required",
+            "description"
+          ],
+          "properties": {
+            "kind": {
+              "const": "browser"
+            },
+            "op": {
+              "const": "screenshot"
+            },
+            "operationId": {
+              "$ref": "#/$defs/commonOperationFields/properties/operationId"
+            },
+            "required": {
+              "$ref": "#/$defs/commonOperationFields/properties/required"
+            },
+            "description": {
+              "$ref": "#/$defs/commonOperationFields/properties/description"
+            },
+            "label": {
+              "type": "string"
+            },
+            "fullPage": {
+              "type": "boolean"
+            }
+          }
         },
-        "operationId": {
-          "$ref": "#/$defs/commonOperationFields/properties/operationId"
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "op",
+            "operationId",
+            "required",
+            "description"
+          ],
+          "properties": {
+            "kind": {
+              "const": "browser"
+            },
+            "op": {
+              "const": "extract_text"
+            },
+            "operationId": {
+              "$ref": "#/$defs/commonOperationFields/properties/operationId"
+            },
+            "required": {
+              "$ref": "#/$defs/commonOperationFields/properties/required"
+            },
+            "description": {
+              "$ref": "#/$defs/commonOperationFields/properties/description"
+            },
+            "selector": {
+              "type": "string",
+              "minLength": 1
+            },
+            "attribute": {
+              "type": "string"
+            },
+            "maxChars": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
         },
-        "required": {
-          "$ref": "#/$defs/commonOperationFields/properties/required"
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "op",
+            "operationId",
+            "required",
+            "description",
+            "selector"
+          ],
+          "properties": {
+            "kind": {
+              "const": "browser"
+            },
+            "op": {
+              "const": "click"
+            },
+            "operationId": {
+              "$ref": "#/$defs/commonOperationFields/properties/operationId"
+            },
+            "required": {
+              "$ref": "#/$defs/commonOperationFields/properties/required"
+            },
+            "description": {
+              "$ref": "#/$defs/commonOperationFields/properties/description"
+            },
+            "selector": {
+              "type": "string",
+              "minLength": 1
+            },
+            "timeoutMs": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
         },
-        "description": {
-          "$ref": "#/$defs/commonOperationFields/properties/description"
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "op",
+            "operationId",
+            "required",
+            "description",
+            "selector",
+            "text"
+          ],
+          "properties": {
+            "kind": {
+              "const": "browser"
+            },
+            "op": {
+              "const": "type"
+            },
+            "operationId": {
+              "$ref": "#/$defs/commonOperationFields/properties/operationId"
+            },
+            "required": {
+              "$ref": "#/$defs/commonOperationFields/properties/required"
+            },
+            "description": {
+              "$ref": "#/$defs/commonOperationFields/properties/description"
+            },
+            "selector": {
+              "type": "string",
+              "minLength": 1
+            },
+            "text": {
+              "type": "string"
+            },
+            "clear": {
+              "type": "boolean"
+            },
+            "timeoutMs": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
         },
-        "url": {
-          "type": "string",
-          "minLength": 1,
-          "format": "uri",
-          "pattern": "^https?://"
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "op",
+            "operationId",
+            "required",
+            "description",
+            "selector"
+          ],
+          "properties": {
+            "kind": {
+              "const": "browser"
+            },
+            "op": {
+              "const": "wait_for_selector"
+            },
+            "operationId": {
+              "$ref": "#/$defs/commonOperationFields/properties/operationId"
+            },
+            "required": {
+              "$ref": "#/$defs/commonOperationFields/properties/required"
+            },
+            "description": {
+              "$ref": "#/$defs/commonOperationFields/properties/description"
+            },
+            "selector": {
+              "type": "string",
+              "minLength": 1
+            },
+            "state": {
+              "enum": [
+                "attached",
+                "detached",
+                "visible",
+                "hidden"
+              ]
+            },
+            "timeoutMs": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
         },
-        "waitUntil": {
-          "enum": [
-            "load",
-            "domcontentloaded",
-            "networkidle"
-          ]
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "op",
+            "operationId",
+            "required",
+            "description",
+            "selector"
+          ],
+          "properties": {
+            "kind": {
+              "const": "browser"
+            },
+            "op": {
+              "const": "submit_form"
+            },
+            "operationId": {
+              "$ref": "#/$defs/commonOperationFields/properties/operationId"
+            },
+            "required": {
+              "$ref": "#/$defs/commonOperationFields/properties/required"
+            },
+            "description": {
+              "$ref": "#/$defs/commonOperationFields/properties/description"
+            },
+            "selector": {
+              "type": "string",
+              "minLength": 1
+            },
+            "timeoutMs": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
         },
-        "settleMs": {
-          "type": "integer",
-          "minimum": 0
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "op",
+            "operationId",
+            "required",
+            "description",
+            "selector",
+            "contains"
+          ],
+          "properties": {
+            "kind": {
+              "const": "browser"
+            },
+            "op": {
+              "const": "assert_text"
+            },
+            "operationId": {
+              "$ref": "#/$defs/commonOperationFields/properties/operationId"
+            },
+            "required": {
+              "$ref": "#/$defs/commonOperationFields/properties/required"
+            },
+            "description": {
+              "$ref": "#/$defs/commonOperationFields/properties/description"
+            },
+            "selector": {
+              "type": "string",
+              "minLength": 1
+            },
+            "contains": {
+              "type": "string"
+            },
+            "timeoutMs": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
         },
-        "label": {
-          "type": "string"
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "op",
+            "operationId",
+            "required",
+            "description"
+          ],
+          "properties": {
+            "kind": {
+              "const": "browser"
+            },
+            "op": {
+              "const": "get_url"
+            },
+            "operationId": {
+              "$ref": "#/$defs/commonOperationFields/properties/operationId"
+            },
+            "required": {
+              "$ref": "#/$defs/commonOperationFields/properties/required"
+            },
+            "description": {
+              "$ref": "#/$defs/commonOperationFields/properties/description"
+            }
+          }
         },
-        "fullPage": {
-          "type": "boolean"
-        },
-        "selector": {
-          "type": "string",
-          "minLength": 1
-        },
-        "attribute": {
-          "type": "string"
-        },
-        "maxChars": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "timeoutMs": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "text": {
-          "type": "string"
-        },
-        "clear": {
-          "type": "boolean"
-        },
-        "state": {
-          "enum": [
-            "attached",
-            "detached",
-            "visible",
-            "hidden"
-          ]
-        },
-        "contains": {
-          "type": "string"
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "op",
+            "operationId",
+            "required",
+            "description"
+          ],
+          "properties": {
+            "kind": {
+              "const": "browser"
+            },
+            "op": {
+              "const": "get_title"
+            },
+            "operationId": {
+              "$ref": "#/$defs/commonOperationFields/properties/operationId"
+            },
+            "required": {
+              "$ref": "#/$defs/commonOperationFields/properties/required"
+            },
+            "description": {
+              "$ref": "#/$defs/commonOperationFields/properties/description"
+            }
+          }
         }
-      },
-      "allOf": [
-        {
-          "if": {
-            "properties": {
-              "op": {
-                "const": "navigate"
-              }
-            },
-            "required": [
-              "op"
-            ]
-          },
-          "then": {
-            "required": [
-              "url"
-            ]
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "op": {
-                "const": "click"
-              }
-            },
-            "required": [
-              "op"
-            ]
-          },
-          "then": {
-            "required": [
-              "selector"
-            ]
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "op": {
-                "const": "type"
-              }
-            },
-            "required": [
-              "op"
-            ]
-          },
-          "then": {
-            "required": [
-              "selector",
-              "text"
-            ]
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "op": {
-                "const": "wait_for_selector"
-              }
-            },
-            "required": [
-              "op"
-            ]
-          },
-          "then": {
-            "required": [
-              "selector"
-            ]
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "op": {
-                "const": "submit_form"
-              }
-            },
-            "required": [
-              "op"
-            ]
-          },
-          "then": {
-            "required": [
-              "selector"
-            ]
-          }
-        },
-        {
-          "if": {
-            "properties": {
-              "op": {
-                "const": "assert_text"
-              }
-            },
-            "required": [
-              "op"
-            ]
-          },
-          "then": {
-            "required": [
-              "selector",
-              "contains"
-            ]
-          }
-        }
-      ],
-      "additionalProperties": false
+      ]
     }
   }
 }
