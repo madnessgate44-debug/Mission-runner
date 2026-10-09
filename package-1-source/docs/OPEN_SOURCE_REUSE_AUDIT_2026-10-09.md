@@ -11,7 +11,27 @@
 1. **GitHub execution:** Treat the official GitHub MCP Server as a reference and optional adapter, not as the whole GitHub worker. Keep Mission Runner's own worker API, approval policy, target scope, idempotency, and evidence format as the authority.
 2. **Browser execution:** Implement the planned bounded Playwright worker against our current BrowserOperation contract first. Evaluate Stagehand only as an optional semantic-observation/action adapter if selector-only Playwright proves insufficient. Browser Use is an alternative agent framework, not a drop-in implementation of our operation executor.
 3. **Do not select Open Browser Use as the core for the phone-first product.** Its documented path connects a local Chrome profile through a Chrome extension, Native Messaging, and a local native host. Its own security policy says it does not provide the higher-level site policy, operation allowlist, or user-approval workflow we require. It may be useful later as an optional desktop-browser adapter, but it does not solve the cloud worker / Android-only workflow by itself.
-4. **Resolve a contract split before Package 2.** The repository root README describes a GitHub Arm workflow that accepts JSON files under .missions/inbox with id, target, changes, and validation fields. Package 1 instead defines Mission V1 with missionId, operations, risk declarations, limits, and a separately stored approval contract. These are different formats and execution models. We must identify the current root workflow implementation and decide whether to migrate it to Mission V1 or explicitly document it as a separate legacy/first-stage arm. Do not silently maintain two mission formats.
+4. **Resolve a contract and security split before Package 2.** The active root workflow is .github/workflows/brain.yml and its executor is scripts/mission.js. It accepts inbox JSON with id, target, changes, and validation fields, then pushes changes directly to the target branch when validation passes. Package 1 instead defines Mission V1 with missionId, operations, risk declarations, limits, and a separately stored approval contract. These are different formats and execution models. The current root path also lacks a server-enforced approval step and explicit repository/domain allowlists. Do not silently maintain two mission formats or treat the existing path as production-safe.
+
+
+## Existing root implementation findings
+
+The recursive GitHub tree confirms that the active GitHub Actions workflow is .github/workflows/brain.yml, and the executor is scripts/mission.js. A second file exists at github/workflows/brain.yml, but that directory is not GitHub's recognized workflow directory; do not assume it is an active workflow.
+
+### Root GitHub Arm workflow
+- Trigger: a push to .missions/inbox/*.json or manual workflow dispatch.
+- Permissions: contents: write for the Mission Runner repository; the executor uses ARM_GITHUB_TOKEN when configured and otherwise falls back to GITHUB_TOKEN.
+- Mission format: id, target.owner/repo/branch, changes, commitMessage, validation. It is not Mission V1.
+- Executor behavior: clones the specified repository/branch, applies create/update/delete changes, creates a commit, runs a small allowlist of validation commands, and pushes directly to the target branch if validations pass.
+- Positive controls: basic mission ID checks, owner/repository/branch character checks, path traversal checks, a fixed validation-command allowlist, temporary clone cleanup, and validation before remote push.
+- Critical gaps relative to the planned product: no approval record or approval pause; no server-owned target-repository allowlist; the mission chooses its target repository and branch; a configured ARM_GITHUB_TOKEN may authorize writes to every repository covered by that token; direct branch push rather than a reviewable pull request; no Mission V1 content-hash/approval binding; no durable per-operation idempotency; no independent worker policy boundary. The current implementation must be treated as a prototype, not as the final secure controller.
+- Operational concern: the workflow commits its result files back into the same branch that contains the inbox. Concurrency is serialized, but the overall trigger/result lifecycle and duplicate/retry behavior need explicit tests before production use.
+
+### Root browser UI
+The root index.html is a separate static prototype. The inspected source stores the GitHub token and model API key in browser localStorage, sends GitHub API requests directly from the browser, and allows a configurable model API endpoint. This conflicts with the Package 1 security model that secrets must not be present in a client bundle or browser storage. Do not build the production phone UI on top of this credential-handling approach. The UI can be treated as a visual prototype only until authentication, server-side secret storage, authorization, and safe rendering are redesigned.
+
+### Consequence for the architecture
+We do not need to start from zero: the root GitHub Arm demonstrates a basic GitHub Actions-based execution path. However, it is not equivalent to the planned backend + bounded workers, and it does not enforce the new Package 1 policy contract. The next implementation decision is to either migrate this path behind Mission V1 validation/approval or freeze it as a separate legacy prototype and build the new worker architecture cleanly. Do not add another execution path until this decision is made.
 
 ## Candidate 1 — Open Browser Use
 
@@ -138,7 +158,7 @@ Reviewed:
 
 ## Required next steps, in order
 
-1. **Reconcile the existing root GitHub Arm with Mission V1.** Locate and audit the actual workflow and inbox/result implementation. Decide whether to adapt it or mark it as a separate legacy path. Add a conversion only if it is explicit, tested, and lossless for supported operations.
+1. **Reconcile the existing root GitHub Arm with Mission V1.** The active workflow and executor have now been located and reviewed. Decide whether to migrate them behind Mission V1 validation/approval or freeze them as a legacy prototype. Any conversion must be explicit, tested, and lossless for supported operations.
 2. **Freeze the adapter boundary.** Define the internal worker request/response contract, authentication between backend and workers, mission ID/content-hash binding, approval proof, idempotency key, timeout, and evidence shape.
 3. **Implement Package 2 policy/backend before allowing writes.** Package 1 has types and helper functions, not an enforcing production backend.
 4. **Implement the GitHub worker using the narrow operation union.** Test against a disposable test repository, including permission denial, stale SHA, retries, target escape attempts, and redacted outputs.
@@ -153,6 +173,7 @@ Reviewed:
 - [ ] A browser action cannot mutate a site without an approval record bound to the exact mission content.
 - [ ] A GitHub write cannot affect a repository outside the mission's approved target.
 - [ ] A phone-only owner can submit, approve, monitor, and inspect evidence without needing to install a desktop tool.
+- [ ] The production UI never stores GitHub or model API secrets in localStorage or exposes them to arbitrary client-configured endpoints.
 - [ ] Actual compatibility is demonstrated for each AI client before that client is advertised as supported.
 
 ## Final recommendation
