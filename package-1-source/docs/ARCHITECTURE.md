@@ -120,7 +120,7 @@ Evidence is stored out-of-band and referenced by ID. Types:
 
 Each evidence record has: `evidenceId`, `missionId`, `operationId`, `kind`,
 `createdAt`, `contentType`, `sizeBytes`, `storageRef` (opaque), `sha256`, and
-optional `redactions`. Raw secrets are never written to evidence; tokens and
+required `redactions` and `redactionPolicyVersion`. Raw secrets are never written to evidence; tokens and
 `Authorization` headers are stripped by the workers before persistence.
 
 ## 8. Assistants: provider-neutral authoring
