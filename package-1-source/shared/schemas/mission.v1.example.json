@@ -1,0 +1,57 @@
+{
+  "schemaVersion": "mission.v1",
+  "missionId": "01HZZZZZZZEXAMPLE0000000001",
+  "objective": "Read the README from example-org/example-repo and capture a screenshot of example.com.",
+  "createdBy": "assistant:chatgpt",
+  "createdAt": "2025-01-01T12:00:00.000Z",
+  "riskLevel": "low",
+  "requiresApproval": false,
+  "limits": {
+    "maxSeconds": 120,
+    "maxOperations": 5,
+    "maxRetries": 1,
+    "maxEvidenceBytes": 5242880,
+    "maxPages": 2,
+    "maxConcurrentPages": 1
+  },
+  "target": {
+    "kind": "mixed",
+    "repos": ["example-org/example-repo"],
+    "domains": ["example.com"]
+  },
+  "operations": [
+    {
+      "kind": "github",
+      "op": "read_file",
+      "operationId": "op_read_readme_0001",
+      "required": true,
+      "description": "Read README.md from the default branch.",
+      "repo": "example-org/example-repo",
+      "path": "README.md",
+      "encoding": "utf8"
+    },
+    {
+      "kind": "browser",
+      "op": "navigate",
+      "operationId": "op_nav_example_0002",
+      "required": true,
+      "description": "Open the example.com homepage.",
+      "url": "https://example.com/",
+      "waitUntil": "load",
+      "settleMs": 500
+    },
+    {
+      "kind": "browser",
+      "op": "screenshot",
+      "operationId": "op_shot_example_0003",
+      "required": false,
+      "description": "Capture a full-page screenshot of example.com.",
+      "label": "example-home",
+      "fullPage": true
+    }
+  ],
+  "metadata": {
+    "author": "assistant:chatgpt",
+    "notes": "Example mission for documentation and testing."
+  }
+}
