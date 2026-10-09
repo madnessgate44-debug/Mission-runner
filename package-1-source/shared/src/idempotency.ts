@@ -75,7 +75,7 @@ export function deriveIdempotencyKey(
 ): IdempotencyKey {
   const { operationId, ...body } = operation;
   const canonical = canonicalJson(body);
-  const hash = fnv1a64Hex(`${missionId}|${operationId}|${canonical}`);
+  const hash = fnv1a64Hex(canonicalJson([missionId, operationId, canonical]));
   return asIdempotencyKey(`idem_${hash}`);
 }
 
