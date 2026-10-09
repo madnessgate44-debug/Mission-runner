@@ -1,0 +1,3028 @@
+ Mission Runner — Package 1: Contracts, Documentation & Project Skeleton
+
+Architecture Summary
+
+Mission Runner is a mobile-first web application backed by a trusted server-side execution layer. It has three trust zones:
+
+1. Client (browser on Android phone) — a static/thin SPA that renders UI, prepares missions, and displays evidence. It never holds GitHub tokens, Playwright access, or any privileged credential.
+2. Backend API (Node.js + TypeScript) — authenticates the single owner (session cookie + optional TOTP), validates the versioned mission schema, enforces risk/approval policy, persists mission state, and dispatches bounded jobs to workers. Holds all credentials in server-side env vars / secret store.
+3. Workers — (a) a GitHub worker that talks to the GitHub REST API with a least-privilege fine-grained PAT or GitHub App installation token; (b) a Browser worker running Playwright in an isolated container with no host filesystem, no privileged flags, and a constrained domain allowlist.
+
+Assistants (ChatGPT, Gemini) do not get live connectivity in this package. Instead they produce a provider-neutral Mission JSON v1 document that the owner pastes/uploads into the Mission Runner UI. The same schema is what the backend validates. This avoids fabricating an integration that does not exist.
+
+Status model is a strict finite-state machine with idempotency keys per operation. Every state transition, artifact, and evidence reference is persisted.
+
+Nothing in this package claims to have been run, deployed, or tested. All files are source-only.
+
+---
+
+File Manifest (Package 1)
+
+# Path Purpose
+1 README.md Project overview, constraints, quickstart pointers
+2 docs/ARCHITECTURE.md System architecture, trust zones, data flow
+3 docs/SECURITY_MODEL.md Threat model, auth, secrets, sandboxing, risk policy
+4 docs/IMPLEMENTATION_PLAN.md Phased delivery plan across packages
+5 docs/FILE_MANIFEST.md Full planned repository manifest
+6 .env.example Placeholder env vars for backend and workers
+7 package.json Root workspace config + scripts
+8 pnpm-workspace.yaml Workspace globs
+9 tsconfig.base.json Shared TS compiler options
+10 .gitignore Ignore node_modules, dist, .env, evidence blobs
+11 shared/package.json Shared types package
+12 shared/tsconfig.json Shared TS config
+13 shared/src/index.ts Barrel export
+14 shared/src/version.ts Schema version constant
+15 shared/src/ids.ts ID branded types + helpers
+16 shared/src/status.ts Mission/operation status FSM + transitions
+17 shared/src/errors.ts Error taxonomy + serialization
+18 shared/src/limits.ts Default limits, hard caps
+19 shared/src/risk.ts Risk levels + approval policy
+20 shared/src/evidence.ts Evidence reference types
+21 shared/src/operations/github.ts GitHub op discriminated unions
+22 shared/src/operations/browser.ts Browser op discriminated unions
+23 shared/src/operations/index.ts Operation union + guards
+24 shared/src/mission.ts Mission v1 type + result type
+25 shared/src/validation.ts Hand-written validators (no runtime deps)
+26 shared/src/idempotency.ts Idempotency key derivation
+27 shared/src/assistant.ts Provider-neutral assistant authoring contract
+28 shared/schemas/mission.v1.schema.json JSON Schema for Mission v1
+29 shared/schemas/mission.v1.example.json Example mission document
+
+---
+
+1. README.md
+
+```markdown
+# Mission Runner
+
+Mission Runner is a personal AI operations platform with two engines:
+
+1. **GitHub Operations Engine** — perform authorized, bounded repository operations
+   (read files, list issues, open PRs, comment, create branches, etc.) through the
+   GitHub REST API using least-privilege credentials.
+2. **Browser Automation Engine** — drive a Playwright-controlled browser to navigate
+   sites, inspect pages, interact with elements, run bounded multistep tasks, and
+   capture evidence (screenshots, DOM snapshots, extracted text, console logs).
+
+It is designed for a single owner who operates primarily from an **Android phone**
+and is not a programmer.
+
+## What this repository is
+
+This is a **source-only** repository. Nothing here has been deployed, tested, or
+uploaded on your behalf. You (or a reviewer) must build, configure, and run it.
+
+## Trust model in one paragraph
+
+The phone runs only a thin client. A **trusted backend** authenticates you, validates
+missions against a versioned schema, enforces risk/approval rules, and dispatches
+bounded jobs to two isolated workers. Credentials (GitHub tokens, owner session
+secret) live only on the server, in environment variables or a proper secret store.
+The client never holds a GitHub token and never speaks to GitHub or to a browser
+directly.
+
+## Assistant integration status (important)
+
+**There is no live ChatGPT or Gemini integration in this repository.** ChatGPT and
+Gemini can be used *off-device* to author a **provider-neutral Mission JSON v1**
+document using the schema in `shared/schemas/`. You then paste or upload that JSON
+into Mission Runner, where it is validated and executed under your policy. This is
+intentional: fabricating an "assistant connector" that does not exist would be
+misleading.
+
+If you later add an official assistant API integration, it must flow through the
+same backend validation and approval pipeline as manual missions.
+
+## Architecture at a glance
+
+    [ Android browser ]
+            |
+            v  HTTPS (session cookie)
+    [ Backend API + policy ]  --->  [ GitHub worker ]  ---> GitHub REST API
+            |                             ^
+            |                             |
+            v                             |
+    [ Mission store + evidence ]          |
+            |                             |
+            v                             |
+    [ Browser worker (Playwright) ] ------+
+
+- Backend: Node.js + TypeScript, Fastify-style HTTP surface.
+- Workers: separate processes/containers, no inbound network from the public internet.
+- Store: PostgreSQL (or SQLite for local dev) for missions, operations, evidence index.
+- Evidence blobs: filesystem or object storage; referenced by opaque ID.
+
+## Local development vs production
+
+- **Local dev**: `.env` file, SQLite allowed, Playwright runs on the host, GitHub
+  token is a fine-grained PAT scoped to specific repos. Bind to `127.0.0.1`.
+- **Production**: HTTPS-only reverse proxy, PostgreSQL, secret store (not a `.env`
+  file in the image), GitHub App installation tokens preferred over PATs, browser
+  worker in an isolated container with a domain allowlist and no host mounts.
+
+Exact deployment requirements are documented in `docs/ARCHITECTURE.md` and
+`docs/IMPLEMENTATION_PLAN.md`. Do not assume a paid service exists; each optional
+dependency is called out.
+
+## Repository layout
+
+- `docs/` — architecture, security model, implementation plan, file manifest.
+- `shared/` — versioned mission contract, status FSM, error taxonomy, JSON Schema.
+- `backend/` — API, auth, policy, mission store, dispatcher (Package 2).
+- `workers/github/` — GitHub executor (Package 3).
+- `workers/browser/` — Playwright executor (Package 4).
+- `web/` — mobile-first frontend (Package 5).
+- `deploy/` — Dockerfiles, compose, reverse-proxy sample configs (Packages 2–5).
+
+## Status of this package
+
+**Package 1 delivers documentation, the shared mission contract, schemas, error and
+status types, environment variable examples, and root project configuration.**
+Backend, workers, and frontend are delivered in later packages.
+```
+
+---
+
+2. docs/ARCHITECTURE.md
+
+```markdown
+# Mission Runner — Architecture
+
+## 1. Goals and non-goals
+
+### Goals
+- Give a single owner a mobile-first way to run bounded GitHub and browser tasks.
+- Accept **provider-neutral Mission JSON v1** authored by a human or by an assistant
+  (ChatGPT, Gemini, or any other tool) with no privileged access.
+- Keep all credentials server-side. Never let the client hold a GitHub token.
+- Make every operation auditable: mission, operations, status transitions, evidence.
+- Enforce least privilege on GitHub and strict sandboxing on the browser worker.
+- Run on modest hosting. Do not require paid services unless clearly marked.
+
+### Non-goals
+- Multi-tenant SaaS. Mission Runner is single-owner by design.
+- Live "chat with your repo" streaming. Operations are bounded jobs, not freeform agents.
+- General-purpose shell execution. There is no shell operation in v1.
+- Direct assistant API connectivity in Package 1.
+
+## 2. Trust zones
+
+### Zone A — Client (untrusted device)
+The Android browser. Holds only a session cookie. Renders UI, authors/imports Mission
+JSON, submits it, and views mission results and evidence. **Never** holds a GitHub
+token, database credential, or Playwright capability.
+
+### Zone B — Backend API (trusted)
+Node.js + TypeScript service. Responsibilities:
+- Owner authentication (session cookie + optional TOTP second factor).
+- Mission schema validation (Mission v1).
+- Risk classification and approval gating.
+- Persistence of missions, operations, status transitions, and evidence index.
+- Dispatch of bounded jobs to workers over a private channel.
+- Rate limiting and per-mission quotas.
+
+### Zone C — Workers (trusted but isolated)
+- **GitHub worker**: holds a GitHub token; only performs operations listed in the
+  mission and permitted by the token scope. Emits structured results + evidence.
+- **Browser worker**: holds no owner credentials. Runs Playwright in a sandboxed
+  container with a domain allowlist, egress logging, and hard time/size limits.
+  Downloads go to a temp dir that is discarded after the mission.
+
+## 3. Data flow
+
+    Owner (Android)
+       |  1. Author or paste Mission JSON v1
+       v
+    Backend API
+       |  2. Validate schema, classify risk, require approval if needed
+       |  3. Persist mission (status=validated | awaiting_approval)
+       |  4. On approval: enqueue operations
+       v
+    Dispatcher ---------> GitHub worker  ----> GitHub REST API
+       |                        |
+       |                        v
+       |                 structured result + evidence refs
+       |                        |
+       |   <--------------------+
+       |                        |
+       +--------> Browser worker ----> target sites (allowlisted)
+                        |
+                        v
+                 structured result + evidence refs (screenshots, DOM, text)
+       |
+       v
+    Backend stores transitions + evidence index
+       |
+       v
+    Owner views status + evidence in the client
+
+No arrow from the client goes directly to GitHub or to a target website.
+
+## 4. Mission contract (summary)
+
+A mission is a JSON document conforming to `shared/schemas/mission.v1.schema.json`.
+Top-level fields:
+
+- `schemaVersion`: `"mission.v1"`
+- `missionId`: opaque ID (UUIDv4 or ULID). Idempotent.
+- `objective`: short human-readable goal.
+- `createdBy`: `"owner" | "assistant:chatgpt" | "assistant:gemini" | "assistant:other"`
+- `riskLevel`: `"low" | "medium" | "high"`.
+- `requiresApproval`: boolean (may be forced true by policy regardless of value).
+- `limits`: object with timeouts, max operations, max bytes, max pages, etc.
+- `target`: `{ kind: "github", ... } | { kind: "browser", ... } | { kind: "mixed", ... }`.
+- `operations`: ordered list of typed operations.
+- `metadata`: free-form, non-executable annotations.
+
+Full details: `shared/src/mission.ts` and the JSON Schema.
+
+## 5. Status finite-state machine (summary)
+
+Mission statuses:
+`draft → validated → awaiting_approval → approved → running → (succeeded | failed | cancelled | expired)`
+
+Operation statuses:
+`pending → dispatched → running → (succeeded | failed | skipped | cancelled)`
+
+Transitions are enforced in `shared/src/status.ts`. A transition that is not in the
+allowed set is a hard error, not a warning.
+
+## 6. Idempotency
+
+- Every mission has a `missionId`. Re-submitting the same `missionId` with the same
+  content hash is a no-op that returns the existing mission.
+- Every operation has an `operationId` and a derived `idempotencyKey` (see
+  `shared/src/idempotency.ts`). The GitHub worker and browser worker both consult a
+  persistent idempotency store before performing side effects (e.g., opening a PR).
+- For GitHub write operations, before mutating, the worker records intent with the
+  idempotency key; on retry it queries GitHub for the expected result (e.g., a PR
+  with the same head/base/title) before acting again.
+
+## 7. Evidence model
+
+Evidence is stored out-of-band and referenced by ID. Types:
+
+- `screenshot` (PNG), `dom_snapshot` (HTML or MHTML), `text_extract` (TXT/JSON),
+  `console_log` (JSONL), `network_log` (JSONL), `file_diff` (unified diff),
+  `api_response` (JSON, redacted), `note` (structured annotation).
+
+Each evidence record has: `evidenceId`, `missionId`, `operationId`, `kind`,
+`createdAt`, `contentType`, `sizeBytes`, `storageRef` (opaque), `sha256`, and
+optional `redactions`. Raw secrets are never written to evidence; tokens and
+`Authorization` headers are stripped by the workers before persistence.
+
+## 8. Assistants: provider-neutral authoring
+
+There is **no live connector** to ChatGPT or Gemini in Package 1. Instead:
+
+1. The owner opens ChatGPT or Gemini and describes the desired outcome.
+2. The assistant is instructed (by a prompt the owner pastes) to output a single
+   JSON object conforming to Mission v1. The prompt template lives in
+   `shared/src/assistant.ts` as a constant string, and the schema lives in
+   `shared/schemas/mission.v1.schema.json`.
+3. The owner copies that JSON into Mission Runner (paste or file upload).
+4. The backend validates it exactly as it validates owner-authored missions.
+
+Because both providers target the same schema and the same validator, a mission
+authored by ChatGPT and one authored by Gemini are structurally identical. Any
+future live integration must reuse this same path.
+
+## 9. Hosting requirements
+
+### Required for any non-local use
+- A host that can run Docker (or a Node.js process plus a Playwright-capable base
+  image). Both free-tier and paid options exist; the owner chooses.
+- TLS termination (reverse proxy or platform-provided).
+- Persistent storage for the mission store and evidence blobs.
+
+### Local development
+- Node.js 20+, pnpm 9+.
+- Optional: Docker for the browser worker sandbox.
+- SQLite is acceptable locally; PostgreSQL is expected in production.
+
+Nothing in this repo assumes a specific paid vendor. Each optional service (Postgres,
+object storage, TOTP) is marked "optional" where applicable.
+
+## 10. Failure modes and boundaries
+
+- Worker crash mid-mission: dispatcher retries up to `limits.maxRetries` with the
+  same idempotency key; after exhaustion the operation becomes `failed` and the
+  mission transitions to `failed`.
+- Evidence size overflow: worker stops capturing, records a `note` evidence item
+  explaining truncation, and continues if the operation allows.
+- GitHub rate limit: worker backs off per GitHub's `Retry-After`/`X-RateLimit-Reset`;
+  if the mission timeout expires first, the operation is `failed` with reason
+  `rate_limited`.
+- Browser navigation to a non-allowlisted domain: operation fails with reason
+  `domain_not_allowed`. This is a policy failure, not a bug.
+- Approval bypass attempt: policy forces `awaiting_approval` for `high` risk and for
+  any operation tagged `write` on GitHub, regardless of the mission's
+  `requiresApproval` value.
+```
+
+---
+
+3. docs/SECURITY_MODEL.md
+
+```markdown
+# Mission Runner — Security Model
+
+## 1. Assets to protect
+
+1. **GitHub credentials** (fine-grained PAT or GitHub App private key / installation).
+2. **Owner session secret** (cookie signing key, TOTP secret if enabled).
+3. **Mission store contents** (targets, diffs, extracted page text may be sensitive).
+4. **Evidence blobs** (screenshots may contain personal data).
+5. **Browser worker capability** (ability to make outbound requests).
+
+## 2. Threat model
+
+### In scope
+- Stolen Android device with an active session.
+- Malicious or malformed Mission JSON (from an assistant, a pasted doc, or an
+  attacker who obtained the mission upload endpoint).
+- Prompt-injected assistant output that tries to exceed mission scope.
+- A compromised target website attempting to exfiltrate data via the browser worker.
+- Token leakage through logs, evidence, or error messages.
+
+### Out of scope (documented, not defended here)
+- Nation-state adversaries.
+- Compromise of the hosting provider's control plane.
+- Physical attacks on the server host.
+
+## 3. Authentication and session
+
+- Single owner. The backend has exactly one account.
+- Login: owner password (Argon2id hash in env or secret store) → session cookie
+  (`HttpOnly`, `Secure`, `SameSite=Lax`, short TTL, rotating).
+- Optional TOTP second factor. If `OWNER_TOTP_SECRET` is set, TOTP is required.
+- Session secret (`SESSION_SECRET`) is 32+ random bytes, stored only server-side.
+- Rate limit login attempts; lock after N failures for a cooldown window.
+- CSRF: state-changing endpoints require a CSRF token bound to the session.
+
+## 4. Authorization and policy
+
+Every mission passes through a **policy engine** before dispatch:
+
+1. Schema validation (Mission v1).
+2. Risk classification. Effective risk is `max(declared, computed)`.
+3. Approval gate:
+   - `high` risk → always `awaiting_approval`.
+   - Any GitHub `write` operation → always `awaiting_approval`.
+   - Browser operations that submit forms with credentials → always
+     `awaiting_approval`.
+4. Limit clamp: mission `limits` are clamped to hard caps
+   (`shared/src/limits.ts`). A mission cannot raise its own caps.
+5. Domain allowlist check for browser operations.
+
+A mission cannot escalate its own privileges. The client cannot override policy.
+
+## 5. Secrets handling
+
+- **Never** in the client bundle, never in git, never in mission JSON, never in
+  evidence.
+- Backend reads secrets from process env, populated by:
+  - Local dev: `.env` file loaded by the dev script (git-ignored).
+  - Production: platform secret store or Docker secrets; `.env` in the image is
+    forbidden.
+- `.env.example` contains placeholders only. Real values are never committed.
+- Workers receive only the credentials they need:
+  - GitHub worker: `GITHUB_TOKEN` (or GitHub App key + installation ID).
+  - Browser worker: **no** GitHub credential, **no** owner session secret.
+
+## 6. GitHub credential strategy
+
+Preferred, in order:
+
+1. **GitHub App** installed on selected repos, with narrow permissions
+   (`contents: read/write` only if writes are needed, `issues: read/write`, etc.).
+   The backend mints short-lived installation tokens per mission.
+2. **Fine-grained PAT** scoped to specific repositories with the minimum permissions
+   needed for the mission set you actually run.
+
+Forbidden:
+- Classic PATs with `repo` scope (too broad).
+- Organization-wide tokens.
+- Any token with `admin:*` unless a specific mission absolutely requires it, and then
+  only with explicit per-mission approval.
+
+The GitHub worker validates that the token's scopes cover the requested operations
+before dispatching; if not, the mission fails fast with `insufficient_scope`.
+
+## 7. Browser worker sandbox
+
+- Runs in its own container.
+- Non-root user.
+- Read-only root filesystem except a temp scratch dir.
+- No host mounts.
+- Network egress restricted by an allowlist derived from the mission's target domains
+  plus a small fixed set (e.g., the Playwright browser's update endpoint is disabled).
+- Per-operation timeouts, per-mission total time cap, max pages, max bytes.
+- Downloads captured to scratch, hashed, then discarded after evidence extraction.
+- All console and network logs pass through a **redactor** that strips
+  `Authorization`, `Cookie`, `Set-Cookie`, and any header the mission marks sensitive.
+- No persistent browser profile between missions.
+
+## 8. Logging and redaction
+
+- Structured JSON logs. Every log line has `missionId` and `operationId` when in
+  scope.
+- Redactor runs on: request headers, response headers, console messages, evidence
+  text. Known-sensitive keys: `authorization`, `cookie`, `set-cookie`, `x-api-key`,
+  `proxy-authorization`, and any key matching `/token|secret|password|passwd|pwd/i`.
+- Evidence redaction is recorded on the evidence record (`redactions: [...]`) so a
+  reviewer can see what was removed.
+
+## 9. Rate limiting and quotas
+
+- Per-session API rate limit.
+- Per-mission operation count and total time caps (hard-capped server-side).
+- Per-day mission count cap (configurable).
+- GitHub worker respects GitHub's own rate limits with backoff.
+- Browser worker caps concurrent pages per mission (default 1).
+
+## 10. Failure containment
+
+- A failed operation does not automatically fail the mission unless the operation is
+  declared `required`. Optional operations can fail without aborting.
+- Worker crash → dispatcher retries with the same idempotency key.
+- Repeated failures trip a circuit breaker that pauses new missions and requires
+  owner re-approval.
+
+## 11. What this model does NOT do
+
+- It does not protect against an owner who pastes a malicious mission and then
+  approves it. Approval is the human trust boundary.
+- It does not attempt to detect prompt injection inside fetched page content. The
+  browser worker never feeds fetched content back into an assistant automatically;
+  content only becomes evidence.
+- It does not provide multi-user isolation. This is a single-owner system.
+
+## 12. Deployment checklist (security)
+
+- [ ] `SESSION_SECRET` is 32+ random bytes and unique to this deployment.
+- [ ] `OWNER_PASSWORD_HASH` uses Argon2id with a modern parameter set.
+- [ ] TOTP enabled if the device is shared or the host is exposed.
+- [ ] TLS terminated by a reverse proxy; HTTP redirects to HTTPS.
+- [ ] Backend not reachable on a public interface without TLS.
+- [ ] Workers not reachable from the public internet.
+- [ ] GitHub token is fine-grained or GitHub App, least privilege.
+- [ ] Browser worker runs non-root, read-only FS, allowlisted egress.
+- [ ] Evidence blobs stored on encrypted storage if they may contain personal data.
+- [ ] Logs shipped to a store with the same access controls as the mission store.
+```
+
+---
+
+4. docs/IMPLEMENTATION_PLAN.md
+
+```markdown
+# Mission Runner — Implementation Plan
+
+This plan is delivered in packages. Package 1 (this one) contains documentation,
+the shared mission contract, schemas, error/status types, env examples, and root
+project configuration. Later packages contain executable code.
+
+**Nothing in any package has been run, deployed, or tested by the author of these
+files. All code is source-only and must be reviewed, built, and run by the owner or
+a reviewer.**
+
+## Package 1 — Contracts, documentation, skeleton (this package)
+
+Deliverables:
+- `docs/ARCHITECTURE.md`, `docs/SECURITY_MODEL.md`, `docs/IMPLEMENTATION_PLAN.md`,
+  `docs/FILE_MANIFEST.md`.
+- `shared/` package: mission contract, status FSM, errors, limits, risk, evidence,
+  operations, validation, idempotency, assistant authoring contract.
+- JSON Schema + example for Mission v1.
+- `.env.example`, root `package.json`, `pnpm-workspace.yaml`, `tsconfig.base.json`,
+  `.gitignore`, `README.md`.
+
+Exit criteria:
+- Mission v1 schema is complete and stable.
+- Status transitions are exhaustively enumerated and enforced.
+- Error taxonomy covers schema, policy, dispatch, execution, and transport.
+- No file contains real secrets or personal data.
+
+## Package 2 — Backend API
+
+Scope:
+- Fastify (or equivalent) HTTP server in `backend/`.
+- Owner auth: password + session cookie + optional TOTP.
+- Mission endpoints: create, validate, approve, cancel, get, list.
+- Policy engine wiring (risk + approval + limit clamp).
+- Mission store (Postgres via a query builder or SQLite for dev).
+- Evidence index + blob storage adapter (filesystem or S3-compatible).
+- Dispatcher: private channel to workers (HTTP over a private network, or a queue).
+- Structured logging with redaction.
+
+Exit criteria:
+- A manually crafted Mission v1 JSON from `shared/schemas/mission.v1.example.json`
+  can be validated, approved, dispatched (to a stub worker), and its status read back.
+- High-risk and GitHub-write missions are forced into `awaiting_approval`.
+- Login is rate limited; CSRF enforced on state changes.
+
+## Package 3 — GitHub worker
+
+Scope:
+- `workers/github/` service.
+- GitHub REST client with token/app auth.
+- Operation executors for the GitHub op union in `shared/src/operations/github.ts`.
+- Idempotency store (per-op key).
+- Evidence capture: API responses (redacted), file diffs, PR/issue refs.
+
+Exit criteria:
+- Read operations succeed against a test repo.
+- Write operations (branch, file put, PR open, comment) succeed and are idempotent
+  under retry with the same key.
+- Insufficient scope is detected before mutation.
+
+## Package 4 — Browser worker
+
+Scope:
+- `workers/browser/` service.
+- Playwright executor for the browser op union in
+  `shared/src/operations/browser.ts`.
+- Sandboxed container: non-root, read-only FS, temp scratch, egress allowlist.
+- Evidence capture: screenshots, DOM snapshots, text extracts, console/network logs
+  (redacted), downloads (hashed, discarded after extraction).
+- Hard limits: pages, bytes, time, concurrency.
+
+Exit criteria:
+- A multistep navigate → inspect → click → extract task runs end-to-end against a
+  benign test page.
+- A navigation to a non-allowlisted domain fails with `domain_not_allowed`.
+- Evidence is stored and indexed; redaction is recorded.
+
+## Package 5 — Frontend (mobile-first web app)
+
+Scope:
+- `web/` SPA, optimized for Android Chrome.
+- Login, mission authoring (paste/upload Mission JSON), mission list, mission detail
+  with status timeline and evidence viewer.
+- Approval UI for `awaiting_approval` missions.
+- Assistant prompt helper: copy-to-clipboard prompt that instructs ChatGPT/Gemini to
+  emit Mission v1 JSON.
+
+Exit criteria:
+- Owner can complete the full loop on a phone: log in, paste a mission, approve it,
+  watch it run, view evidence.
+- No secret is ever present in the client bundle or network responses intended for
+  the client.
+
+## Package 6 — Deployment
+
+Scope:
+- Dockerfiles for backend and both workers.
+- Compose file for local prod-like runs.
+- Reverse-proxy sample config (Caddy or nginx) with TLS.
+- Deployment doc covering: required env vars, secret store options, storage options,
+  GitHub App setup steps, and explicit call-outs of any optional paid service.
+
+Exit criteria:
+- A reviewer can stand the system up from the docs without reading source.
+- The security checklist in `docs/SECURITY_MODEL.md` can be ticked.
+
+## Cross-cutting rules
+
+- Every code package consumes `shared/` for types. No duplicated schemas.
+- No package introduces a new status or error string without updating `shared/`.
+- Idempotency keys are derived only via `shared/src/idempotency.ts`.
+- Evidence is always referenced by ID; no raw blobs travel through the API to the
+  client except via an authenticated evidence endpoint.
+
+## Open questions deferred to later packages
+
+- Choice of queue (in-process vs. Redis vs. Postgres-backed) — decided in Package 2
+  based on the owner's hosting choice.
+- Whether to add a GitHub App or stay on fine-grained PAT — decided by the owner at
+  deployment time; both paths are supported by the contract.
+- Whether to enable TOTP — recommended, but optional at the owner's discretion.
+```
+
+---
+
+5. docs/FILE_MANIFEST.md
+
+```markdown
+# Mission Runner — File Manifest
+
+Legend: `[P1]` delivered in Package 1, `[P2]`–`[P6]` planned for later packages.
+
+## Root
+- [P1] `README.md`
+- [P1] `package.json`
+- [P1] `pnpm-workspace.yaml`
+- [P1] `tsconfig.base.json`
+- [P1] `.gitignore`
+- [P1] `.env.example`
+
+## docs/
+- [P1] `docs/ARCHITECTURE.md`
+- [P1] `docs/SECURITY_MODEL.md`
+- [P1] `docs/IMPLEMENTATION_PLAN.md`
+- [P1] `docs/FILE_MANIFEST.md`
+
+## shared/
+- [P1] `shared/package.json`
+- [P1] `shared/tsconfig.json`
+- [P1] `shared/src/index.ts`
+- [P1] `shared/src/version.ts`
+- [P1] `shared/src/ids.ts`
+- [P1] `shared/src/status.ts`
+- [P1] `shared/src/errors.ts`
+- [P1] `shared/src/limits.ts`
+- [P1] `shared/src/risk.ts`
+- [P1] `shared/src/evidence.ts`
+- [P1] `shared/src/operations/github.ts`
+- [P1] `shared/src/operations/browser.ts`
+- [P1] `shared/src/operations/index.ts`
+- [P1] `shared/src/mission.ts`
+- [P1] `shared/src/validation.ts`
+- [P1] `shared/src/idempotency.ts`
+- [P1] `shared/src/assistant.ts`
+- [P1] `shared/schemas/mission.v1.schema.json`
+- [P1] `shared/schemas/mission.v1.example.json`
+
+## backend/ (Package 2)
+- [P2] `backend/package.json`
+- [P2] `backend/tsconfig.json`
+- [P2] `backend/src/server.ts`
+- [P2] `backend/src/config.ts`
+- [P2] `backend/src/auth/session.ts`
+- [P2] `backend/src/auth/totp.ts`
+- [P2] `backend/src/auth/login.ts`
+- [P2] `backend/src/policy/policy.ts`
+- [P2] `backend/src/policy/approval.ts`
+- [P2] `backend/src/missions/repository.ts`
+- [P2] `backend/src/missions/service.ts`
+- [P2] `backend/src/missions/routes.ts`
+- [P2] `backend/src/dispatch/dispatcher.ts`
+- [P2] `backend/src/dispatch/workerClient.ts`
+- [P2] `backend/src/evidence/storage.ts`
+- [P2] `backend/src/evidence/routes.ts`
+- [P2] `backend/src/logging/logger.ts`
+- [P2] `backend/src/logging/redact.ts`
+- [P2] `backend/src/db/migrations/0001_init.sql`
+
+## workers/github/ (Package 3)
+- [P3] `workers/github/package.json`
+- [P3] `workers/github/tsconfig.json`
+- [P3] `workers/github/src/server.ts`
+- [P3] `workers/github/src/client.ts`
+- [P3] `workers/github/src/executor.ts`
+- [P3] `workers/github/src/operations/*.ts`
+- [P3] `workers/github/src/idempotency/store.ts`
+
+## workers/browser/ (Package 4)
+- [P4] `workers/browser/package.json`
+- [P4] `workers/browser/tsconfig.json`
+- [P4] `workers/browser/src/server.ts`
+- [P4] `workers/browser/src/executor.ts`
+- [P4] `workers/browser/src/operations/*.ts`
+- [P4] `workers/browser/src/sandbox/allowlist.ts`
+- [P4] `workers/browser/src/sandbox/limits.ts`
+- [P4] `workers/browser/src/evidence/capture.ts`
+
+## web/ (Package 5)
+- [P5] `web/package.json`
+- [P5] `web/index.html`
+- [P5] `web/src/main.ts`
+- [P5] `web/src/api.ts`
+- [P5] `web/src/pages/*.ts`
+- [P5] `web/src/styles.css`
+
+## deploy/ (Package 6)
+- [P6] `deploy/backend.Dockerfile`
+- [P6] `deploy/github-worker.Dockerfile`
+- [P6] `deploy/browser-worker.Dockerfile`
+- [P6] `deploy/compose.yaml`
+- [P6] `deploy/reverse-proxy/Caddyfile.example`
+- [P6] `deploy/README.md`
+```
+
+---
+
+6. .env.example
+
+```dotenv
+# Mission Runner — environment variable EXAMPLE file.
+# Copy to `.env` for local development. NEVER commit real values.
+# Production must use a secret store or Docker secrets, NOT a committed .env.
+
+# ---------- Core ----------
+NODE_ENV=development
+# Public base URL of the backend as seen by the client (used for cookies/CSRF).
+PUBLIC_BASE_URL=http://127.0.0.1:8787
+# Port the backend listens on.
+PORT=8787
+
+# ---------- Owner auth ----------
+# Random 32+ bytes, base64 or hex. Generate with: openssl rand -hex 32
+SESSION_SECRET=REPLACE_WITH_32_BYTE_RANDOM_HEX
+# Argon2id hash of the owner password. Generate with the backend's hash tool
+# (documented in Package 2). Never store the plaintext password here.
+OWNER_PASSWORD_HASH=REPLACE_WITH_ARGON2ID_HASH
+# Optional TOTP. If set, TOTP is required at login.
+# OWNER_TOTP_SECRET=REPLACE_WITH_BASE32_TOTP_SECRET
+
+# ---------- Mission store ----------
+# Local dev may use SQLite. Production should use PostgreSQL.
+DATABASE_URL=sqlite://./dev.db
+# DATABASE_URL=postgres://user:password@host:5432/mission_runner
+
+# ---------- Evidence storage ----------
+# Where evidence blobs are written. Filesystem for dev; S3-compatible for prod.
+EVIDENCE_STORAGE=filesystem
+EVIDENCE_FILESYSTEM_DIR=./.evidence
+# EVIDENCE_STORAGE=s3
+# EVIDENCE_S3_ENDPOINT=
+# EVIDENCE_S3_BUCKET=
+# EVIDENCE_S3_REGION=
+# EVIDENCE_S3_ACCESS_KEY_ID=
+# EVIDENCE_S3_SECRET_ACCESS_KEY=
+
+# ---------- GitHub worker ----------
+# Preferred: GitHub App installation. The backend mints short-lived tokens.
+# GITHUB_APP_ID=
+# GITHUB_APP_PRIVATE_KEY_PEM=
+# GITHUB_APP_INSTALLATION_ID=
+# Fallback: fine-grained PAT scoped to specific repositories.
+GITHUB_TOKEN=REPLACE_WITH_FINE_GRAINED_PAT
+# Optional: comma-separated repository allowlist (owner/repo). Strongly recommended.
+GITHUB_REPO_ALLOWLIST=owner/example-repo
+
+# ---------- Browser worker ----------
+# Comma-separated domain allowlist. Missions may only navigate to these.
+BROWSER_DOMAIN_ALLOWLIST=example.com,example.org
+# Hard caps (mission limits are clamped to these).
+BROWSER_MAX_PAGES=10
+BROWSER_MAX_BYTES=52428800
+BROWSER_MAX_SECONDS=300
+BROWSER_HEADLESS=true
+
+# ---------- Dispatcher ----------
+# Where workers listen. Keep off the public internet.
+GITHUB_WORKER_URL=http://127.0.0.1:8791
+BROWSER_WORKER_URL=http://127.0.0.1:8792
+# Shared secret used to authenticate backend -> worker calls.
+WORKER_SHARED_SECRET=REPLACE_WITH_RANDOM_SHARED_SECRET
+
+# ---------- Limits (server-side hard caps; missions cannot raise these) ----------
+MISSION_MAX_OPERATIONS=50
+MISSION_MAX_SECONDS=900
+MISSION_MAX_RETRIES=3
+MISSION_DAILY_LIMIT=25
+
+# ---------- Logging ----------
+LOG_LEVEL=info
+# Set to "true" to include request bodies in logs (NEVER in production).
+LOG_BODIES=false
+```
+
+---
+
+7. package.json (root)
+
+```json
+{
+  "name": "mission-runner",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Personal AI operations platform: GitHub and browser automation engines with a mobile-first UI and a trusted backend.",
+  "license": "UNLICENSED",
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "typecheck": "tsc -b --pretty false",
+    "lint": "eslint . --ext .ts,.tsx --max-warnings 0",
+    "format": "prettier --write .",
+    "build:shared": "pnpm --filter @mission-runner/shared build",
+    "test": "pnpm -r --if-present test",
+    "validate:example": "node ./scripts/validate-example.mjs",
+    "dev:backend": "pnpm --filter @mission-runner/backend dev",
+    "dev:github-worker": "pnpm --filter @mission-runner/github-worker dev",
+    "dev:browser-worker": "pnpm --filter @mission-runner/browser-worker dev",
+    "dev:web": "pnpm --filter @mission-runner/web dev"
+  },
+  "workspaces": [
+    "shared",
+    "backend",
+    "workers/*",
+    "web"
+  ],
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "eslint": "^8.57.0",
+    "prettier": "^3.2.5",
+    "typescript": "^5.4.5"
+  }
+}
+```
+
+---
+
+8. pnpm-workspace.yaml
+
+```yaml
+packages:
+  - "shared"
+  - "backend"
+  - "workers/*"
+  - "web"
+```
+
+---
+
+9. tsconfig.base.json
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2022"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "exactOptionalPropertyTypes": true,
+    "useUnknownInCatchVariables": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "composite": true,
+    "incremental": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true
+  }
+}
+```
+
+---
+
+10. .gitignore
+
+```gitignore
+# dependencies
+node_modules/
+.pnpm-store/
+
+# build output
+dist/
+build/
+*.tsbuildinfo
+
+# env
+.env
+.env.*
+!.env.example
+
+# local dev data
+dev.db
+dev.db-journal
+.evidence/
+*.sqlite
+*.sqlite-journal
+
+# logs
+*.log
+logs/
+
+# editor / OS
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# playwright
+workers/browser/.playwright/
+workers/browser/playwright-report/
+workers/browser/test-results/
+
+# misc
+coverage/
+tmp/
+```
+
+---
+
+11. shared/package.json
+
+```json
+{
+  "name": "@mission-runner/shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./schemas/mission.v1.schema.json": "./schemas/mission.v1.schema.json"
+  },
+  "files": [
+    "dist",
+    "schemas"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b --pretty false"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  }
+}
+```
+
+---
+
+12. shared/tsconfig.json
+
+```json
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "composite": true
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["dist", "node_modules"]
+}
+```
+
+---
+
+13. shared/src/index.ts
+
+```ts
+export * from "./version.js";
+export * from "./ids.js";
+export * from "./status.js";
+export * from "./errors.js";
+export * from "./limits.js";
+export * from "./risk.js";
+export * from "./evidence.js";
+export * from "./operations/index.js";
+export * from "./mission.js";
+export * from "./validation.js";
+export * from "./idempotency.js";
+export * from "./assistant.js";
+```
+
+---
+
+14. shared/src/version.ts
+
+```ts
+/**
+ * Version identifiers for the Mission Runner mission contract.
+ *
+ * The schema version is part of the mission document itself. Bumping the
+ * contract requires a new schema file (e.g. mission.v2.schema.json) and a
+ * corresponding addition to this module. Never silently mutate v1.
+ */
+export const MISSION_SCHEMA_VERSION_V1 = "mission.v1" as const;
+
+/** All supported mission schema versions. */
+export const SUPPORTED_MISSION_SCHEMA_VERSIONS = [
+  MISSION_SCHEMA_VERSION_V1,
+] as const;
+
+export type MissionSchemaVersion =
+  (typeof SUPPORTED_MISSION_SCHEMA_VERSIONS)[number];
+
+export function isSupportedMissionSchemaVersion(
+  value: unknown,
+): value is MissionSchemaVersion {
+  return (
+    typeof value === "string" &&
+    (SUPPORTED_MISSION_SCHEMA_VERSIONS as readonly string[]).includes(value)
+  );
+}
+```
+
+---
+
+15. shared/src/ids.ts
+
+```ts
+/**
+ * Branded identifier types.
+ *
+ * Branding prevents accidentally passing a MissionId where an OperationId is
+ * expected. IDs are opaque strings; the concrete format (UUIDv4, ULID) is a
+ * generator concern, not a contract concern.
+ */
+
+declare const brand: unique symbol;
+type Brand<T, B extends string> = T & { readonly [brand]: B };
+
+export type MissionId = Brand<string, "MissionId">;
+export type OperationId = Brand<string, "OperationId">;
+export type EvidenceId = Brand<string, "EvidenceId">;
+export type IdempotencyKey = Brand<string, "IdempotencyKey">;
+
+const ID_PATTERN = /^[A-Za-z0-9_-]{8,128}$/;
+
+export function isWellFormedId(value: unknown): value is string {
+  return typeof value === "string" && ID_PATTERN.test(value);
+}
+
+export function asMissionId(value: string): MissionId {
+  if (!isWellFormedId(value)) {
+    throw new Error(`Invalid MissionId: ${JSON.stringify(value)}`);
+  }
+  return value as MissionId;
+}
+
+export function asOperationId(value: string): OperationId {
+  if (!isWellFormedId(value)) {
+    throw new Error(`Invalid OperationId: ${JSON.stringify(value)}`);
+  }
+  return value as OperationId;
+}
+
+export function asEvidenceId(value: string): EvidenceId {
+  if (!isWellFormedId(value)) {
+    throw new Error(`Invalid EvidenceId: ${JSON.stringify(value)}`);
+  }
+  return value as EvidenceId;
+}
+
+export function asIdempotencyKey(value: string): IdempotencyKey {
+  if (!isWellFormedId(value)) {
+    throw new Error(`Invalid IdempotencyKey: ${JSON.stringify(value)}`);
+  }
+  return value as IdempotencyKey;
+}
+
+/**
+ * Generates a new mission/operation ID. Uses crypto.randomUUID when available,
+ * otherwise falls back to a timestamp + random suffix. No external dependency.
+ */
+export function generateId(): string {
+  const cryptoObj = (globalThis as { crypto?: Crypto }).crypto;
+  if (cryptoObj && typeof cryptoObj.randomUUID === "function") {
+    return cryptoObj.randomUUID();
+  }
+  const ts = Date.now().toString(36);
+  const rand = Math.random().toString(36).slice(2, 12);
+  return `id_${ts}_${rand}`;
+}
+```
+
+---
+
+16. shared/src/status.ts
+
+```ts
+/**
+ * Mission and operation status finite-state machines.
+ *
+ * A status transition not present in the allowed set is a hard error. This
+ * module is the single source of truth for valid transitions.
+ */
+
+export const MISSION_STATUSES = [
+  "draft",
+  "validated",
+  "awaiting_approval",
+  "approved",
+  "running",
+  "succeeded",
+  "failed",
+  "cancelled",
+  "expired",
+] as const;
+
+export type MissionStatus = (typeof MISSION_STATUSES)[number];
+
+export const OPERATION_STATUSES = [
+  "pending",
+  "dispatched",
+  "running",
+  "succeeded",
+  "failed",
+  "skipped",
+  "cancelled",
+] as const;
+
+export type OperationStatus = (typeof OPERATION_STATUSES)[number];
+
+/**
+ * Allowed mission transitions. A mission in a terminal state has no outgoing
+ * transitions.
+ */
+const MISSION_TRANSITIONS: Readonly<Record<MissionStatus, readonly MissionStatus[]>> = {
+  draft: ["validated", "cancelled"],
+  validated: ["awaiting_approval", "approved", "cancelled", "expired"],
+  awaiting_approval: ["approved", "cancelled", "expired"],
+  approved: ["running", "cancelled", "expired"],
+  running: ["succeeded", "failed", "cancelled"],
+  succeeded: [],
+  failed: [],
+  cancelled: [],
+  expired: [],
+};
+
+const OPERATION_TRANSITIONS: Readonly<Record<OperationStatus, readonly OperationStatus[]>> = {
+  pending: ["dispatched", "skipped", "cancelled"],
+  dispatched: ["running", "failed", "cancelled"],
+  running: ["succeeded", "failed", "cancelled"],
+  succeeded: [],
+  failed: [],
+  skipped: [],
+  cancelled: [],
+};
+
+export const MISSION_TERMINAL_STATUSES: readonly MissionStatus[] = [
+  "succeeded",
+  "failed",
+  "cancelled",
+  "expired",
+];
+
+export const OPERATION_TERMINAL_STATUSES: readonly OperationStatus[] = [
+  "succeeded",
+  "failed",
+  "skipped",
+  "cancelled",
+];
+
+export function isMissionTerminal(status: MissionStatus): boolean {
+  return MISSION_TERMINAL_STATUSES.includes(status);
+}
+
+export function isOperationTerminal(status: OperationStatus): boolean {
+  return OPERATION_TERMINAL_STATUSES.includes(status);
+}
+
+export function canTransitionMission(
+  from: MissionStatus,
+  to: MissionStatus,
+): boolean {
+  return MISSION_TRANSITIONS[from].includes(to);
+}
+
+export function canTransitionOperation(
+  from: OperationStatus,
+  to: OperationStatus,
+): boolean {
+  return OPERATION_TRANSITIONS[from].includes(to);
+}
+
+export class InvalidTransitionError extends Error {
+  public readonly from: string;
+  public readonly to: string;
+  public readonly kind: "mission" | "operation";
+  constructor(kind: "mission" | "operation", from: string, to: string) {
+    super(`Invalid ${kind} transition: ${from} -> ${to}`);
+    this.name = "InvalidTransitionError";
+    this.kind = kind;
+    this.from = from;
+    this.to = to;
+  }
+}
+
+export function assertMissionTransition(
+  from: MissionStatus,
+  to: MissionStatus,
+): void {
+  if (!canTransitionMission(from, to)) {
+    throw new InvalidTransitionError("mission", from, to);
+  }
+}
+
+export function assertOperationTransition(
+  from: OperationStatus,
+  to: OperationStatus,
+): void {
+  if (!canTransitionOperation(from, to)) {
+    throw new InvalidTransitionError("operation", from, to);
+  }
+}
+```
+
+---
+
+17. shared/src/errors.ts
+
+```ts
+/**
+ * Mission Runner error taxonomy.
+ *
+ * Errors are structured so that they can travel across process boundaries
+ * (backend <-> worker) and be rendered consistently in the UI.
+ */
+
+export const ERROR_CODES = [
+  // Schema / validation
+  "schema_invalid",
+  "schema_version_unsupported",
+  "field_missing",
+  "field_invalid",
+  // Policy / authorization
+  "unauthorized",
+  "forbidden",
+  "approval_required",
+  "approval_denied",
+  "limit_exceeded",
+  "domain_not_allowed",
+  "repo_not_allowed",
+  "insufficient_scope",
+  "risk_too_high",
+  // Dispatch / transport
+  "worker_unavailable",
+  "worker_timeout",
+  "worker_rejected",
+  "network_error",
+  // Execution
+  "operation_failed",
+  "operation_unsupported",
+  "rate_limited",
+  "target_not_found",
+  "conflict",
+  "idempotent_replay",
+  // Internal
+  "internal_error",
+  "not_implemented",
+] as const;
+
+export type ErrorCode = (typeof ERROR_CODES)[number];
+
+export interface MissionRunnerErrorShape {
+  /** Stable machine-readable code. */
+  code: ErrorCode;
+  /** Human-readable, safe to show in the UI. Must not contain secrets. */
+  message: string;
+  /** Optional structured details. Must not contain secrets. */
+  details?: Record<string, unknown>;
+  /** Whether a retry with the same idempotency key may succeed. */
+  retryable: boolean;
+  /** Optional correlation ID for log lookup. */
+  correlationId?: string;
+}
+
+export class MissionRunnerError extends Error {
+  public readonly code: ErrorCode;
+  public readonly details?: Record<string, unknown>;
+  public readonly retryable: boolean;
+  public readonly correlationId?: string;
+
+  constructor(shape: MissionRunnerErrorShape) {
+    super(shape.message);
+    this.name = "MissionRunnerError";
+    this.code = shape.code;
+    if (shape.details !== undefined) this.details = shape.details;
+    this.retryable = shape.retryable;
+    if (shape.correlationId !== undefined) this.correlationId = shape.correlationId;
+  }
+
+  toShape(): MissionRunnerErrorShape {
+    const shape: MissionRunnerErrorShape = {
+      code: this.code,
+      message: this.message,
+      retryable: this.retryable,
+    };
+    if (this.details !== undefined) shape.details = this.details;
+    if (this.correlationId !== undefined) shape.correlationId = this.correlationId;
+    return shape;
+  }
+}
+
+export function isMissionRunnerError(value: unknown): value is MissionRunnerError {
+  return value instanceof MissionRunnerError;
+}
+
+const RETRYABLE_CODES: readonly ErrorCode[] = [
+  "worker_unavailable",
+  "worker_timeout",
+  "network_error",
+  "rate_limited",
+];
+
+export function isRetryableCode(code: ErrorCode): boolean {
+  return RETRYABLE_CODES.includes(code);
+}
+
+export function makeError(
+  code: ErrorCode,
+  message: string,
+  options: { details?: Record<string, unknown>; correlationId?: string } = {},
+): MissionRunnerError {
+  const shape: MissionRunnerErrorShape = {
+    code,
+    message,
+    retryable: isRetryableCode(code),
+  };
+  if (options.details !== undefined) shape.details = options.details;
+  if (options.correlationId !== undefined) shape.correlationId = options.correlationId;
+  return new MissionRunnerError(shape);
+}
+```
+
+---
+
+18. shared/src/limits.ts
+
+```ts
+/**
+ * Hard server-side caps. Missions declare their own `limits`, but those values
+ * are clamped to these caps before dispatch. A mission can never raise a cap.
+ */
+
+export interface MissionLimits {
+  /** Max wall-clock seconds for the whole mission. */
+  maxSeconds: number;
+  /** Max number of operations in the mission. */
+  maxOperations: number;
+  /** Max retries per operation (with the same idempotency key). */
+  maxRetries: number;
+  /** Max bytes of evidence captured across the mission. */
+  maxEvidenceBytes: number;
+  /** Browser-only: max pages visited in a single mission. */
+  maxPages: number;
+  /** Browser-only: max concurrent pages (workers may enforce 1 regardless). */
+  maxConcurrentPages: number;
+}
+
+export const DEFAULT_MISSION_LIMITS: MissionLimits = {
+  maxSeconds: 300,
+  maxOperations: 20,
+  maxRetries: 2,
+  maxEvidenceBytes: 25 * 1024 * 1024, // 25 MiB
+  maxPages: 5,
+  maxConcurrentPages: 1,
+};
+
+/**
+ * Hard caps. These are the absolute maxima that a mission can be clamped to.
+ * They are intentionally conservative.
+ */
+export const HARD_MISSION_LIMITS: MissionLimits = {
+  maxSeconds: 900,
+  maxOperations: 50,
+  maxRetries: 3,
+  maxEvidenceBytes: 100 * 1024 * 1024, // 100 MiB
+  maxPages: 20,
+  maxConcurrentPages: 2,
+};
+
+export function clampInt(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) return min;
+  const v = Math.trunc(value);
+  if (v < min) return min;
+  if (v > max) return max;
+  return v;
+}
+
+/**
+ * Clamps requested limits to the hard caps. Any missing field falls back to the
+ * default for that field. This is the only function callers should use to
+ * resolve effective limits.
+ */
+export function clampMissionLimits(
+  requested: Partial<MissionLimits> | undefined,
+): MissionLimits {
+  const r = requested ?? {};
+  return {
+    maxSeconds: clampInt(
+      r.maxSeconds ?? DEFAULT_MISSION_LIMITS.maxSeconds,
+      1,
+      HARD_MISSION_LIMITS.maxSeconds,
+    ),
+    maxOperations: clampInt(
+      r.maxOperations ?? DEFAULT_MISSION_LIMITS.maxOperations,
+      1,
+      HARD_MISSION_LIMITS.maxOperations,
+    ),
+    maxRetries: clampInt(
+      r.maxRetries ?? DEFAULT_MISSION_LIMITS.maxRetries,
+      0,
+      HARD_MISSION_LIMITS.maxRetries,
+    ),
+    maxEvidenceBytes: clampInt(
+      r.maxEvidenceBytes ?? DEFAULT_MISSION_LIMITS.maxEvidenceBytes,
+      1024,
+      HARD_MISSION_LIMITS.maxEvidenceBytes,
+    ),
+    maxPages: clampInt(
+      r.maxPages ?? DEFAULT_MISSION_LIMITS.maxPages,
+      1,
+      HARD_MISSION_LIMITS.maxPages,
+    ),
+    maxConcurrentPages: clampInt(
+      r.maxConcurrentPages ?? DEFAULT_MISSION_LIMITS.maxConcurrentPages,
+      1,
+      HARD_MISSION_LIMITS.maxConcurrentPages,
+    ),
+  };
+}
+```
+
+---
+
+19. shared/src/risk.ts
+
+```ts
+/**
+ * Risk levels and approval policy.
+ *
+ * The effective risk of a mission is the max of the declared risk and the risk
+ * computed from its operations. Approval is forced for high-risk missions and
+ * for any GitHub write operation.
+ */
+
+export const RISK_LEVELS = ["low", "medium", "high"] as const;
+export type RiskLevel = (typeof RISK_LEVELS)[number];
+
+const RISK_ORDER: Record<RiskLevel, number> = {
+  low: 0,
+  medium: 1,
+  high: 2,
+};
+
+export function maxRisk(a: RiskLevel, b: RiskLevel): RiskLevel {
+  return RISK_ORDER[a] >= RISK_ORDER[b] ? a : b;
+}
+
+export function riskAtLeast(a: RiskLevel, b: RiskLevel): boolean {
+  return RISK_ORDER[a] >= RISK_ORDER[b];
+}
+
+export interface ApprovalPolicy {
+  /** Risk level at or above which approval is always required. */
+  requireApprovalAtOrAbove: RiskLevel;
+  /** Whether any GitHub write operation forces approval. */
+  requireApprovalForGitHubWrites: boolean;
+  /** Whether any browser form submission forces approval. */
+  requireApprovalForBrowserSubmits: boolean;
+}
+
+export const DEFAULT_APPROVAL_POLICY: ApprovalPolicy = {
+  requireApprovalAtOrAbove: "high",
+  requireApprovalForGitHubWrites: true,
+  requireApprovalForBrowserSubmits: true,
+};
+```
+
+---
+
+20. shared/src/evidence.ts
+
+```ts
+/**
+ * Evidence model. Evidence is stored out-of-band; only references travel through
+ * the API. Secrets must be redacted by the capturing worker before persistence.
+ */
+
+import type { EvidenceId, MissionId, OperationId } from "./ids.js";
+
+export const EVIDENCE_KINDS = [
+  "screenshot",
+  "dom_snapshot",
+  "text_extract",
+  "console_log",
+  "network_log",
+  "file_diff",
+  "api_response",
+  "note",
+] as const;
+
+export type EvidenceKind = (typeof EVIDENCE_KINDS)[number];
+
+export interface EvidenceRedaction {
+  /** Where the redaction was applied, e.g. "header" or "body". */
+  scope: "header" | "body" | "console" | "network" | "other";
+  /** The key or pattern that was redacted, e.g. "authorization". */
+  key: string;
+  /** How many occurrences were removed. */
+  count: number;
+}
+
+export interface EvidenceRef {
+  evidenceId: EvidenceId;
+  missionId: MissionId;
+  operationId: OperationId;
+  kind: EvidenceKind;
+  /** ISO 8601 timestamp. */
+  createdAt: string;
+  contentType: string;
+  sizeBytes: number;
+  /** Opaque storage reference. Never a raw secret, never a public URL. */
+  storageRef: string;
+  /** Hex-encoded SHA-256 of the stored bytes. */
+  sha256: string;
+  /** Optional human-readable label. */
+  label?: string;
+  /** Redactions applied before persistence. */
+  redactions?: EvidenceRedaction[];
+}
+
+export interface EvidenceIndex {
+  missionId: MissionId;
+  items: EvidenceRef[];
+  totalBytes: number;
+  truncated: boolean;
+}
+```
+
+---
+
+21. shared/src/operations/github.ts
+
+```ts
+/**
+ * GitHub operation union (v1).
+ *
+ * Every GitHub operation has: type, operationId, riskLevel contribution,
+ * whether it mutates state, and its typed parameters. The executor in
+ * workers/github maps each variant to one or more GitHub REST calls.
+ *
+ * There is no shell, no git clone, no arbitrary file write outside the repo,
+ * and no admin operation in v1.
+ */
+
+import type { OperationId } from "../ids.js";
+import type { RiskLevel } from "../risk.js";
+
+export interface GitHubOperationBase {
+  kind: "github";
+  operationId: OperationId;
+  /** Whether this operation may be skipped if a prior operation fails. */
+  required: boolean;
+  /** Human-readable description, shown in the UI and approvals. */
+  description: string;
+}
+
+export interface GitHubRepoRef {
+  /** "owner/repo". */
+  repo: string;
+}
+
+export type GitHubRef =
+  | { type: "branch"; name: string }
+  | { type: "tag"; name: string }
+  | { type: "commit"; sha: string };
+
+export interface GitHubReadFileOp extends GitHubOperationBase {
+  op: "read_file";
+  repo: string;
+  path: string;
+  ref?: GitHubRef;
+  /** Encoding returned in the result. "utf8" by default. */
+  encoding?: "utf8" | "base64";
+}
+
+export interface GitHubListFilesOp extends GitHubOperationBase {
+  op: "list_files";
+  repo: string;
+  path: string;
+  ref?: GitHubRef;
+}
+
+export interface GitHubListIssuesOp extends GitHubOperationBase {
+  op: "list_issues";
+  repo: string;
+  state?: "open" | "closed" | "all";
+  labels?: string[];
+  limit?: number;
+}
+
+export interface GitHubGetIssueOp extends GitHubOperationBase {
+  op: "get_issue";
+  repo: string;
+  issueNumber: number;
+}
+
+export interface GitHubListPRsOp extends GitHubOperationBase {
+  op: "list_pull_requests";
+  repo: string;
+  state?: "open" | "closed" | "all";
+  limit?: number;
+}
+
+export interface GitHubGetPROp extends GitHubOperationBase {
+  op: "get_pull_request";
+  repo: string;
+  pullNumber: number;
+}
+
+export interface GitHubListCommitsOp extends GitHubOperationBase {
+  op: "list_commits";
+  repo: string;
+  ref?: GitHubRef;
+  limit?: number;
+}
+
+export interface GitHubCreateBranchOp extends GitHubOperationBase {
+  op: "create_branch";
+  repo: string;
+  branch: string;
+  fromRef: GitHubRef;
+}
+
+export interface GitHubPutFileOp extends GitHubOperationBase {
+  op: "put_file";
+  repo: string;
+  path: string;
+  branch: string;
+  /** Plain text content. The worker base64-encodes before sending. */
+  content: string;
+  commitMessage: string;
+  /** If provided, the worker requires the file's current SHA to match. */
+  expectedSha?: string;
+}
+
+export interface GitHubOpenPullRequestOp extends GitHubOperationBase {
+  op: "open_pull_request";
+  repo: string;
+  head: string;
+  base: string;
+  title: string;
+  body?: string;
+  draft?: boolean;
+}
+
+export interface GitHubCommentOnIssueOp extends GitHubOperationBase {
+  op: "comment_on_issue";
+  repo: string;
+  issueNumber: number;
+  body: string;
+}
+
+export interface GitHubCommentOnPullRequestOp extends GitHubOperationBase {
+  op: "comment_on_pull_request";
+  repo: string;
+  pullNumber: number;
+  body: string;
+}
+
+export type GitHubOperation =
+  | GitHubReadFileOp
+  | GitHubListFilesOp
+  | GitHubListIssuesOp
+  | GitHubGetIssueOp
+  | GitHubListPRsOp
+  | GitHubGetPROp
+  | GitHubListCommitsOp
+  | GitHubCreateBranchOp
+  | GitHubPutFileOp
+  | GitHubOpenPullRequestOp
+  | GitHubCommentOnIssueOp
+  | GitHubCommentOnPullRequestOp;
+
+export type GitHubOperationType = GitHubOperation["op"];
+
+/** Operations that mutate remote state and therefore force approval. */
+export const GITHUB_WRITE_OPS: readonly GitHubOperationType[] = [
+  "create_branch",
+  "put_file",
+  "open_pull_request",
+  "comment_on_issue",
+  "comment_on_pull_request",
+];
+
+export function isGitHubWriteOp(op: GitHubOperationType): boolean {
+  return GITHUB_WRITE_OPS.includes(op);
+}
+
+/**
+ * Baseline risk contribution per operation type. The mission's effective risk
+ * is the max of its declared risk and the max over its operations.
+ */
+export function githubOperationRisk(op: GitHubOperationType): RiskLevel {
+  switch (op) {
+    case "read_file":
+    case "list_files":
+    case "list_issues":
+    case "get_issue":
+    case "list_pull_requests":
+    case "get_pull_request":
+    case "list_commits":
+      return "low";
+    case "create_branch":
+    case "comment_on_issue":
+    case "comment_on_pull_request":
+      return "medium";
+    case "put_file":
+    case "open_pull_request":
+      return "high";
+    default: {
+      const _exhaustive: never = op;
+      return _exhaustive;
+    }
+  }
+}
+
+export function isGitHubOperation(value: unknown): value is GitHubOperation {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value as { kind?: unknown; op?: unknown };
+  if (v.kind !== "github") return false;
+  if (typeof v.op !== "string") return false;
+  return (
+    v.op === "read_file" ||
+    v.op === "list_files" ||
+    v.op === "list_issues" ||
+    v.op === "get_issue" ||
+    v.op === "list_pull_requests" ||
+    v.op === "get_pull_request" ||
+    v.op === "list_commits" ||
+    v.op === "create_branch" ||
+    v.op === "put_file" ||
+    v.op === "open_pull_request" ||
+    v.op === "comment_on_issue" ||
+    v.op === "comment_on_pull_request"
+  );
+}
+```
+
+---
+
+22. shared/src/operations/browser.ts
+
+```ts
+/**
+ * Browser operation union (v1).
+ *
+ * The browser worker runs Playwright. Operations are deliberately small and
+ * composable. There is no `eval` operation, no arbitrary JS execution, and no
+ * file upload to arbitrary origins in v1.
+ */
+
+import type { OperationId } from "../ids.js";
+import type { RiskLevel } from "../risk.js";
+
+export interface BrowserOperationBase {
+  kind: "browser";
+  operationId: OperationId;
+  required: boolean;
+  description: string;
+}
+
+export interface BrowserNavigateOp extends BrowserOperationBase {
+  op: "navigate";
+  url: string;
+  /** Wait until "load" | "domcontentloaded" | "networkidle". Default "load". */
+  waitUntil?: "load" | "domcontentloaded" | "networkidle";
+  /** Milliseconds to wait after navigation. Default 0. */
+  settleMs?: number;
+}
+
+export interface BrowserScreenshotOp extends BrowserOperationBase {
+  op: "screenshot";
+  /** Optional label; used in evidence. */
+  label?: string;
+  fullPage?: boolean;
+}
+
+export interface BrowserExtractTextOp extends BrowserOperationBase {
+  op: "extract_text";
+  /** CSS selector. If omitted, extracts the whole body's innerText. */
+  selector?: string;
+  /** Optional attribute to read instead of text content. */
+  attribute?: string;
+  /** Max characters to capture. Clamped by mission limits. */
+  maxChars?: number;
+}
+
+export interface BrowserClickOp extends BrowserOperationBase {
+  op: "click";
+  selector: string;
+  /** Milliseconds to wait for the element to appear. Default 5000. */
+  timeoutMs?: number;
+}
+
+export interface BrowserTypeOp extends BrowserOperationBase {
+  op: "type";
+  selector: string;
+  text: string;
+  /** Clear the field before typing. Default true. */
+  clear?: boolean;
+  timeoutMs?: number;
+}
+
+export interface BrowserWaitForSelectorOp extends BrowserOperationBase {
+  op: "wait_for_selector";
+  selector: string;
+  state?: "attached" | "detached" | "visible" | "hidden";
+  timeoutMs?: number;
+}
+
+export interface BrowserSubmitFormOp extends BrowserOperationBase {
+  op: "submit_form";
+  selector: string;
+  timeoutMs?: number;
+}
+
+export interface BrowserAssertTextOp extends BrowserOperationBase {
+  op: "assert_text";
+  selector: string;
+  /** Substring that must be present. */
+  contains: string;
+  timeoutMs?: number;
+}
+
+export interface BrowserGetUrlOp extends BrowserOperationBase {
+  op: "get_url";
+}
+
+export interface BrowserGetTitleOp extends BrowserOperationBase {
+  op: "get_title";
+}
+
+export type BrowserOperation =
+  | BrowserNavigateOp
+  | BrowserScreenshotOp
+  | BrowserExtractTextOp
+  | BrowserClickOp
+  | BrowserTypeOp
+  | BrowserWaitForSelectorOp
+  | BrowserSubmitFormOp
+  | BrowserAssertTextOp
+  | BrowserGetUrlOp
+  | BrowserGetTitleOp;
+
+export type BrowserOperationType = BrowserOperation["op"];
+
+/**
+ * Operations that involve submitting data to a remote site. These force
+ * approval by policy when they submit a form.
+ */
+export const BROWSER_SUBMIT_OPS: readonly BrowserOperationType[] = [
+  "submit_form",
+];
+
+export function isBrowserSubmitOp(op: BrowserOperationType): boolean {
+  return BROWSER_SUBMIT_OPS.includes(op);
+}
+
+export function browserOperationRisk(op: BrowserOperationType): RiskLevel {
+  switch (op) {
+    case "navigate":
+    case "screenshot":
+    case "extract_text":
+    case "get_url":
+    case "get_title":
+    case "wait_for_selector":
+      return "low";
+    case "click":
+    case "type":
+    case "assert_text":
+      return "medium";
+    case "submit_form":
+      return "high";
+    default: {
+      const _exhaustive: never = op;
+      return _exhaustive;
+    }
+  }
+}
+
+export function isBrowserOperation(value: unknown): value is BrowserOperation {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value as { kind?: unknown; op?: unknown };
+  if (v.kind !== "browser") return false;
+  if (typeof v.op !== "string") return false;
+  return (
+    v.op === "navigate" ||
+    v.op === "screenshot" ||
+    v.op === "extract_text" ||
+    v.op === "click" ||
+    v.op === "type" ||
+    v.op === "wait_for_selector" ||
+    v.op === "submit_form" ||
+    v.op === "assert_text" ||
+    v.op === "get_url" ||
+    v.op === "get_title"
+  );
+}
+```
+
+---
+
+23. shared/src/operations/index.ts
+
+```ts
+import type { GitHubOperation } from "./github.js";
+import { isGitHubOperation } from "./github.js";
+import type { BrowserOperation } from "./browser.js";
+import { isBrowserOperation } from "./browser.js";
+import type { RiskLevel } from "../risk.js";
+import { maxRisk } from "../risk.js";
+import {
+  githubOperationRisk,
+  isGitHubWriteOp,
+} from "./github.js";
+import {
+  browserOperationRisk,
+  isBrowserSubmitOp,
+} from "./browser.js";
+
+export * from "./github.js";
+export * from "./browser.js";
+
+export type MissionOperation = GitHubOperation | BrowserOperation;
+
+export function isMissionOperation(value: unknown): value is MissionOperation {
+  return isGitHubOperation(value) || isBrowserOperation(value);
+}
+
+export function operationRisk(op: MissionOperation): RiskLevel {
+  if (op.kind === "github") return githubOperationRisk(op.op);
+  return browserOperationRisk(op.op);
+}
+
+export function aggregateOperationRisk(
+  operations: readonly MissionOperation[],
+): RiskLevel {
+  let risk: RiskLevel = "low";
+  for (const op of operations) {
+    risk = maxRisk(risk, operationRisk(op));
+  }
+  return risk;
+}
+
+export function operationRequiresApproval(op: MissionOperation): boolean {
+  if (op.kind === "github") return isGitHubWriteOp(op.op);
+  return isBrowserSubmitOp(op.op);
+}
+```
+
+---
+
+24. shared/src/mission.ts
+
+```ts
+/**
+ * Mission v1 contract.
+ *
+ * A Mission is a bounded, provider-neutral, versioned document. It is authored
+ * by the owner or by an assistant (ChatGPT, Gemini, other) and then validated,
+ * approved, and dispatched by the backend.
+ */
+
+import type {
+  EvidenceId,
+  IdempotencyKey,
+  MissionId,
+  OperationId,
+} from "./ids.js";
+import type { MissionSchemaVersion } from "./version.js";
+import type { MissionStatus, OperationStatus } from "./status.js";
+import type { RiskLevel } from "./risk.js";
+import type { MissionLimits } from "./limits.js";
+import type { MissionRunnerErrorShape } from "./errors.js";
+import type { EvidenceRef } from "./evidence.js";
+import type { MissionOperation } from "./operations/index.js";
+
+export const MISSION_CREATORS = [
+  "owner",
+  "assistant:chatgpt",
+  "assistant:gemini",
+  "assistant:other",
+] as const;
+
+export type MissionCreator = (typeof MISSION_CREATORS)[number];
+
+export type MissionTarget =
+  | { kind: "github"; repos: string[] }
+  | { kind: "browser"; domains: string[] }
+  | { kind: "mixed"; repos: string[]; domains: string[] };
+
+export interface MissionMetadata {
+  /** Free-form, non-executable annotations. */
+  [key: string]: string | number | boolean | null;
+}
+
+export interface MissionV1 {
+  schemaVersion: MissionSchemaVersion;
+  missionId: MissionId;
+  objective: string;
+  createdBy: MissionCreator;
+  createdAt: string; // ISO 8601
+  riskLevel: RiskLevel;
+  requiresApproval: boolean;
+  limits: Partial<MissionLimits>;
+  target: MissionTarget;
+  operations: MissionOperation[];
+  metadata?: MissionMetadata;
+  /**
+   * Optional client-supplied content hash of the mission body (excluding this
+   * field). Used for idempotent resubmission.
+   */
+  contentHash?: string;
+}
+
+export interface OperationResult {
+  operationId: OperationId;
+  status: OperationStatus;
+  /** ISO 8601. */
+  startedAt: string;
+  finishedAt?: string;
+  /** Attempt count including the first attempt. */
+  attempts: number;
+  idempotencyKey: IdempotencyKey;
+  /** Structured, operation-specific output. Never contains secrets. */
+  output?: Record<string, unknown>;
+  error?: MissionRunnerErrorShape;
+  evidenceIds: EvidenceId[];
+}
+
+export interface MissionResult {
+  missionId: MissionId;
+  status: MissionStatus;
+  /** ISO 8601. */
+  createdAt: string;
+  updatedAt: string;
+  startedAt?: string;
+  finishedAt?: string;
+  effectiveRisk: RiskLevel;
+  limits: MissionLimits;
+  operations: OperationResult[];
+  evidence: EvidenceRef[];
+  error?: MissionRunnerErrorShape;
+}
+
+export interface MissionStatusTransition {
+  missionId: MissionId;
+  from: MissionStatus | null;
+  to: MissionStatus;
+  /** ISO 8601. */
+  at: string;
+  /** "system" for automatic transitions, or an owner actor identifier. */
+  by: string;
+  reason?: string;
+}
+
+export interface OperationStatusTransition {
+  missionId: MissionId;
+  operationId: OperationId;
+  from: OperationStatus | null;
+  to: OperationStatus;
+  at: string;
+  by: string;
+  reason?: string;
+}
+```
+
+---
+
+25. shared/src/validation.ts
+
+```ts
+/**
+ * Hand-written validators for Mission v1.
+ *
+ * These validators are intentionally dependency-free so the same code can run
+ * in the backend, in workers, and in tests. They do not replace the JSON Schema
+ * (shared/schemas/mission.v1.schema.json); the schema is the normative artifact,
+ * and these functions are the runtime implementation of it.
+ */
+
+import type { MissionV1, MissionTarget, MissionMetadata } from "./mission.js";
+import { MISSION_CREATORS, type MissionCreator } from "./mission.js";
+import { RISK_LEVELS, type RiskLevel } from "./risk.js";
+import { SUPPORTED_MISSION_SCHEMA_VERSIONS } from "./version.js";
+import { isMissionOperation, type MissionOperation } from "./operations/index.js";
+import { clampMissionLimits, type MissionLimits } from "./limits.js";
+import { isWellFormedId } from "./ids.js";
+import { MissionRunnerError, makeError } from "./errors.js";
+
+export interface ValidationIssue {
+  path: string;
+  code: string;
+  message: string;
+}
+
+export interface ValidationResult {
+  ok: boolean;
+  issues: ValidationIssue[];
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    !Array.isArray(value)
+  );
+}
+
+function isIsoTimestamp(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    !Number.isNaN(Date.parse(value)) &&
+    /\d{4}-\d{2}-\d{2}T/.test(value)
+  );
+}
+
+function validateTarget(target: unknown, issues: ValidationIssue[]): void {
+  if (!isPlainObject(target)) {
+    issues.push({
+      path: "target",
+      code: "field_invalid",
+      message: "target must be an object",
+    });
+    return;
+  }
+  const kind = target.kind;
+  if (kind === "github") {
+    if (
+      !Array.isArray(target.repos) ||
+      target.repos.length === 0 ||
+      !target.repos.every((r) => typeof r === "string" && r.length > 0)
+    ) {
+      issues.push({
+        path: "target.repos",
+        code: "field_invalid",
+        message: "target.repos must be a non-empty array of strings",
+      });
+    }
+    return;
+  }
+  if (kind === "browser") {
+    if (
+      !Array.isArray(target.domains) ||
+      target.domains.length === 0 ||
+      !target.domains.every((d) => typeof d === "string" && d.length > 0)
+    ) {
+      issues.push({
+        path: "target.domains",
+        code: "field_invalid",
+        message: "target.domains must be a non-empty array of strings",
+      });
+    }
+    return;
+  }
+  if (kind === "mixed") {
+    if (!Array.isArray(target.repos)) {
+      issues.push({
+        path: "target.repos",
+        code: "field_invalid",
+        message: "target.repos must be an array",
+      });
+    }
+    if (!Array.isArray(target.domains)) {
+      issues.push({
+        path: "target.domains",
+        code: "field_invalid",
+        message: "target.domains must be an array",
+      });
+    }
+    return;
+  }
+  issues.push({
+    path: "target.kind",
+    code: "field_invalid",
+    message: "target.kind must be one of: github, browser, mixed",
+  });
+}
+
+function validateMetadata(
+  metadata: unknown,
+  issues: ValidationIssue[],
+): void {
+  if (metadata === undefined) return;
+  if (!isPlainObject(metadata)) {
+    issues.push({
+      path: "metadata",
+      code: "field_invalid",
+      message: "metadata must be an object",
+    });
+    return;
+  }
+  for (const [key, value] of Object.entries(metadata)) {
+    const okType =
+      value === null ||
+      typeof value === "string" ||
+      typeof value === "number" ||
+      typeof value === "boolean";
+    if (!okType) {
+      issues.push({
+        path: `metadata.${key}`,
+        code: "field_invalid",
+        message: "metadata values must be string, number, boolean, or null",
+      });
+    }
+  }
+}
+
+/**
+ * Validates a candidate Mission v1 document. Collects all issues rather than
+ * throwing on the first one, so the UI can show a complete list.
+ */
+export function validateMission(candidate: unknown): ValidationResult {
+  const issues: ValidationIssue[] = [];
+
+  if (!isPlainObject(candidate)) {
+    return {
+      ok: false,
+      issues: [
+        {
+          path: "",
+          code: "field_invalid",
+          message: "mission must be a JSON object",
+        },
+      ],
+    };
+  }
+
+  const m = candidate;
+
+  if (
+    typeof m.schemaVersion !== "string" ||
+    !(SUPPORTED_MISSION_SCHEMA_VERSIONS as readonly string[]).includes(
+      m.schemaVersion,
+    )
+  ) {
+    issues.push({
+      path: "schemaVersion",
+      code: "schema_version_unsupported",
+      message: `schemaVersion must be one of: ${SUPPORTED_MISSION_SCHEMA_VERSIONS.join(", ")}`,
+    });
+  }
+
+  if (!isWellFormedId(m.missionId)) {
+    issues.push({
+      path: "missionId",
+      code: "field_invalid",
+      message: "missionId must match /^[A-Za-z0-9_-]{8,128}$/",
+    });
+  }
+
+  if (typeof m.objective !== "string" || m.objective.length === 0) {
+    issues.push({
+      path: "objective",
+      code: "field_invalid",
+      message: "objective must be a non-empty string",
+    });
+  } else if (m.objective.length > 500) {
+    issues.push({
+      path: "objective",
+      code: "field_invalid",
+      message: "objective must be 500 characters or fewer",
+    });
+  }
+
+  if (
+    typeof m.createdBy !== "string" ||
+    !(MISSION_CREATORS as readonly string[]).includes(m.createdBy)
+  ) {
+    issues.push({
+      path: "createdBy",
+      code: "field_invalid",
+      message: `createdBy must be one of: ${MISSION_CREATORS.join(", ")}`,
+    });
+  }
+
+  if (!isIsoTimestamp(m.createdAt)) {
+    issues.push({
+      path: "createdAt",
+      code: "field_invalid",
+      message: "createdAt must be an ISO 8601 timestamp",
+    });
+  }
+
+  if (
+    typeof m.riskLevel !== "string" ||
+    !(RISK_LEVELS as readonly string[]).includes(m.riskLevel)
+  ) {
+    issues.push({
+      path: "riskLevel",
+      code: "field_invalid",
+      message: `riskLevel must be one of: ${RISK_LEVELS.join(", ")}`,
+    });
+  }
+
+  if (typeof m.requiresApproval !== "boolean") {
+    issues.push({
+      path: "requiresApproval",
+      code: "field_invalid",
+      message: "requiresApproval must be a boolean",
+    });
+  }
+
+  if (!isPlainObject(m.limits)) {
+    issues.push({
+      path: "limits",
+      code: "field_invalid",
+      message: "limits must be an object (may be empty)",
+    });
+  }
+
+  validateTarget(m.target, issues);
+
+  if (!Array.isArray(m.operations) || m.operations.length === 0) {
+    issues.push({
+      path: "operations",
+      code: "field_invalid",
+      message: "operations must be a non-empty array",
+    });
+  } else {
+    const seen = new Set<string>();
+    for (let i = 0; i < m.operations.length; i += 1) {
+      const op = m.operations[i];
+      if (!isMissionOperation(op)) {
+        issues.push({
+          path: `operations[${i}]`,
+          code: "operation_unsupported",
+          message: "operation is not a recognized GitHub or browser operation",
+        });
+        continue;
+      }
+      if (!isWellFormedId(op.operationId)) {
+        issues.push({
+          path: `operations[${i}].operationId`,
+          code: "field_invalid",
+          message: "operationId must match /^[A-Za-z0-9_-]{8,128}$/",
+        });
+      } else if (seen.has(op.operationId)) {
+        issues.push({
+          path: `operations[${i}].operationId`,
+          code: "conflict",
+          message: `duplicate operationId: ${op.operationId}`,
+        });
+      } else {
+        seen.add(op.operationId);
+      }
+      if (typeof op.required !== "boolean") {
+        issues.push({
+          path: `operations[${i}].required`,
+          code: "field_invalid",
+          message: "required must be a boolean",
+        });
+      }
+      if (typeof op.description !== "string" || op.description.length === 0) {
+        issues.push({
+          path: `operations[${i}].description`,
+          code: "field_invalid",
+          message: "description must be a non-empty string",
+        });
+      }
+    }
+  }
+
+  validateMetadata(m.metadata, issues);
+
+  if (m.contentHash !== undefined && typeof m.contentHash !== "string") {
+    issues.push({
+      path: "contentHash",
+      code: "field_invalid",
+      message: "contentHash must be a string when present",
+    });
+  }
+
+  return { ok: issues.length === 0, issues };
+}
+
+/**
+ * Throws a MissionRunnerError if the candidate is not a valid Mission v1.
+ * Useful in code paths that prefer exceptions.
+ */
+export function assertMissionV1(candidate: unknown): asserts candidate is MissionV1 {
+  const result = validateMission(candidate);
+  if (!result.ok) {
+    throw makeError("schema_invalid", "Mission failed schema validation", {
+      details: { issues: result.issues },
+    });
+  }
+}
+
+/**
+ * Narrows a validated candidate to MissionV1 and clamps its limits. Callers
+ * should validate first.
+ */
+export function toExecutableMission(candidate: MissionV1): {
+  mission: MissionV1;
+  limits: MissionLimits;
+} {
+  const limits = clampMissionLimits(candidate.limits);
+  return { mission: candidate, limits };
+}
+
+export function isMissionV1(value: unknown): value is MissionV1 {
+  return validateMission(value).ok;
+}
+
+/** Re-exported for convenience so callers do not need to import from errors.ts. */
+export { MissionRunnerError };
+```
+
+---
+
+26. shared/src/idempotency.ts
+
+```ts
+/**
+ * Idempotency key derivation.
+ *
+ * Every operation has a stable idempotency key derived from the mission ID, the
+ * operation ID, and a canonical hash of the operation's parameters. Retries with
+ * the same key must be safe: workers consult a persistent store and, for remote
+ * writes, reconcile against the expected remote state before mutating again.
+ */
+
+import type { IdempotencyKey, MissionId, OperationId } from "./ids.js";
+import { asIdempotencyKey } from "./ids.js";
+import type { MissionOperation } from "./operations/index.js";
+
+/**
+ * Canonical JSON: keys sorted recursively, no insignificant whitespace. This is
+ * intentionally simple and deterministic. It is not a general JSON canonicalizer
+ * (no number normalization beyond JSON.stringify), which is sufficient for our
+ * own payloads.
+ */
+export function canonicalJson(value: unknown): string {
+  if (value === null || typeof value !== "object") {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map(canonicalJson).join(",")}]`;
+  }
+  const entries = Object.entries(value as Record<string, unknown>)
+    .filter(([, v]) => v !== undefined)
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+  return `{${entries
+    .map(([k, v]) => `${JSON.stringify(k)}:${canonicalJson(v)}`)
+    .join(",")}}`;
+}
+
+/**
+ * A synchronous, dependency-free FNV-1a 64-bit-ish hash rendered as hex.
+ * This is NOT cryptographic. It is used only to derive a stable, collision-
+ * resistant-enough key for idempotency bookkeeping. Cryptographic integrity of
+ * evidence uses SHA-256 in the workers.
+ */
+export function fnv1a64Hex(input: string): string {
+  // Two independent 32-bit FNV-1a streams concatenated, to reduce collisions.
+  let h1 = 0x811c9dc5;
+  let h2 = 0x01000193;
+  for (let i = 0; i < input.length; i += 1) {
+    const c = input.charCodeAt(i);
+    h1 ^= c;
+    h1 = Math.imul(h1, 0x01000193) >>> 0;
+    h2 ^= c + i;
+    h2 = Math.imul(h2, 0x85ebca6b) >>> 0;
+  }
+  const a = h1.toString(16).padStart(8, "0");
+  const b = h2.toString(16).padStart(8, "0");
+  return `${a}${b}`;
+}
+
+/**
+ * Derives an idempotency key for an operation. The key is stable for identical
+ * (missionId, operationId, operationBody) triples and different if any of those
+ * change. The operation body hashed excludes the operationId itself (which is
+ * already part of the key input) to keep semantics clear.
+ */
+export function deriveIdempotencyKey(
+  missionId: MissionId,
+  operation: MissionOperation,
+): IdempotencyKey {
+  const { operationId, ...body } = operation;
+  const canonical = canonicalJson(body);
+  const hash = fnv1a64Hex(`${missionId}|${operationId}|${canonical}`);
+  return asIdempotencyKey(`idem_${hash}`);
+}
+
+/**
+ * Content hash used for idempotent mission resubmission. Excludes fields that
+ * may legitimately vary between submissions of the same logical mission.
+ */
+export function missionContentHash(input: {
+  missionId: MissionId;
+  objective: string;
+  createdBy: string;
+  target: unknown;
+  operations: readonly MissionOperation[];
+}): string {
+  const canonical = canonicalJson({
+    missionId: input.missionId,
+    objective: input.objective,
+    createdBy: input.createdBy,
+    target: input.target,
+    operations: input.operations,
+  });
+  return `mch_${fnv1a64Hex(canonical)}`;
+}
+```
+
+---
+
+27. shared/src/assistant.ts
+
+```ts
+/**
+ * Provider-neutral assistant authoring contract.
+ *
+ * There is NO live connector to ChatGPT or Gemini in Mission Runner. Instead,
+ * the owner copies the prompt below into an assistant, and the assistant emits
+ * a single JSON object conforming to Mission v1. That JSON is then pasted or
+ * uploaded into Mission Runner and validated by the same code path used for
+ * owner-authored missions.
+ *
+ * This module exists so that the prompt and the schema reference have a single
+ * home in the codebase, and so that any future live integration reuses the same
+ * shape rather than inventing a parallel one.
+ */
+
+import { MISSION_SCHEMA_VERSION_V1 } from "./version.js";
+
+export interface AssistantAuthoringContext {
+  /** e.g. "assistant:chatgpt". */
+  createdBy: string;
+  /** Absolute or documentation-relative path to the JSON Schema. */
+  schemaPath: string;
+  /** Known allowed repos, if any. Empty means "owner decides". */
+  repoAllowlist: readonly string[];
+  /** Known allowed domains, if any. Empty means "owner decides". */
+  domainAllowlist: readonly string[];
+  /** Free-form description of what the owner wants. */
+  goal: string;
+}
+
+export function buildAssistantPrompt(ctx: AssistantAuthoringContext): string {
+  const repos =
+    ctx.repoAllowlist.length > 0
+      ? ctx.repoAllowlist.join(", ")
+      : "(none pre-authorized; use an empty array and let the owner fix it)";
+  const domains =
+    ctx.domainAllowlist.length > 0
+      ? ctx.domainAllowlist.join(", ")
+      : "(none pre-authorized; use an empty array and let the owner fix it)";
+
+  return [
+    "You are helping author a Mission Runner mission document.",
+    "",
+    "Rules:",
+    `- Output ONLY a single JSON object. No prose, no markdown fences.`,
+    `- The object MUST conform to the Mission Runner schema at ${ctx.schemaPath}.`,
+    `- Set "schemaVersion" to "${MISSION_SCHEMA_VERSION_V1}".`,
+    `- Set "createdBy" to "${ctx.createdBy}".`,
+    `- Use a fresh unique string for "missionId".`,
+    `- Use an ISO 8601 UTC timestamp for "createdAt".`,
+    `- Choose "riskLevel" honestly. Write operations and form submissions are high risk.`,
+    `- Set "requiresApproval" to true if any operation writes to a remote system.`,
+    `- Keep "objective" to one short sentence.`,
+    `- Provide "limits" as an object; the server will clamp them.`,
+    `- Provide a "target" object with kind "github", "browser", or "mixed".`,
+    `- Provide a non-empty "operations" array of typed operations.`,
+    `- Do not include secrets, tokens, passwords, or personal data anywhere.`,
+    `- If the goal cannot be expressed with the available operation types, output`,
+    `  a single JSON object with an "error" field explaining why, instead.`,
+    "",
+    "Available GitHub repos (owner allowlist):",
+    `- ${repos}`,
+    "",
+    "Available browser domains (owner allowlist):",
+    `- ${domains}`,
+    "",
+    "Owner goal:",
+    ctx.goal,
+    "",
+    "Now output the Mission Runner mission JSON object.",
+  ].join("\n");
+}
+
+/**
+ * Provider labels that the client can offer in a picker. These are cosmetic:
+ * they do not imply any live integration.
+ */
+export const ASSISTANT_PROVIDERS = [
+  { id: "assistant:chatgpt", label: "ChatGPT" },
+  { id: "assistant:gemini", label: "Gemini" },
+  { id: "assistant:other", label: "Other assistant" },
+] as const;
+
+export type AssistantProviderId = (typeof ASSISTANT_PROVIDERS)[number]["id"];
+```
+
+---
+
+28. shared/schemas/mission.v1.schema.json
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mission-runner.local/schemas/mission.v1.schema.json",
+  "title": "Mission Runner Mission v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "missionId",
+    "objective",
+    "createdBy",
+    "createdAt",
+    "riskLevel",
+    "requiresApproval",
+    "limits",
+    "target",
+    "operations"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "mission.v1"
+    },
+    "missionId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{8,128}$"
+    },
+    "objective": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500
+    },
+    "createdBy": {
+      "enum": ["owner", "assistant:chatgpt", "assistant:gemini", "assistant:other"]
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "riskLevel": {
+      "enum": ["low", "medium", "high"]
+    },
+    "requiresApproval": {
+      "type": "boolean"
+    },
+    "contentHash": {
+      "type": "string"
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "maxSeconds": { "type": "integer", "minimum": 1 },
+        "maxOperations": { "type": "integer", "minimum": 1 },
+        "maxRetries": { "type": "integer", "minimum": 0 },
+        "maxEvidenceBytes": { "type": "integer", "minimum": 1024 },
+        "maxPages": { "type": "integer", "minimum": 1 },
+        "maxConcurrentPages": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "target": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "repos"],
+          "properties": {
+            "kind": { "const": "github" },
+            "repos": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "type": "string", "pattern": "^[^/\\s]+/[^/\\s]+$" }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "domains"],
+          "properties": {
+            "kind": { "const": "browser" },
+            "domains": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "repos", "domains"],
+          "properties": {
+            "kind": { "const": "mixed" },
+            "repos": {
+              "type": "array",
+              "items": { "type": "string", "pattern": "^[^/\\s]+/[^/\\s]+$" }
+            },
+            "domains": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      ]
+    },
+    "operations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "oneOf": [
+          { "$ref": "#/$defs/githubOperation" },
+          { "$ref": "#/$defs/browserOperation" }
+        ]
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": {
+        "type": ["string", "number", "boolean", "null"]
+      }
+    }
+  },
+  "$defs": {
+    "commonOperationFields": {
+      "operationId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{8,128}$" },
+      "required": { "type": "boolean" },
+      "description": { "type": "string", "minLength": 1, "maxLength": 500 }
+    },
+    "gitHubRef": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "name"],
+          "properties": {
+            "type": { "const": "branch" },
+            "name": { "type": "string", "minLength": 1 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "name"],
+          "properties": {
+            "type": { "const": "tag" },
+            "name": { "type": "string", "minLength": 1 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "sha"],
+          "properties": {
+            "type": { "const": "commit" },
+            "sha": { "type": "string", "minLength": 4 }
+          }
+        }
+      ]
+    },
+    "githubOperation": {
+      "type": "object",
+      "required": ["kind", "op", "operationId", "required", "description"],
+      "properties": {
+        "kind": { "const": "github" },
+        "op": {
+          "enum": [
+            "read_file",
+            "list_files",
+            "list_issues",
+            "get_issue",
+            "list_pull_requests",
+            "get_pull_request",
+            "list_commits",
+            "create_branch",
+            "put_file",
+            "open_pull_request",
+            "comment_on_issue",
+            "comment_on_pull_request"
+          ]
+        },
+        "operationId": { "$ref": "#/$defs/commonOperationFields/operationId" },
+        "required": { "$ref": "#/$defs/commonOperationFields/required" },
+        "description": { "$ref": "#/$defs/commonOperationFields/description" },
+        "repo": { "type": "string", "pattern": "^[^/\\s]+/[^/\\s]+$" },
+        "path": { "type": "string" },
+        "ref": { "$ref": "#/$defs/gitHubRef" },
+        "encoding": { "enum": ["utf8", "base64"] },
+        "state": { "enum": ["open", "closed", "all"] },
+        "labels": { "type": "array", "items": { "type": "string" } },
+        "limit": { "type": "integer", "minimum": 1 },
+        "issueNumber": { "type": "integer", "minimum": 1 },
+        "pullNumber": { "type": "integer", "minimum": 1 },
+        "branch": { "type": "string", "minLength": 1 },
+        "fromRef": { "$ref": "#/$defs/gitHubRef" },
+        "content": { "type": "string" },
+        "commitMessage": { "type": "string", "minLength": 1 },
+        "expectedSha": { "type": "string" },
+        "head": { "type": "string", "minLength": 1 },
+        "base": { "type": "string", "minLength": 1 },
+        "title": { "type": "string", "minLength": 1 },
+        "body": { "type": "string" },
+        "draft": { "type": "boolean" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "op": { "const": "read_file" } } },
+          "then": { "required": ["repo", "path"] }
+        },
+        {
+          "if": { "properties": { "op": { "const": "list_files" } } },
+          "then": { "required": ["repo", "path"] }
+        },
+        {
+          "if": { "properties": { "op": { "const": "list_issues" } } },
+          "then": { "required": ["repo"] }
+        },
+        {
+          "if": { "properties": { "op": { "const": "get_issue" } } },
+          "then": { "required": ["repo", "issueNumber"] }
+        },
+        {
+          "if": { "properties": { "op": { "const": "list_pull_requests" } } },
+          "then": { "required": ["repo"] }
+        },
+        {
+          "if": { "properties": { "op": { "const": "get_pull_request" } } },
+          "then": { "required": ["repo", "pullNumber"] }
+        },
+        {
+          "if": { "properties": { "op": { "const": "list_commits" } } },
+          "then": { "required": ["repo"] }
+        },
+        {
+          "if": { "properties": { "op": { "const": "create_branch" } } },
+          "then": { "required": ["repo", "branch", "fromRef"] }
+        },
+        {
+          "if": { "properties": { "op": { "const": "put_file" } } },
+          "then": { "required": ["repo", "path", "branch", "content", "commitMessage"] }
+        },
+        {
+          "if": { "properties": { "op": { "const": "open_pull_request" } } },
+          "then": { "required": ["repo", "head", "base", "title"] }
+        },
+        {
+          "if": { "properties": { "op": { "const": "comment_on_issue" } } },
+          "then": { "required": ["repo", "issueNumber", "body"] }
+        },
+        {
+          "if": { "properties": { "op": { "const": "comment_on_pull_request" } } },
+          "then": { "required": ["repo", "pullNumber", "body"] }
+        }
+      ]
+    },
+    "browserOperation": {
+      "type": "object",
+      "required": ["kind", "op", "operationId", "required", "description"],
+      "properties": {
+        "kind": { "const": "browser" },
+        "op": {
+          "enum": [
+            "navigate",
+            "screenshot",
+            "extract_text",
+            "click",
+            "type",
+            "wait_for_selector",
+            "submit_form",
+            "assert_text",
+            "get_url",
+            "get_title"
+          ]
+        },
+        "operationId": { "$ref": "#/$defs/commonOperationFields/operationId" },
+        "required": { "$ref": "#/$defs/commonOperationFields/required" },
+        "description": { "$ref": "#/$defs/commonOperationFields/description" },
+        "url": { "type": "string", "minLength": 1 },
+        "waitUntil": { "enum": ["load", "domcontentloaded", "networkidle"] },
+        "settleMs": { "type": "integer", "minimum": 0 },
+        "label": { "type": "string" },
+        "fullPage": { "type": "boolean" },
+        "selector": { "type": "string", "minLength": 1 },
+        "attribute": { "type": "string" },
+        "maxChars": { "type": "integer", "minimum": 1 },
+        "timeoutMs": { "type": "integer", "minimum": 0 },
+        "text": { "type": "string" },
+        "clear": { "type": "boolean" },
+        "state": { "enum": ["attached", "detached", "visible", "hidden"] },
+        "contains": { "type": "string" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "op": { "const": "navigate" } } },
+          "then": { "required": ["url"] }
+        },
+        {
+          "if": { "properties": { "op": { "const": "click" } } },
+          "then": { "required": ["selector"] }
+        },
+        {
+          "if": { "properties": { "op": { "const": "type" } } },
+          "then": { "required": ["selector", "text"] }
+        },
+        {
+          "if": { "properties": { "op": { "const": "wait_for_selector" } } },
+          "then": { "required": ["selector"] }
+        },
+        {
+          "if": { "properties": { "op": { "const": "submit_form" } } },
+          "then": { "required": ["selector"] }
+        },
+        {
+          "if": { "properties": { "op": { "const": "assert_text" } } },
+          "then": { "required": ["selector", "contains"] }
+        }
+      ]
+    }
+  }
+}
+```
+
+---
+
+29. shared/schemas/mission.v1.example.json
+
+```json
+{
+  "schemaVersion": "mission.v1",
+  "missionId": "01HZZZZZZZEXAMPLE0000000001",
+  "objective": "Read the README from example-org/example-repo and capture a screenshot of example.com.",
+  "createdBy": "assistant:chatgpt",
+  "createdAt": "2025-01-01T12:00:00.000Z",
+  "riskLevel": "low",
+  "requiresApproval": false,
+  "limits": {
+    "maxSeconds": 120,
+    "maxOperations": 5,
+    "maxRetries": 1,
+    "maxEvidenceBytes": 5242880,
+    "maxPages": 2,
+    "maxConcurrentPages": 1
+  },
+  "target": {
+    "kind": "mixed",
+    "repos": ["example-org/example-repo"],
+    "domains": ["example.com"]
+  },
+  "operations": [
+    {
+      "kind": "github",
+      "op": "read_file",
+      "operationId": "op_read_readme_0001",
+      "required": true,
+      "description": "Read README.md from the default branch.",
+      "repo": "example-org/example-repo",
+      "path": "README.md",
+      "encoding": "utf8"
+    },
+    {
+      "kind": "browser",
+      "op": "navigate",
+      "operationId": "op_nav_example_0002",
+      "required": true,
+      "description": "Open the example.com homepage.",
+      "url": "https://example.com/",
+      "waitUntil": "load",
+      "settleMs": 500
+    },
+    {
+      "kind": "browser",
+      "op": "screenshot",
+      "operationId": "op_shot_example_0003",
+      "required": false,
+      "description": "Capture a full-page screenshot of example.com.",
+      "label": "example-home",
+      "fullPage": true
+    }
+  ],
+  "metadata": {
+    "author": "assistant:chatgpt",
+    "notes": "Example mission for documentation and testing."
+  }
+}
+```
+
+---
+
+Delivered / Remaining Manifest
+
+Delivered in Package 1 (this message):
+
+· README.md
+· docs/ARCHITECTURE.md
+· docs/SECURITY_MODEL.md
+· docs/IMPLEMENTATION_PLAN.md
+· docs/FILE_MANIFEST.md
+· .env.example
+· package.json, pnpm-workspace.yaml, tsconfig.base.json, .gitignore
+· shared/package.json, shared/tsconfig.json
+· shared/src/index.ts, version.ts, ids.ts, status.ts, errors.ts, limits.ts, risk.ts, evidence.ts, idempotency.ts, assistant.ts, mission.ts, validation.ts
+· shared/src/operations/github.ts, browser.ts, index.ts
+· shared/schemas/mission.v1.schema.json, shared/schemas/mission.v1.example.json
+
+Remaining (Packages 2–5, not started per instructions):
+
+· Package 2 — Backend API (backend/), auth, policy, dispatcher, mission store, evidence storage.
+· Package 3 — GitHub worker (workers/github/), REST client, executors, idempotency store.
+· Package 4 — Browser worker (workers/browser/), Playwright executor, sandbox, evidence capture.
+· Package 5 — Frontend (web/), mobile-first UI, mission authoring/approval/evidence views.
+· Package 6 — Deployment (deploy/), Dockerfiles, compose, reverse-proxy config, deployment README.
+
+I have not created, uploaded, deployed, or tested any of these files. I have not inspected any repository. Package 1's contracts and paths above are complete; awaiting your go-ahead before starting Package 2.
