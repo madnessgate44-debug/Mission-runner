@@ -37,7 +37,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 
 function isIsoTimestamp(value: unknown): value is string {
   if (typeof value !== "string") return false;
-  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,3})?(Z|[+-](?:0\d|1\d|2[0-3]):[0-5]\d)$/.exec(value);
+  const match = /^(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2}):(\\d{2})(?:\\.\\d+)?(Z|[+-](?:0\\d|1\\d|2[0-3]):[0-5]\\d)$/.exec(value);
   if (!match || Number.isNaN(Date.parse(value))) return false;
   const year = Number(match[1]), month = Number(match[2]), day = Number(match[3]);
   const hour = Number(match[4]), minute = Number(match[5]), second = Number(match[6]);
@@ -314,7 +314,7 @@ export function validateMission(candidate: unknown): ValidationResult {
     const validLimits: Record<string, number> = { maxSeconds: 1, maxOperations: 1, maxRetries: 0, maxEvidenceBytes: 1024, maxPages: 1, maxConcurrentPages: 1 };
     for (const [key, value] of Object.entries(m.limits)) {
       if (!(key in validLimits)) issues.push({ path: `limits.${key}`, code: "field_unknown", message: "unknown limit property" });
-      else if (typeof value !== "number" || !Number.isInteger(value) || value < validLimits[key]) issues.push({ path: `limits.${key}`, code: "field_invalid", message: "limit must be an integer at or above its minimum" });
+      else if (typeof value !== "number" || !Number.isInteger(value) || value < (validLimits[key] ?? 1)) issues.push({ path: `limits.${key}`, code: "field_invalid", message: "limit must be an integer at or above its minimum" });
     }
   }
 
