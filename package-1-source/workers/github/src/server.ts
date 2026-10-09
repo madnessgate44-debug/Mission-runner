@@ -4,7 +4,7 @@ import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
 import {
   assertMissionV1, canonicalJson, missionContentHash, missionRequiresApproval,
-  type MissionV1, type MissionApproval, type GitHubOperation
+  type MissionV1, type MissionApproval, type GitHubOperation, type GitHubRef
 } from "@mission-runner/shared";
 
 type Dispatch = { mission: MissionV1; operation: GitHubOperation; contentHash: string; approval?: MissionApproval };
@@ -59,6 +59,16 @@ async function api(path: string, init: RequestInit = {}): Promise<unknown> {
   return data;
 }
 function encodePath(path: string): string { return path.split("/").map(encodeURIComponent).join("/"); }
+async function resolveGitRef(base: string, ref: GitHubRef): Promise<string> {
+  if (ref.type === "commit") return ref.sha;
+  const prefix = ref.type === "branch" ? "heads" : "tags";
+  const found = await api(base + "/git/ref/" + prefix + "/" + encodePath(ref.name)) as { object: { sha: string; type?: string } };
+  if (found.object.type === "tag") {
+    const tag = await api(base + "/git/tags/" + found.object.sha) as { object: { sha: string; type?: string } };
+    return tag.object.sha;
+  }
+  return found.object.sha;
+}
 async function execute(mission: MissionV1, op: GitHubOperation): Promise<unknown> {
   if (!("repo" in op) || !targetAllows(mission, op.repo)) throw new Error("repository_not_allowed");
   const [owner, repo] = op.repo.split("/");
@@ -88,7 +98,7 @@ async function execute(mission: MissionV1, op: GitHubOperation): Promise<unknown
       return api(base + "/commits?" + q);
     }
     case "create_branch": {
-      const sha = "sha" in op.fromRef ? op.fromRef.sha : (await api(base + "/git/ref/heads/" + encodeURIComponent(op.fromRef.name)) as {object:{sha:string}}).object.sha;
+      const sha = await resolveGitRef(base, op.fromRef);
       return api(base + "/git/refs", { method:"POST", body: JSON.stringify({ ref: "refs/heads/" + op.branch, sha }) });
     }
     case "put_file": {
