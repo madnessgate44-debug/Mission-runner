@@ -205,17 +205,20 @@
   },
   "$defs": {
     "commonOperationFields": {
-      "operationId": {
-        "type": "string",
-        "pattern": "^[A-Za-z0-9_-]{8,128}$"
-      },
-      "required": {
-        "type": "boolean"
-      },
-      "description": {
-        "type": "string",
-        "minLength": 1,
-        "maxLength": 500
+      "type": "object",
+      "properties": {
+        "operationId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{8,128}$"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        }
       }
     },
     "gitHubRef": {
@@ -303,13 +306,13 @@
           ]
         },
         "operationId": {
-          "$ref": "#/$defs/commonOperationFields/operationId"
+          "$ref": "#/$defs/commonOperationFields/properties/operationId"
         },
         "required": {
-          "$ref": "#/$defs/commonOperationFields/required"
+          "$ref": "#/$defs/commonOperationFields/properties/required"
         },
         "description": {
-          "$ref": "#/$defs/commonOperationFields/description"
+          "$ref": "#/$defs/commonOperationFields/properties/description"
         },
         "repo": {
           "type": "string",
@@ -641,13 +644,13 @@
           ]
         },
         "operationId": {
-          "$ref": "#/$defs/commonOperationFields/operationId"
+          "$ref": "#/$defs/commonOperationFields/properties/operationId"
         },
         "required": {
-          "$ref": "#/$defs/commonOperationFields/required"
+          "$ref": "#/$defs/commonOperationFields/properties/required"
         },
         "description": {
-          "$ref": "#/$defs/commonOperationFields/description"
+          "$ref": "#/$defs/commonOperationFields/properties/description"
         },
         "url": {
           "type": "string",
