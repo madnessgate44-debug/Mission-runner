@@ -7,9 +7,9 @@
  * and these functions are the runtime implementation of it.
  */
 
-import type { MissionV1, MissionTarget, MissionMetadata } from "./mission.js";
-import { MISSION_CREATORS, type MissionCreator } from "./mission.js";
-import { RISK_LEVELS, type RiskLevel } from "./risk.js";
+import type { MissionV1 } from "./mission.js";
+import { MISSION_CREATORS } from "./mission.js";
+import { RISK_LEVELS } from "./risk.js";
 import { SUPPORTED_MISSION_SCHEMA_VERSIONS } from "./version.js";
 import { isMissionOperation, type MissionOperation } from "./operations/index.js";
 import { clampMissionLimits, type MissionLimits } from "./limits.js";
@@ -37,7 +37,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 
 function isIsoTimestamp(value: unknown): value is string {
   if (typeof value !== "string") return false;
-  const match = /^(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2}):(\\d{2})(?:\\.\\d{1,3})?(Z|[+-](?:0\\d|1\\d|2[0-3]):[0-5]\\d)$/.exec(value);
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,3})?(Z|[+-](?:0\d|1\d|2[0-3]):[0-5]\d)$/.exec(value);
   if (!match || Number.isNaN(Date.parse(value))) return false;
   const year = Number(match[1]), month = Number(match[2]), day = Number(match[3]);
   const hour = Number(match[4]), minute = Number(match[5]), second = Number(match[6]);
@@ -60,14 +60,14 @@ function validateTarget(target: unknown, issues: ValidationIssue[]): void {
   }
   const validateRepos = (repos: unknown, path: string) => {
     if (!Array.isArray(repos) || repos.length === 0 ||
-      !repos.every((repo) => typeof repo === "string" && /^[^/\\s]+\\/[^/\\s]+$/.test(repo))) {
+      !repos.every((repo) => typeof repo === "string" && /^[^/\s]+\/[^/\s]+$/.test(repo))) {
       issues.push({ path, code: "field_invalid", message: "must be a non-empty array of owner/repository strings" });
     }
   };
   const validateDomains = (domains: unknown, path: string) => {
     if (!Array.isArray(domains) || domains.length === 0 ||
       !domains.every((domain) => typeof domain === "string" && domain.length <= 253 &&
-        /^(?:\\*\\.)?[a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?$/.test(domain) &&
+        /^(?:\*\.)?[a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?$/.test(domain) &&
         !domain.includes(".."))) {
       issues.push({ path, code: "field_invalid", message: "must be a non-empty array of hostnames" });
     }
@@ -152,11 +152,11 @@ function validateOperation(op: unknown, index: number, issues: ValidationIssue[]
   for (const key of stringKeys) if (key in op && typeof op[key] !== "string") {
     issues.push({ path: `${path}.${key}`, code: "field_invalid", message: "must be a string" });
   }
-  for (const key of ["repo"]) if (typeof op[key] === "string" && !/^[^/\\s]+\\/[^/\\s]+$/.test(op[key] as string)) {
+  for (const key of ["repo"]) if (typeof op[key] === "string" && !/^[^/\s]+\/[^/\s]+$/.test(op[key] as string)) {
     issues.push({ path: `${path}.${key}`, code: "field_invalid", message: "must be owner/repository" });
   }
   for (const key of ["issueNumber", "pullNumber", "limit", "maxChars", "settleMs", "timeoutMs"]) {
-    if (key in op && (!Number.isInteger(op[key]) || (op[key] as number) < (key === "settleMs" || key === "timeoutMs" ? 0 : 1))) {
+    if (key in op && (typeof op[key] !== "number" || !Number.isInteger(op[key]) || (op[key] as number) < (key === "settleMs" || key === "timeoutMs" ? 0 : 1))) {
       issues.push({ path: `${path}.${key}`, code: "field_invalid", message: "must be a valid integer in range" });
     }
   }
@@ -264,7 +264,7 @@ export function validateMission(candidate: unknown): ValidationResult {
 
   if (
     typeof m.declaredRiskLevel !== "string" ||
-    !(RISK_LEVELS as readonly string[]).includes(m.riskLevel)
+    !(RISK_LEVELS as readonly string[]).includes(m.declaredRiskLevel)
   ) {
     issues.push({
       path: "declaredRiskLevel",
@@ -287,7 +287,7 @@ export function validateMission(candidate: unknown): ValidationResult {
     const validLimits: Record<string, number> = { maxSeconds: 1, maxOperations: 1, maxRetries: 0, maxEvidenceBytes: 1024, maxPages: 1, maxConcurrentPages: 1 };
     for (const [key, value] of Object.entries(m.limits)) {
       if (!(key in validLimits)) issues.push({ path: `limits.${key}`, code: "field_unknown", message: "unknown limit property" });
-      else if (!Number.isInteger(value) || (value as number) < validLimits[key]) issues.push({ path: `limits.${key}`, code: "field_invalid", message: "limit must be an integer at or above its minimum" });
+      else if (typeof value !== "number" || !Number.isInteger(value) || value < validLimits[key]) issues.push({ path: `limits.${key}`, code: "field_invalid", message: "limit must be an integer at or above its minimum" });
     }
   }
 
