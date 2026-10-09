@@ -7,6 +7,13 @@ import { assertMissionV1, effectiveMissionRisk, missionRequiresApproval, mission
 import { verifyPassword } from "./auth.js";
 import type { AppConfig } from "./config.js";
 import { MissionStore, type StoredMission } from "./store.js";
+declare module "@fastify/secure-session" {
+  interface SessionData {
+    ownerId: string;
+    csrfToken: string;
+  }
+}
+
 declare module "fastify" { interface FastifyRequest { ownerId: string | null; } }
 export interface AppOptions { config: AppConfig; store?: MissionStore; }
 export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
