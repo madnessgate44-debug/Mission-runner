@@ -11,25 +11,23 @@
   "scripts": {
     "typecheck": "tsc -b --pretty false",
     "lint": "eslint . --ext .ts,.tsx --max-warnings 0",
-    "format": "prettier --write .",
+    "format": "prettier --write \"shared/**/*.{ts,json}\" \"scripts/**/*.mjs\" \"tests/**/*.mjs\" \"*.json\" \"*.yaml\" \"*.yml\" \".eslintrc.json\"",
     "build:shared": "pnpm --filter @mission-runner/shared build",
-    "test": "pnpm -r --if-present test",
-    "validate:example": "node ./scripts/validate-example.mjs",
+    "test": "pnpm run build:shared && node --test tests/*.test.mjs",
+    "validate:example": "pnpm run build:shared && node ./scripts/validate-example.mjs",
     "dev:backend": "pnpm --filter @mission-runner/backend dev",
     "dev:github-worker": "pnpm --filter @mission-runner/github-worker dev",
     "dev:browser-worker": "pnpm --filter @mission-runner/browser-worker dev",
     "dev:web": "pnpm --filter @mission-runner/web dev"
   },
-  "workspaces": [
-    "shared",
-    "backend",
-    "workers/*",
-    "web"
-  ],
   "devDependencies": {
     "@types/node": "^20.11.30",
     "eslint": "^8.57.0",
     "prettier": "^3.2.5",
-    "typescript": "^5.4.5"
+    "typescript": "^5.4.5",
+    "@typescript-eslint/parser": "^7.18.0",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1"
   }
 }
