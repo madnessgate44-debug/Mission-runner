@@ -1,0 +1,319 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mission-runner.local/schemas/mission.v1.schema.json",
+  "title": "Mission Runner Mission v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "missionId",
+    "objective",
+    "createdBy",
+    "createdAt",
+    "riskLevel",
+    "requiresApproval",
+    "limits",
+    "target",
+    "operations"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "mission.v1"
+    },
+    "missionId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{8,128}$"
+    },
+    "objective": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500
+    },
+    "createdBy": {
+      "enum": ["owner", "assistant:chatgpt", "assistant:gemini", "assistant:other"]
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "riskLevel": {
+      "enum": ["low", "medium", "high"]
+    },
+    "requiresApproval": {
+      "type": "boolean"
+    },
+    "contentHash": {
+      "type": "string"
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "maxSeconds": { "type": "integer", "minimum": 1 },
+        "maxOperations": { "type": "integer", "minimum": 1 },
+        "maxRetries": { "type": "integer", "minimum": 0 },
+        "maxEvidenceBytes": { "type": "integer", "minimum": 1024 },
+        "maxPages": { "type": "integer", "minimum": 1 },
+        "maxConcurrentPages": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "target": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "repos"],
+          "properties": {
+            "kind": { "const": "github" },
+            "repos": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "type": "string", "pattern": "^[^/\\s]+/[^/\\s]+$" }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "domains"],
+          "properties": {
+            "kind": { "const": "browser" },
+            "domains": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "repos", "domains"],
+          "properties": {
+            "kind": { "const": "mixed" },
+            "repos": {
+              "type": "array",
+              "items": { "type": "string", "pattern": "^[^/\\s]+/[^/\\s]+$" }
+            },
+            "domains": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      ]
+    },
+    "operations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "oneOf": [
+          { "$ref": "#/$defs/githubOperation" },
+          { "$ref": "#/$defs/browserOperation" }
+        ]
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": {
+        "type": ["string", "number", "boolean", "null"]
+      }
+    }
+  },
+  "$defs": {
+    "commonOperationFields": {
+      "operationId": { "type": "string", "pattern": "^[A-Za-z0-9_-]{8,128}$" },
+      "required": { "type": "boolean" },
+      "description": { "type": "string", "minLength": 1, "maxLength": 500 }
+    },
+    "gitHubRef": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "name"],
+          "properties": {
+            "type": { "const": "branch" },
+            "name": { "type": "string", "minLength": 1 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "name"],
+          "properties": {
+            "type": { "const": "tag" },
+            "name": { "type": "string", "minLength": 1 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "sha"],
+          "properties": {
+            "type": { "const": "commit" },
+            "sha": { "type": "string", "minLength": 4 }
+          }
+        }
+      ]
+    },
+    "githubOperation": {
+      "type": "object",
+      "required": ["kind", "op", "operationId", "required", "description"],
+      "properties": {
+        "kind": { "const": "github" },
+        "op": {
+          "enum": [
+            "read_file",
+            "list_files",
+            "list_issues",
+            "get_issue",
+            "list_pull_requests",
+            "get_pull_request",
+            "list_commits",
+            "create_branch",
+            "put_file",
+            "open_pull_request",
+            "comment_on_issue",
+            "comment_on_pull_request"
+          ]
+        },
+        "operationId": { "$ref": "#/$defs/commonOperationFields/operationId" },
+        "required": { "$ref": "#/$defs/commonOperationFields/required" },
+        "description": { "$ref": "#/$defs/commonOperationFields/description" },
+        "repo": { "type": "string", "pattern": "^[^/\\s]+/[^/\\s]+$" },
+        "path": { "type": "string" },
+        "ref": { "$ref": "#/$defs/gitHubRef" },
+        "encoding": { "enum": ["utf8", "base64"] },
+        "state": { "enum": ["open", "closed", "all"] },
+        "labels": { "type": "array", "items": { "type": "string" } },
+        "limit": { "type": "integer", "minimum": 1 },
+        "issueNumber": { "type": "integer", "minimum": 1 },
+        "pullNumber": { "type": "integer", "minimum": 1 },
+        "branch": { "type": "string", "minLength": 1 },
+        "fromRef": { "$ref": "#/$defs/gitHubRef" },
+        "content": { "type": "string" },
+        "commitMessage": { "type": "string", "minLength": 1 },
+        "expectedSha": { "type": "string" },
+        "head": { "type": "string", "minLength": 1 },
+        "base": { "type": "string", "minLength": 1 },
+        "title": { "type": "string", "minLength": 1 },
+        "body": { "type": "string" },
+        "draft": { "type": "boolean" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "op": { "const": "read_file" } } },
+          "then": { "required": ["repo", "path"] }
+        },
+        {
+          "if": { "properties": { "op": { "const": "list_files" } } },
+          "then": { "required": ["repo", "path"] }
+        },
+        {
+          "if": { "properties": { "op": { "const": "list_issues" } } },
+          "then": { "required": ["repo"] }
+        },
+        {
+          "if": { "properties": { "op": { "const": "get_issue" } } },
+          "then": { "required": ["repo", "issueNumber"] }
+        },
+        {
+          "if": { "properties": { "op": { "const": "list_pull_requests" } } },
+          "then": { "required": ["repo"] }
+        },
+        {
+          "if": { "properties": { "op": { "const": "get_pull_request" } } },
+          "then": { "required": ["repo", "pullNumber"] }
+        },
+        {
+          "if": { "properties": { "op": { "const": "list_commits" } } },
+          "then": { "required": ["repo"] }
+        },
+        {
+          "if": { "properties": { "op": { "const": "create_branch" } } },
+          "then": { "required": ["repo", "branch", "fromRef"] }
+        },
+        {
+          "if": { "properties": { "op": { "const": "put_file" } } },
+          "then": { "required": ["repo", "path", "branch", "content", "commitMessage"] }
+        },
+        {
+          "if": { "properties": { "op": { "const": "open_pull_request" } } },
+          "then": { "required": ["repo", "head", "base", "title"] }
+        },
+        {
+          "if": { "properties": { "op": { "const": "comment_on_issue" } } },
+          "then": { "required": ["repo", "issueNumber", "body"] }
+        },
+        {
+          "if": { "properties": { "op": { "const": "comment_on_pull_request" } } },
+          "then": { "required": ["repo", "pullNumber", "body"] }
+        }
+      ]
+    },
+    "browserOperation": {
+      "type": "object",
+      "required": ["kind", "op", "operationId", "required", "description"],
+      "properties": {
+        "kind": { "const": "browser" },
+        "op": {
+          "enum": [
+            "navigate",
+            "screenshot",
+            "extract_text",
+            "click",
+            "type",
+            "wait_for_selector",
+            "submit_form",
+            "assert_text",
+            "get_url",
+            "get_title"
+          ]
+        },
+        "operationId": { "$ref": "#/$defs/commonOperationFields/operationId" },
+        "required": { "$ref": "#/$defs/commonOperationFields/required" },
+        "description": { "$ref": "#/$defs/commonOperationFields/description" },
+        "url": { "type": "string", "minLength": 1 },
+        "waitUntil": { "enum": ["load", "domcontentloaded", "networkidle"] },
+        "settleMs": { "type": "integer", "minimum": 0 },
+        "label": { "type": "string" },
+        "fullPage": { "type": "boolean" },
+        "selector": { "type": "string", "minLength": 1 },
+        "attribute": { "type": "string" },
+        "maxChars": { "type": "integer", "minimum": 1 },
+        "timeoutMs": { "type": "integer", "minimum": 0 },
+        "text": { "type": "string" },
+        "clear": { "type": "boolean" },
+        "state": { "enum": ["attached", "detached", "visible", "hidden"] },
+        "contains": { "type": "string" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "op": { "const": "navigate" } } },
+          "then": { "required": ["url"] }
+        },
+        {
+          "if": { "properties": { "op": { "const": "click" } } },
+          "then": { "required": ["selector"] }
+        },
+        {
+          "if": { "properties": { "op": { "const": "type" } } },
+          "then": { "required": ["selector", "text"] }
+        },
+        {
+          "if": { "properties": { "op": { "const": "wait_for_selector" } } },
+          "then": { "required": ["selector"] }
+        },
+        {
+          "if": { "properties": { "op": { "const": "submit_form" } } },
+          "then": { "required": ["selector"] }
+        },
+        {
+          "if": { "properties": { "op": { "const": "assert_text" } } },
+          "then": { "required": ["selector", "contains"] }
+        }
+      ]
+    }
+  }
+}
