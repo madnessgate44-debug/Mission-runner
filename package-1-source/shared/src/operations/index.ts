@@ -10,7 +10,6 @@ import {
 } from "./github.js";
 import {
   browserOperationRisk,
-  isBrowserApprovalOp,
 } from "./browser.js";
 
 export * from "./github.js";
@@ -60,8 +59,10 @@ export function effectiveMissionRisk(
 export function missionRequiresApproval(
   declaredRisk: RiskLevel,
   operations: readonly MissionOperation[],
+  declaredRequiresApproval = false,
   policy: ApprovalPolicy = DEFAULT_APPROVAL_POLICY,
 ): boolean {
-  return riskAtLeast(effectiveMissionRisk(declaredRisk, operations), policy.requireApprovalAtOrAbove) ||
+  return declaredRequiresApproval ||
+    riskAtLeast(effectiveMissionRisk(declaredRisk, operations), policy.requireApprovalAtOrAbove) ||
     operations.some((operation) => operationRequiresApproval(operation, policy));
 }
