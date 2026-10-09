@@ -184,6 +184,26 @@ function validGitHubRef(value: unknown): boolean {
   return false;
 }
 
+function validateOperationScope(op: MissionOperation, target: unknown, index: number, issues: ValidationIssue[]): void {
+  if (!isPlainObject(target)) return;
+  const path = `operations[${index}]`;
+  if (op.kind === "github") {
+    const repos = Array.isArray(target.repos) ? target.repos : [];
+    if (!repos.includes(op.repo)) issues.push({ path: `${path}.repo`, code: "target_scope_violation", message: "repository must be declared in mission.target" });
+    return;
+  }
+  if (op.op !== "navigate") return;
+  let hostname = "";
+  try { hostname = new URL(op.url).hostname.toLowerCase(); } catch { return; }
+  const domains = Array.isArray(target.domains) ? target.domains.filter((v): v is string => typeof v === "string") : [];
+  const allowed = domains.some((domain) => {
+    const d = domain.toLowerCase();
+    if (d.startsWith("*.")) return hostname.endsWith(d.slice(1)) && hostname !== d.slice(2);
+    return hostname === d;
+  });
+  if (!allowed) issues.push({ path: `${path}.url`, code: "target_scope_violation", message: "navigation host must be declared in mission.target.domains" });
+}
+
 /**
  * Validates a candidate Mission v1 document. Collects all issues rather than
  * throwing on the first one, so the UI can show a complete list.
@@ -304,6 +324,7 @@ export function validateMission(candidate: unknown): ValidationResult {
     for (let i = 0; i < m.operations.length; i += 1) {
       const op = m.operations[i];
       if (!validateOperation(op, i, issues)) continue;
+      validateOperationScope(op, m.target, i, issues);
       if (!isWellFormedId(op.operationId)) {
         issues.push({ path: `operations[${i}].operationId`, code: "field_invalid", message: "operationId must match /^[A-Za-z0-9_-]{8,128}$/" });
       } else if (seen.has(op.operationId)) {
