@@ -160,7 +160,9 @@ function validateOperation(op: unknown, index: number, issues: ValidationIssue[]
     issues.push({ path: `${path}.${key}`, code: "field_invalid", message: "must not be empty" });
   }
   for (const key of ["issueNumber", "pullNumber", "limit", "maxChars", "settleMs", "timeoutMs"]) {
-    if (key in op && (typeof op[key] !== "number" || !Number.isInteger(op[key]) || (op[key] as number) < (key === "settleMs" || key === "timeoutMs" ? 0 : 1))) {
+    const numericValue = op[key];
+    if (key in op && (typeof numericValue !== "number" || !Number.isInteger(numericValue) ||
+      numericValue < (key === "settleMs" || key === "timeoutMs" ? 0 : 1))) {
       issues.push({ path: `${path}.${key}`, code: "field_invalid", message: "must be a valid integer in range" });
     }
   }
