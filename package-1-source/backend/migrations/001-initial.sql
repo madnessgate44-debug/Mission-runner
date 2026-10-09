@@ -7,7 +7,9 @@ CREATE TABLE IF NOT EXISTS missions (
   effective_risk text NOT NULL CHECK (effective_risk IN ('low','medium','high')),
   approval_required boolean NOT NULL,
   approval jsonb,
+  result jsonb,
   created_at timestamptz NOT NULL,
   updated_at timestamptz NOT NULL
 );
 CREATE INDEX IF NOT EXISTS missions_owner_created_idx ON missions(owner_id, created_at DESC);
+ALTER TABLE missions ADD COLUMN IF NOT EXISTS result jsonb;
