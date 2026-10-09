@@ -29,6 +29,10 @@ logs/
 .vscode/*
 !.vscode/extensions.json
 
+# private browser state
+.browser-profile/
+.browser-evidence/
+
 # playwright
 workers/browser/.playwright/
 workers/browser/playwright-report/
