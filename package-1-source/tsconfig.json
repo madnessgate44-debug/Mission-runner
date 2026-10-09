@@ -1,7 +1,17 @@
 {
   "files": [],
   "references": [
-    { "path": "./shared" },
-    { "path": "./backend" }
+    {
+      "path": "./shared"
+    },
+    {
+      "path": "./backend"
+    },
+    {
+      "path": "./workers/github"
+    },
+    {
+      "path": "./workers/browser"
+    }
   ]
 }
