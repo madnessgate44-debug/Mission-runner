@@ -57,6 +57,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     }
   });
   app.post("/missions", { preHandler: requireAuthOrTool }, async (request, reply) => {
+    if (!checkCsrfOrTool(request)) return reply.code(403).send({ error: "csrf_invalid" });
     try {
       assertMissionV1(request.body);
       const mission = request.body as MissionV1;
@@ -66,7 +67,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
       const approvalRequired = missionRequiresApproval(mission.declaredRiskLevel, mission.operations, mission.declaredRequiresApproval);
       const now = new Date().toISOString();
       const item: StoredMission = { mission: { ...mission, contentHash }, contentHash, effectiveRisk, approvalRequired, status: approvalRequired ? "awaiting_approval" : "validated", createdAt: now, updatedAt: now };
-      try { await store.create(request.ownerId!, item); }
+      try { await store.create(request.ownerId ?? "owner", item); }
       catch (error) { if ((error as { code?: string }).code === "23505") return reply.code(409).send({ error: "mission_id_conflict" }); throw error; }
       return reply.code(201).send({ missionId: mission.missionId, status: item.status, contentHash, effectiveRisk, approvalRequired });
     } catch (error) {
@@ -78,7 +79,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     const query = request.query as { limit?: string };
     const parsed = Number(query.limit ?? 50);
     const limit = Number.isInteger(parsed) ? Math.min(100, Math.max(1, parsed)) : 50;
-    return { missions: (await store.list(request.ownerId!, limit)).map(summarize) };
+    return { missions: (await store.list(request.ownerId ?? "owner", limit)).map(summarize) };
   });
   app.get("/missions/:missionId", { preHandler: requireAuthOrTool }, async (request, reply) => {
     const { missionId } = request.params as { missionId: string };
