@@ -651,7 +651,9 @@
         },
         "url": {
           "type": "string",
-          "minLength": 1
+          "minLength": 1,
+          "format": "uri",
+          "pattern": "^https?://"
         },
         "waitUntil": {
           "enum": [
