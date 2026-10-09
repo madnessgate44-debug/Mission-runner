@@ -12,6 +12,9 @@
     },
     {
       "path": "./workers/browser"
+    },
+    {
+      "path": "./gateway/mcp"
     }
   ]
 }
