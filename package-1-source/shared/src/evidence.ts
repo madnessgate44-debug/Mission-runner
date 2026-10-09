@@ -42,8 +42,10 @@ export interface EvidenceRef {
   sha256: string;
   /** Optional human-readable label. */
   label?: string;
-  /** Redactions applied before persistence. */
-  redactions?: EvidenceRedaction[];
+  /** Version of the redaction policy applied before persistence. */
+  redactionPolicyVersion: string;
+  /** Redactions applied before persistence; use [] when no redactions were needed. */
+  redactions: EvidenceRedaction[];
 }
 
 export interface EvidenceIndex {
