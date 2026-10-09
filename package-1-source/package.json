@@ -21,7 +21,8 @@
     "dev:web": "pnpm --filter @mission-runner/web dev",
     "build:github-worker": "pnpm --filter @mission-runner/github-worker build",
     "build:browser-worker": "pnpm --filter @mission-runner/browser-worker build",
-    "build:web": "pnpm --filter @mission-runner/web build"
+    "build:web": "pnpm --filter @mission-runner/web build",
+    "hash-password": "node ./scripts/hash-password.mjs"
   },
   "devDependencies": {
     "@types/node": "^20.11.30",
