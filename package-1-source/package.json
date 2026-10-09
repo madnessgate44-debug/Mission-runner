@@ -9,16 +9,19 @@
     "node": ">=20.0.0"
   },
   "scripts": {
-    "typecheck": "tsc -b --pretty false",
+    "typecheck": "tsc -b --pretty false && pnpm --filter @mission-runner/web typecheck",
     "lint": "eslint . --ext .ts,.tsx --max-warnings 0",
     "format": "prettier --write \"shared/**/*.{ts,json}\" \"scripts/**/*.mjs\" \"tests/**/*.mjs\" \"*.json\" \"*.yaml\" \"*.yml\" \".eslintrc.json\"",
     "build:shared": "pnpm --filter @mission-runner/shared build",
-    "test": "pnpm run build:shared && node --test tests/*.test.mjs && pnpm --filter @mission-runner/backend test",
+    "test": "pnpm run build:shared && node --test tests/*.test.mjs && pnpm --filter @mission-runner/backend test && pnpm --filter @mission-runner/github-worker test && pnpm --filter @mission-runner/browser-worker test",
     "validate:example": "pnpm run build:shared && node ./scripts/validate-example.mjs",
     "dev:backend": "pnpm --filter @mission-runner/backend dev",
     "dev:github-worker": "pnpm --filter @mission-runner/github-worker dev",
     "dev:browser-worker": "pnpm --filter @mission-runner/browser-worker dev",
-    "dev:web": "pnpm --filter @mission-runner/web dev"
+    "dev:web": "pnpm --filter @mission-runner/web dev",
+    "build:github-worker": "pnpm --filter @mission-runner/github-worker build",
+    "build:browser-worker": "pnpm --filter @mission-runner/browser-worker build",
+    "build:web": "pnpm --filter @mission-runner/web build"
   },
   "devDependencies": {
     "@types/node": "^20.11.30",
