@@ -45,17 +45,28 @@ export interface MissionV1 {
   objective: string;
   createdBy: MissionCreator;
   createdAt: string; // ISO 8601
-  riskLevel: RiskLevel;
-  requiresApproval: boolean;
+  /** Untrusted author declaration; the backend computes effective risk. */
+  declaredRiskLevel: RiskLevel;
+  /** Untrusted author hint; the backend computes the actual approval requirement. */
+  declaredRequiresApproval: boolean;
   limits: Partial<MissionLimits>;
   target: MissionTarget;
   operations: MissionOperation[];
   metadata?: MissionMetadata;
   /**
-   * Optional client-supplied content hash of the mission body (excluding this
-   * field). Used for idempotent resubmission.
+   * Optional claimed SHA-256 content digest. The server must recompute it and
+   * must never trust this client-supplied value for approval or authorization.
    */
   contentHash?: string;
+}
+
+/** Server-side approval record, stored separately and bound to immutable content. */
+export interface MissionApproval {
+  approvalId: string;
+  missionId: MissionId;
+  contentHash: `sha256:${string}`;
+  approvedAt: string;
+  approvedBy: string;
 }
 
 export interface OperationResult {
