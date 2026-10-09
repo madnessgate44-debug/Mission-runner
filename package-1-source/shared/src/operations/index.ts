@@ -10,7 +10,7 @@ import {
 } from "./github.js";
 import {
   browserOperationRisk,
-  isBrowserSubmitOp,
+  isBrowserApprovalOp,
 } from "./browser.js";
 
 export * from "./github.js";
@@ -39,5 +39,5 @@ export function aggregateOperationRisk(
 
 export function operationRequiresApproval(op: MissionOperation): boolean {
   if (op.kind === "github") return isGitHubWriteOp(op.op);
-  return isBrowserSubmitOp(op.op);
+  return isBrowserApprovalOp(op.op);
 }
