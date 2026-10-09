@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import Ajv2020 from "ajv/dist/2020.js";
+import addFormats from "ajv-formats";
 import { validateMission } from "../shared/dist/validation.js";
 import { canonicalJson, missionContentHash } from "../shared/dist/idempotency.js";
 import {
@@ -11,9 +13,14 @@ import {
 
 const example = JSON.parse(await readFile(new URL("../shared/schemas/mission.v1.example.json", import.meta.url), "utf8"));
 const clone = (value) => structuredClone(value);
+const schema = JSON.parse(await readFile(new URL("../shared/schemas/mission.v1.schema.json", import.meta.url), "utf8"));
+const ajv = new Ajv2020({ allErrors: true, strict: true, strictRequired: false });
+addFormats(ajv);
+const schemaValidate = ajv.compile(schema);
 
 test("Mission v1 example passes runtime validation", () => {
   assert.deepEqual(validateMission(example), { ok: true, issues: [] });
+  assert.equal(schemaValidate(example), true);
 });
 
 test("rejects legacy policy fields and unknown mission properties", () => {
@@ -24,6 +31,13 @@ test("rejects legacy policy fields and unknown mission properties", () => {
   delete candidate.declaredRequiresApproval;
   assert.equal(validateMission(candidate).ok, false);
   assert.ok(validateMission(candidate).issues.some((issue) => issue.code === "field_unknown"));
+});
+
+test("JSON Schema and runtime validator reject irrelevant operation properties", () => {
+  const candidate = clone(example);
+  candidate.operations[0].body = "not valid for read_file";
+  assert.equal(validateMission(candidate).ok, false);
+  assert.equal(schemaValidate(candidate), false);
 });
 
 test("rejects unknown operation fields and missing operation-specific fields", () => {
