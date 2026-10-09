@@ -67,6 +67,7 @@ test("effective risk and approval are derived from operations", () => {
   const submit = { kind: "browser", op: "submit_form", ...base, selector: "form" };
   assert.equal(effectiveMissionRisk("low", [submit]), "high");
   assert.equal(missionRequiresApproval("low", [submit]), true);
+  assert.equal(missionRequiresApproval("low", [{ kind: "browser", op: "navigate", ...base, url: "https://example.com" }], true), true);
   assert.equal(missionRequiresApproval("low", [{ kind: "browser", op: "navigate", ...base, url: "https://example.com" }]), false);
 });
 
