@@ -20,7 +20,7 @@ test("health endpoint is public and mission list requires a session", async () =
     config: {
       nodeEnv: "test", host: "127.0.0.1", port: 3000, databaseUrl: "unused",
       ownerPasswordHash: createPasswordHash("long-test-secret-value"),
-      sessionKey: Buffer.alloc(32, 7), sessionCookieName: "mr_session", trustProxy: false
+      sessionKey: Buffer.alloc(32, 7), sessionCookieName: "mr_session", trustProxy: false, browserWorkerUrl: "", browserWorkerSecret: "", githubWorkerUrl: "", githubWorkerSecret: "", aiToolSecret: "test-ai-tool-secret-with-at-least-32-characters"
     },
     store: fakeStore()
   });
@@ -40,7 +40,7 @@ test("login returns a CSRF token and establishes an authenticated session", asyn
     config: {
       nodeEnv: "test", host: "127.0.0.1", port: 3000, databaseUrl: "unused",
       ownerPasswordHash: createPasswordHash("long-test-secret-value"),
-      sessionKey: Buffer.alloc(32, 8), sessionCookieName: "mr_session", trustProxy: false
+      sessionKey: Buffer.alloc(32, 8), sessionCookieName: "mr_session", trustProxy: false, browserWorkerUrl: "", browserWorkerSecret: "", githubWorkerUrl: "", githubWorkerSecret: "", aiToolSecret: "test-ai-tool-secret-with-at-least-32-characters"
     },
     store: fakeStore()
   });
@@ -56,6 +56,26 @@ test("login returns a CSRF token and establishes an authenticated session", asyn
       method: "POST", url: "/auth/login", payload: { password: "incorrect-secret" }
     });
     assert.equal(denied.statusCode, 401);
+  } finally {
+    await app.close();
+  }
+});
+test("AI tool key can use mission APIs but cannot approve a mission", async () => {
+  const app = await buildApp({
+    config: {
+      nodeEnv: "test", host: "127.0.0.1", port: 3000, databaseUrl: "unused",
+      ownerPasswordHash: createPasswordHash("long-test-secret-value"),
+      sessionKey: Buffer.alloc(32, 9), sessionCookieName: "mr_session", trustProxy: false,
+      browserWorkerUrl: "", browserWorkerSecret: "", githubWorkerUrl: "", githubWorkerSecret: "",
+      aiToolSecret: "test-ai-tool-secret-with-at-least-32-characters"
+    },
+    store: fakeStore()
+  });
+  try {
+    const allowed = await app.inject({ method: "GET", url: "/missions", headers: { "x-ai-tool-key": "test-ai-tool-secret-with-at-least-32-characters" } });
+    assert.equal(allowed.statusCode, 200);
+    const approval = await app.inject({ method: "POST", url: "/missions/example/approve", headers: { "x-ai-tool-key": "test-ai-tool-secret-with-at-least-32-characters" } });
+    assert.equal(approval.statusCode, 401);
   } finally {
     await app.close();
   }
