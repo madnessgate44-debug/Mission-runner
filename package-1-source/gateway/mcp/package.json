@@ -1,0 +1,9 @@
+{
+  "name": "@mission-runner/mcp-gateway",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "dev": "tsx watch src/server.ts", "build": "tsc -b", "typecheck": "tsc -b --pretty false", "test": "pnpm run build && node --test tests/*.test.mjs", "start": "node dist/server.js" },
+  "dependencies": { "@modelcontextprotocol/sdk": "^1.25.2", "express": "^5.1.0", "zod": "^3.25.76" },
+  "devDependencies": { "@types/express": "^5.0.3", "@types/node": "^20.11.30", "tsx": "^4.19.2", "typescript": "^5.4.5" }
+}
