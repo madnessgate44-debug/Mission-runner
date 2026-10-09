@@ -85,7 +85,7 @@ export function deriveIdempotencyKey(
  * this from its validated immutable mission and store it in the approval record.
  */
 export async function missionContentHash(input: MissionV1): Promise<`sha256:${string}`> {
-  const { contentHash: _untrustedClaim, ...executionPayload } = input;
+  const executionPayload = Object.fromEntries(Object.entries(input).filter(([key]) => key !== "contentHash"));
   const canonical = canonicalJson(executionPayload);
   if (!globalThis.crypto?.subtle) throw new Error("Web Crypto SHA-256 is unavailable");
   const digest = await globalThis.crypto.subtle.digest("SHA-256", new TextEncoder().encode(canonical));
