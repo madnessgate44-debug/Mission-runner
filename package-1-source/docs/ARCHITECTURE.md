@@ -72,7 +72,7 @@ No arrow from the client goes directly to GitHub or to a target website.
 
 ## 4. Mission contract (summary)
 
-A mission is a JSON document conforming to `shared/schemas/mission.v1.schema.json`.
+A mission is a JSON document conforming to `shared/schemas/mission.v1.schema.json`. The server must recompute the SHA-256 digest over the validated immutable execution payload and store approval separately against that digest; a client-supplied `contentHash` is never trusted.
 Top-level fields:
 
 - `schemaVersion`: `"mission.v1"`
