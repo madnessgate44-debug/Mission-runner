@@ -10,6 +10,7 @@
 import type { IdempotencyKey, MissionId, OperationId } from "./ids.js";
 import { asIdempotencyKey } from "./ids.js";
 import type { MissionOperation } from "./operations/index.js";
+import type { MissionV1 } from "./mission.js";
 
 /**
  * Canonical JSON: keys sorted recursively, no insignificant whitespace. This is
@@ -17,19 +18,27 @@ import type { MissionOperation } from "./operations/index.js";
  * (no number normalization beyond JSON.stringify), which is sufficient for our
  * own payloads.
  */
-export function canonicalJson(value: unknown): string {
-  if (value === null || typeof value !== "object") {
+export function canonicalJson(value: unknown, ancestors = new Set<object>()): string {
+  if (value === null) return "null";
+  if (typeof value === "string" || typeof value === "boolean") return JSON.stringify(value);
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) throw new TypeError("Canonical JSON rejects non-finite numbers");
     return JSON.stringify(value);
   }
-  if (Array.isArray(value)) {
-    return `[${value.map(canonicalJson).join(",")}]`;
+  if (typeof value !== "object") throw new TypeError("Canonical JSON accepts only JSON values");
+  if (ancestors.has(value)) throw new TypeError("Canonical JSON rejects circular references");
+  ancestors.add(value);
+  try {
+    if (Array.isArray(value)) {
+      return `[${value.map((item) => canonicalJson(item, ancestors)).join(",")}]`;
+    }
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([, item]) => item !== undefined)
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+    return `{${entries.map(([key, item]) => `${JSON.stringify(key)}:${canonicalJson(item, ancestors)}`).join(",")}}`;
+  } finally {
+    ancestors.delete(value);
   }
-  const entries = Object.entries(value as Record<string, unknown>)
-    .filter(([, v]) => v !== undefined)
-    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
-  return `{${entries
-    .map(([k, v]) => `${JSON.stringify(k)}:${canonicalJson(v)}`)
-    .join(",")}}`;
 }
 
 /**
@@ -71,22 +80,15 @@ export function deriveIdempotencyKey(
 }
 
 /**
- * Content hash used for idempotent mission resubmission. Excludes fields that
- * may legitimately vary between submissions of the same logical mission.
+ * Cryptographic digest for approval binding. Includes every execution-relevant
+ * field and excludes only the claimed digest itself. The server must calculate
+ * this from its validated immutable mission and store it in the approval record.
  */
-export function missionContentHash(input: {
-  missionId: MissionId;
-  objective: string;
-  createdBy: string;
-  target: unknown;
-  operations: readonly MissionOperation[];
-}): string {
-  const canonical = canonicalJson({
-    missionId: input.missionId,
-    objective: input.objective,
-    createdBy: input.createdBy,
-    target: input.target,
-    operations: input.operations,
-  });
-  return `mch_${fnv1a64Hex(canonical)}`;
+export async function missionContentHash(input: MissionV1): Promise<`sha256:${string}`> {
+  const { contentHash: _untrustedClaim, ...executionPayload } = input;
+  const canonical = canonicalJson(executionPayload);
+  if (!globalThis.crypto?.subtle) throw new Error("Web Crypto SHA-256 is unavailable");
+  const digest = await globalThis.crypto.subtle.digest("SHA-256", new TextEncoder().encode(canonical));
+  const hex = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  return `sha256:${hex}`;
 }
