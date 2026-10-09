@@ -115,7 +115,7 @@
               "items": {
                 "type": "string",
                 "maxLength": 253,
-                "pattern": "^(?:\\\\*\\\\.)?[a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?$"
+                "pattern": "^(?!.*\\\\.\\\\.)(?:\\\\*\\\\.)?[a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?$"
               }
             }
           }
@@ -145,7 +145,7 @@
               "items": {
                 "type": "string",
                 "maxLength": 253,
-                "pattern": "^(?:\\\\*\\\\.)?[a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?$"
+                "pattern": "^(?!.*\\\\.\\\\.)(?:\\\\*\\\\.)?[a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?$"
               },
               "minItems": 1
             }
@@ -843,7 +843,7 @@
               "type": "string",
               "minLength": 1,
               "format": "uri",
-              "pattern": "^https?://"
+              "pattern": "^https?://[^/@]+(?:[/?#]|$)"
             },
             "waitUntil": {
               "enum": [
