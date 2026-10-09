@@ -152,8 +152,12 @@ function validateOperation(op: unknown, index: number, issues: ValidationIssue[]
   for (const key of stringKeys) if (key in op && typeof op[key] !== "string") {
     issues.push({ path: `${path}.${key}`, code: "field_invalid", message: "must be a string" });
   }
-  for (const key of ["repo"]) if (typeof op[key] === "string" && !/^[^/\s]+\/[^/\s]+$/.test(op[key] as string)) {
+  for (const key of ["repo"]) if (typeof op[key] === "string" && !/^[^/\\s]+\\/[^/\\s]+$/.test(op[key] as string)) {
     issues.push({ path: `${path}.${key}`, code: "field_invalid", message: "must be owner/repository" });
+  }
+  const nonEmptyStrings = ["branch", "commitMessage", "head", "base", "title", "url", "selector", "contains"];
+  for (const key of nonEmptyStrings) if (key in op && typeof op[key] === "string" && (op[key] as string).length === 0) {
+    issues.push({ path: `${path}.${key}`, code: "field_invalid", message: "must not be empty" });
   }
   for (const key of ["issueNumber", "pullNumber", "limit", "maxChars", "settleMs", "timeoutMs"]) {
     if (key in op && (typeof op[key] !== "number" || !Number.isInteger(op[key]) || (op[key] as number) < (key === "settleMs" || key === "timeoutMs" ? 0 : 1))) {
@@ -167,7 +171,10 @@ function validateOperation(op: unknown, index: number, issues: ValidationIssue[]
     issues.push({ path: `${path}.labels`, code: "field_invalid", message: "must be an array of strings" });
   }
   if ("encoding" in op && op.encoding !== "utf8" && op.encoding !== "base64") issues.push({ path: `${path}.encoding`, code: "field_invalid", message: "must be utf8 or base64" });
-  if ("state" in op && !["open", "closed", "all", "attached", "detached", "visible", "hidden"].includes(String(op.state))) issues.push({ path: `${path}.state`, code: "field_invalid", message: "invalid state value" });
+  if ("state" in op) {
+    const allowedStates = op.kind === "github" ? ["open", "closed", "all"] : ["attached", "detached", "visible", "hidden"];
+    if (!allowedStates.includes(String(op.state))) issues.push({ path: `${path}.state`, code: "field_invalid", message: "invalid state value" });
+  }
   if ("waitUntil" in op && !["load", "domcontentloaded", "networkidle"].includes(String(op.waitUntil))) issues.push({ path: `${path}.waitUntil`, code: "field_invalid", message: "invalid waitUntil value" });
   if ("ref" in op && !validGitHubRef(op.ref)) issues.push({ path: `${path}.ref`, code: "field_invalid", message: "invalid GitHub ref" });
   if ("fromRef" in op && !validGitHubRef(op.fromRef)) issues.push({ path: `${path}.fromRef`, code: "field_invalid", message: "invalid GitHub ref" });
