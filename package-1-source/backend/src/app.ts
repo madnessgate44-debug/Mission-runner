@@ -98,7 +98,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     const item = await store.get(request.ownerId!, missionId);
     if (!item) return reply.code(404).send({ error: "mission_not_found" });
     if (["succeeded", "failed", "cancelled", "expired"].includes(item.status)) return reply.code(409).send({ error: "mission_terminal" });
-    const result = await store.cancel(request.ownerId!, missionId);
+    const result = await store.cancelMission(request.ownerId!, missionId);
     if (!result) return reply.code(409).send({ error: "mission_cancel_race" });
     return { missionId, status: result.status };
   });
