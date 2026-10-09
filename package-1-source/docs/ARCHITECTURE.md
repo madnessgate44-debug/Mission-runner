@@ -79,8 +79,8 @@ Top-level fields:
 - `missionId`: opaque ID (UUIDv4 or ULID). Idempotent.
 - `objective`: short human-readable goal.
 - `createdBy`: `"owner" | "assistant:chatgpt" | "assistant:gemini" | "assistant:other"`
-- `riskLevel`: `"low" | "medium" | "high"`.
-- `requiresApproval`: boolean (may be forced true by policy regardless of value).
+- `declaredRiskLevel`: untrusted author estimate; the server computes effective risk.
+- `declaredRequiresApproval`: untrusted author hint; policy can always require approval.
 - `limits`: object with timeouts, max operations, max bytes, max pages, etc.
 - `target`: `{ kind: "github", ... } | { kind: "browser", ... } | { kind: "mixed", ... }`.
 - `operations`: ordered list of typed operations.
