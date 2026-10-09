@@ -79,5 +79,14 @@ export class MissionStore {
     return this.get(ownerId, missionId);
   }
 
+  async cancelMission(ownerId: string, missionId: string): Promise<StoredMission | null> {
+    const result = await this.pool.query(
+      "UPDATE missions SET status = $1, updated_at = now() WHERE owner_id = $2 AND mission_id = $3 AND status NOT IN ($4, $5, $6, $7) RETURNING mission_id",
+      ["cancelled", ownerId, missionId, "succeeded", "failed", "cancelled", "expired"]
+    );
+    if (!result.rowCount) return null;
+    return this.get(ownerId, missionId);
+  }
+
   async close(): Promise<void> { await this.pool.end(); }
 }
