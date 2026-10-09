@@ -37,7 +37,7 @@ const sampleMission = {
   metadata: { source: "Mission Runner phone UI" }
 };
 
-async function api<T = any>(path: string, options: RequestInit = {}): Promise<T> {
+async function api<T = unknown>(path: string, options: RequestInit = {}): Promise<T> {
   const method = (options.method ?? "GET").toUpperCase();
   const headers = new Headers(options.headers);
   if (options.body && !headers.has("content-type")) headers.set("content-type", "application/json");
@@ -130,7 +130,7 @@ function attachShellEvents() {
     render();
   }));
   document.querySelector<HTMLButtonElement>("#logoutBtn")?.addEventListener("click", async () => {
-    try { await api("/auth/logout", { method: "POST", body: "{}" }); } catch {}
+    try { await api("/auth/logout", { method: "POST", body: "{}" }); } catch (error) { console.warn("Logout request failed", error); }
     csrfToken = "";
     notice = "";
     loginScreen();
@@ -173,8 +173,8 @@ function attachShellEvents() {
     let mission: unknown;
     try { mission = JSON.parse(raw); } catch { setNotice("Mission JSON is not valid JSON.", "error"); return; }
     try {
-      const validated = await api<any>("/missions/validate", { method: "POST", body: JSON.stringify(mission) });
-      const saved = await api<any>("/missions", { method: "POST", body: JSON.stringify(mission) });
+      const validated = await api<{ effectiveRisk: string; approvalRequired: boolean }>("/missions/validate", { method: "POST", body: JSON.stringify(mission) });
+      const saved = await api<{ status: string }>("/missions", { method: "POST", body: JSON.stringify(mission) });
       setNotice(`Mission saved. Risk: ${validated.effectiveRisk}. Approval required: ${validated.approvalRequired ? "yes" : "no"}. Status: ${saved.status}.`, "success");
       await loadMissions();
     } catch (error) { setNotice((error as Error).message, "error"); }
@@ -216,7 +216,7 @@ async function loadMissions() {
       </article>`).join("") : '<p class="muted">No missions saved yet.</p>';
     container.querySelectorAll<HTMLButtonElement>("[data-approve]").forEach(button => button.addEventListener("click", async () => {
       try {
-        const result = await api<any>("/missions/" + encodeURIComponent(button.dataset.approve!) + "/approve", { method: "POST", body: "{}" });
+        const result = await api<{ status: string }>("/missions/" + encodeURIComponent(button.dataset.approve!) + "/approve", { method: "POST", body: "{}" });
         setNotice("Approval recorded for the exact content hash. Status: " + result.status + ".", "success");
         await loadMissions();
       } catch (error) { setNotice((error as Error).message, "error"); }
@@ -226,7 +226,7 @@ async function loadMissions() {
       button.disabled = true;
       setNotice("Executing mission…", "");
       try {
-        const result = await api<any>("/missions/" + encodeURIComponent(button.dataset.execute!) + "/execute", { method: "POST", body: "{}" });
+        const result = await api<{ status: string; operations?: unknown[] }>("/missions/" + encodeURIComponent(button.dataset.execute!) + "/execute", { method: "POST", body: "{}" });
         setNotice("Mission finished with status: " + result.status + ".", result.status === "succeeded" ? "success" : "error");
         await loadMissions();
       } catch (error) { setNotice((error as Error).message, "error"); await loadMissions(); }
