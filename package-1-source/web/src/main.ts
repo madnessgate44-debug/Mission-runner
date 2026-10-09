@@ -18,7 +18,6 @@ let tab: "browser" | "missions" = "browser";
 let missions: MissionSummary[] = [];
 let notice = "";
 let noticeKind: "error" | "success" | "" = "";
-let busy = false;
 const sampleMission = {
   schemaVersion: "mission.v1",
   missionId: "mission_replace_this_id",
@@ -75,14 +74,13 @@ function loginScreen() {
     event.preventDefault();
     const password = document.querySelector<HTMLInputElement>("#ownerPassword")!.value;
     try {
-      busy = true;
-      await api("/auth/login", { method: "POST", body: JSON.stringify({ password }) });
+        await api("/auth/login", { method: "POST", body: JSON.stringify({ password }) });
       document.querySelector<HTMLInputElement>("#ownerPassword")!.value = "";
       await loadSession();
       tab = "browser";
       render();
     } catch (error) { setNotice((error as Error).message, "error"); }
-    finally { busy = false; }
+    finally { /* request lifecycle completed */ }
   });
 }
 function shell() {
