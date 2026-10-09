@@ -105,12 +105,20 @@ export type BrowserOperationType = BrowserOperation["op"];
  * Operations that involve submitting data to a remote site. These force
  * approval by policy when they submit a form.
  */
-export const BROWSER_SUBMIT_OPS: readonly BrowserOperationType[] = [
+export const BROWSER_APPROVAL_OPS: readonly BrowserOperationType[] = [
+  "click",
+  "type",
   "submit_form",
 ];
 
+/** All browser operations that can change application state require approval. */
+export function isBrowserApprovalOp(op: BrowserOperationType): boolean {
+  return BROWSER_APPROVAL_OPS.includes(op);
+}
+
+/** Backward-compatible helper for form submission specifically. */
 export function isBrowserSubmitOp(op: BrowserOperationType): boolean {
-  return BROWSER_SUBMIT_OPS.includes(op);
+  return op === "submit_form";
 }
 
 export function browserOperationRisk(op: BrowserOperationType): RiskLevel {
