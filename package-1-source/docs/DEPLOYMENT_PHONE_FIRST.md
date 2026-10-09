@@ -1,6 +1,6 @@
 # Self-host Mission Runner from a phone
 
-This deployment is independent of TinyFish. It runs a private Playwright browser, a bounded GitHub API worker, a backend, PostgreSQL, and a mobile-friendly web control panel.
+This deployment is independent of TinyFish. It runs a private Playwright browser, a bounded GitHub API worker, a backend, PostgreSQL, and a mobile-friendly web control panel, and an authenticated MCP endpoint for compatible AI clients.
 
 ## What is implemented
 
@@ -19,7 +19,7 @@ This deployment is independent of TinyFish. It runs a private Playwright browser
 - Browser request interception plus DNS checks are defense-in-depth, not a substitute for network-level egress controls against every DNS-rebinding scenario. Do not expose worker ports publicly.
 - Mission approval is required by policy for GitHub writes and browser click/type/form-submit operations. Approval is bound to the exact SHA-256 mission content.
 - A green CI run validates code and tests; it does not prove a production deployment or successful login to every third-party website.
-- This REST API/web panel is not automatically attached as a tool inside ChatGPT, Gemini, or DeepSeek. Each AI client must support and be configured for a tool/API/MCP connection before it can call this controller directly. The browser can be manually controlled through the web panel once deployed.
+- The MCP endpoint is published at /mcp through the same reverse proxy. Compatible AI clients can use it with a Streamable HTTP MCP connection and the bearer token in MCP_ACCESS_TOKEN. This is not automatically attached inside ChatGPT, Gemini, or DeepSeek: each client must support custom MCP/API tools and be configured to connect. The browser can also be manually controlled through the web panel. The MCP token can create missions and execute missions allowed by backend policy, but it cannot approve high-risk missions.
 
 ## Deploy with Docker
 
@@ -33,15 +33,15 @@ This deployment is independent of TinyFish. It runs a private Playwright browser
    Copy the printed OWNER_PASSWORD_HASH=... value into .env. The plaintext password is not written to a file.
 4. Set a fine-grained GitHub token with only the required permissions and repositories. Set GITHUB_REPO_ALLOWLIST to the same or narrower set.
 5. Configure BROWSER_DOMAIN_ALLOWLIST with the website and authentication/SSO domains you intend to use. Start with a narrow list. Avoid * unless you explicitly accept allowing any public hostname.
-6. Build and start the stack:
+6. Set AI_TOOL_SHARED_SECRET and MCP_ACCESS_TOKEN in .env to different random 32-byte hex values. Add them before starting the stack.\n7. Build and start the stack:
 
        docker compose up -d --build
        docker compose ps
-       docker compose logs --tail=100 backend github-worker browser-worker web
+       docker compose logs --tail=100 backend github-worker browser-worker mcp-gateway web
 
-7. Open http://SERVER:8080 for initial testing on a private network. Before using it over the public internet, put it behind HTTPS and an access-control layer. Do not send owner passwords or session cookies over plain HTTP on a public network.
-8. Log in, open Browser, navigate to an allowlisted site, and sign in manually. The persistent browser profile keeps the site's session across worker restarts if its volume is preserved.
-9. Open Missions & GitHub, paste a mission JSON plan, validate/save it, approve it when requested, then explicitly execute it.
+8. Open http://SERVER:8080 for initial testing on a private network. Before using it over the public internet, put it behind HTTPS and an access-control layer. Do not send owner passwords or session cookies over plain HTTP on a public network.
+9. Log in, open Browser, navigate to an allowlisted site, and sign in manually. The persistent browser profile keeps the site's session across worker restarts if its volume is preserved.
+10. Open Missions & GitHub, paste a mission JSON plan, validate/save it, approve it when requested, then explicitly execute it.
 
 ## Test commands
 
