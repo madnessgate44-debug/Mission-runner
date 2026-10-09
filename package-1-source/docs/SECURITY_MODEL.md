@@ -42,8 +42,8 @@ Every mission passes through a **policy engine** before dispatch:
 3. Approval gate:
    - `high` risk → always `awaiting_approval`.
    - Any GitHub `write` operation → always `awaiting_approval`.
-   - Browser operations that submit forms with credentials → always
-     `awaiting_approval`.
+   - Browser `click`, `type`, and `submit_form` operations → always
+     `awaiting_approval` under the default policy.
 4. Limit clamp: mission `limits` are clamped to hard caps
    (`shared/src/limits.ts`). A mission cannot raise its own caps.
 5. Domain allowlist check for browser operations.
@@ -103,8 +103,7 @@ before dispatching; if not, the mission fails fast with `insufficient_scope`.
 - Redactor runs on: request headers, response headers, console messages, evidence
   text. Known-sensitive keys: `authorization`, `cookie`, `set-cookie`, `x-api-key`,
   `proxy-authorization`, and any key matching `/token|secret|password|passwd|pwd/i`.
-- Evidence redaction is recorded on the evidence record (`redactions: [...]`) so a
-  reviewer can see what was removed.
+- Evidence redaction is recorded on every evidence record (`redactions: [...]`), including an empty array when nothing was removed, alongside `redactionPolicyVersion`. The hash covers the final redacted bytes.
 
 ## 9. Rate limiting and quotas
 
