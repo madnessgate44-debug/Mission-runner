@@ -11,7 +11,7 @@
     "test": "pnpm run build && node --test tests/*.test.mjs"
   },
   "dependencies": {
-    "@fastify/helmet": "^12.1.0",
+    "@fastify/helmet": "^13.1.2",
     "@fastify/rate-limit": "^10.2.1",
     "@fastify/secure-session": "^8.2.0",
     "@mission-runner/shared": "workspace:*",
