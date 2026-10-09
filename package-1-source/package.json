@@ -1,0 +1,35 @@
+{
+  "name": "mission-runner",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Personal AI operations platform: GitHub and browser automation engines with a mobile-first UI and a trusted backend.",
+  "license": "UNLICENSED",
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "typecheck": "tsc -b --pretty false",
+    "lint": "eslint . --ext .ts,.tsx --max-warnings 0",
+    "format": "prettier --write .",
+    "build:shared": "pnpm --filter @mission-runner/shared build",
+    "test": "pnpm -r --if-present test",
+    "validate:example": "node ./scripts/validate-example.mjs",
+    "dev:backend": "pnpm --filter @mission-runner/backend dev",
+    "dev:github-worker": "pnpm --filter @mission-runner/github-worker dev",
+    "dev:browser-worker": "pnpm --filter @mission-runner/browser-worker dev",
+    "dev:web": "pnpm --filter @mission-runner/web dev"
+  },
+  "workspaces": [
+    "shared",
+    "backend",
+    "workers/*",
+    "web"
+  ],
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "eslint": "^8.57.0",
+    "prettier": "^3.2.5",
+    "typescript": "^5.4.5"
+  }
+}
