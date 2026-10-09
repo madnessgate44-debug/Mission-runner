@@ -2,7 +2,7 @@ import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest }
 import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
 import secureSession from "@fastify/secure-session";
-import { createHmac, randomUUID } from "node:crypto";
+import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { assertMissionV1, canonicalJson, effectiveMissionRisk, missionRequiresApproval, missionContentHash, type MissionV1, type MissionApproval } from "@mission-runner/shared";
 import { verifyPassword } from "./auth.js";
 import type { AppConfig } from "./config.js";
@@ -43,7 +43,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     return reply.send({ ok: true });
   });
   app.get("/auth/csrf", { preHandler: requireAuth }, async (request) => ({ csrfToken: request.session.get("csrfToken") }));
-  app.post("/missions/validate", { preHandler: requireAuth }, async (request, reply) => {
+  app.post("/missions/validate", { preHandler: requireAuthOrTool }, async (request, reply) => {
     try {
       assertMissionV1(request.body);
       const mission = request.body as MissionV1;
@@ -56,7 +56,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
       return reply.code(400).send({ error: "mission_invalid", message: e.message, details: e.details ?? null });
     }
   });
-  app.post("/missions", { preHandler: requireAuth }, async (request, reply) => {
+  app.post("/missions", { preHandler: requireAuthOrTool }, async (request, reply) => {
     try {
       assertMissionV1(request.body);
       const mission = request.body as MissionV1;
@@ -74,13 +74,13 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
       return reply.code(400).send({ error: "mission_invalid", message: e.message, details: e.details ?? null });
     }
   });
-  app.get("/missions", { preHandler: requireAuth }, async (request) => {
+  app.get("/missions", { preHandler: requireAuthOrTool }, async (request) => {
     const query = request.query as { limit?: string };
     const parsed = Number(query.limit ?? 50);
     const limit = Number.isInteger(parsed) ? Math.min(100, Math.max(1, parsed)) : 50;
     return { missions: (await store.list(request.ownerId!, limit)).map(summarize) };
   });
-  app.get("/missions/:missionId", { preHandler: requireAuth }, async (request, reply) => {
+  app.get("/missions/:missionId", { preHandler: requireAuthOrTool }, async (request, reply) => {
     const { missionId } = request.params as { missionId: string };
     const item = await store.get(request.ownerId!, missionId);
     if (!item) return reply.code(404).send({ error: "mission_not_found" });
@@ -99,33 +99,33 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     if (!updated) return reply.code(409).send({ error: "approval_race_or_stale_hash" });
     return { missionId, status: updated.status, approval: { approvalId: approval.approvalId, contentHash: approval.contentHash, approvedAt: approval.approvedAt } };
   });
-  app.post("/missions/:missionId/cancel", { preHandler: requireAuth }, async (request, reply) => {
-    if (!checkCsrf(request)) return reply.code(403).send({ error: "csrf_invalid" });
+  app.post("/missions/:missionId/cancel", { preHandler: requireAuthOrTool }, async (request, reply) => {
+    if (!checkCsrfOrTool(request)) return reply.code(403).send({ error: "csrf_invalid" });
     const { missionId } = request.params as { missionId: string };
-    const item = await store.get(request.ownerId!, missionId);
+    const item = await store.get(request.ownerId ?? "owner", missionId);
     if (!item) return reply.code(404).send({ error: "mission_not_found" });
     if (["succeeded", "failed", "cancelled", "expired"].includes(item.status)) return reply.code(409).send({ error: "mission_terminal" });
-    const result = await store.cancelMission(request.ownerId!, missionId);
+    const result = await store.cancelMission(request.ownerId ?? "owner", missionId);
     if (!result) return reply.code(409).send({ error: "mission_cancel_race" });
     return { missionId, status: result.status };
   });
 
 
-  app.post("/missions/:missionId/execute", { preHandler: requireAuth }, async (request, reply) => {
-    if (!checkCsrf(request)) return reply.code(403).send({ error: "csrf_invalid" });
+  app.post("/missions/:missionId/execute", { preHandler: requireAuthOrTool }, async (request, reply) => {
+    if (!checkCsrfOrTool(request)) return reply.code(403).send({ error: "csrf_invalid" });
     const { missionId } = request.params as { missionId: string };
-    const item = await store.get(request.ownerId!, missionId);
+    const item = await store.get(request.ownerId ?? "owner", missionId);
     if (!item) return reply.code(404).send({ error: "mission_not_found" });
     if (!["validated", "approved"].includes(item.status)) return reply.code(409).send({ error: "mission_not_executable", status: item.status });
     const digest = await missionContentHash(item.mission);
     if (digest !== item.contentHash) return reply.code(409).send({ error: "content_changed_revalidate" });
     if (item.approvalRequired && (!item.approval || item.approval.contentHash !== digest)) return reply.code(403).send({ error: "approval_required" });
-    const started = await store.startExecution(request.ownerId!, missionId, digest);
+    const started = await store.startExecution(request.ownerId ?? "owner", missionId, digest);
     if (!started) return reply.code(409).send({ error: "mission_state_changed_retry" });
     const operationResults: Array<Record<string, unknown>> = [];
     let requiredFailure = false;
     for (const operation of item.mission.operations) {
-      const latest = await store.get(request.ownerId!, missionId);
+      const latest = await store.get(request.ownerId ?? "owner", missionId);
       if (!latest || latest.status === "cancelled") {
         operationResults.push({ operationId: operation.operationId, status: "not_run", reason: "mission_cancelled" });
         break;
@@ -157,9 +157,9 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
       }
     }
     const finalStatus = requiredFailure ? "failed" : "succeeded";
-    const completed = await store.finishExecution(request.ownerId!, missionId, finalStatus, operationResults);
+    const completed = await store.finishExecution(request.ownerId ?? "owner", missionId, finalStatus, operationResults);
     if (!completed) {
-      const current = await store.get(request.ownerId!, missionId);
+      const current = await store.get(request.ownerId ?? "owner", missionId);
       return reply.code(409).send({ error: "mission_state_changed_during_execution", status: current?.status ?? "unknown", operations: operationResults });
     }
     return { missionId, status: completed.status, contentHash: completed.contentHash, operations: operationResults };
@@ -179,6 +179,18 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
       signal: AbortSignal.timeout(25000)
     });
   }
+
+  app.get("/browser/inspect", { preHandler: requireAuthOrTool }, async (_request, reply) => {
+    try {
+      const response = await callBrowserWorker("session/inspect", {});
+      const payload = await response.json().catch(() => null) as { url?: string; title?: string; text?: string } | null;
+      if (!response.ok || !payload) return reply.code(response.status || 502).send({ error: "browser_worker_error" });
+      return { url: payload.url ?? "", title: payload.title ?? "", text: redactSensitiveText(payload.text ?? "") };
+    } catch (error) {
+      requestLog(error);
+      return reply.code(503).send({ error: "browser_worker_unavailable" });
+    }
+  });
 
   app.get("/browser/screenshot", { preHandler: requireAuth }, async (_request, reply) => {
     try {
@@ -257,7 +269,28 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
 
   app.addHook("onClose", async () => { await store.close(); });
   return app;
-  function requestLog(error: unknown): void { app.log.warn({ error: error instanceof Error ? error.message : "unknown" }, "Browser worker proxy request failed"); }
+  function requestLog(error: unknown): void { app.log.warn({ error: error instanceof Error ? error.message : "unknown" }, "Worker proxy request failed"); }
+  function isAiTool(request: FastifyRequest): boolean {
+    const supplied = request.headers["x-ai-tool-key"];
+    const expected = config.aiToolSecret;
+    if (typeof supplied !== "string" || expected.length < 32) return false;
+    const left = Buffer.from(supplied);
+    const right = Buffer.from(expected);
+    return left.length === right.length && timingSafeEqual(left, right);
+  }
+  function checkCsrfOrTool(request: FastifyRequest): boolean { return isAiTool(request) || checkCsrf(request); }
+  function redactSensitiveText(value: string): string {
+    return value
+      .replace(/gh[pousr]_[A-Za-z0-9_]{20,}/g, "[REDACTED_GITHUB_TOKEN]")
+      .replace(/\\bAKIA[0-9A-Z]{16}\\b/g, "[REDACTED_AWS_KEY]")
+      .replace(/\\bsk-[A-Za-z0-9_-]{20,}\\b/g, "[REDACTED_API_KEY]")
+      .replace(/\\bBearer\\s+[A-Za-z0-9._~+\\/-]+=*/gi, "Bearer [REDACTED]")
+      .replace(/(password|passwd|secret|api[_-]?key)\\s*[:=]\\s*[^\\s&]+/gi, "$1=[REDACTED]")
+      .slice(0, 8000);
+  }
+  async function requireAuthOrTool(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+    if (!request.ownerId && !isAiTool(request)) await reply.code(401).send({ error: "authentication_required" });
+  }
   async function requireAuth(request: FastifyRequest, reply: FastifyReply): Promise<void> {
     if (!request.ownerId) await reply.code(401).send({ error: "authentication_required" });
   }
