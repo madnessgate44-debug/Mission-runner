@@ -83,7 +83,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
   });
   app.get("/missions/:missionId", { preHandler: requireAuthOrTool }, async (request, reply) => {
     const { missionId } = request.params as { missionId: string };
-    const item = await store.get(request.ownerId!, missionId);
+    const item = await store.get(request.ownerId ?? "owner", missionId);
     if (!item) return reply.code(404).send({ error: "mission_not_found" });
     return summarize(item);
   });
