@@ -5,6 +5,7 @@ COPY package.json pnpm-workspace.yaml tsconfig.base.json tsconfig.json ./
 COPY shared ./shared
 COPY backend ./backend
 COPY workers ./workers
+COPY gateway ./gateway
 COPY web ./web
 COPY scripts ./scripts
 COPY tests ./tests
@@ -13,6 +14,7 @@ RUN pnpm run build:shared
 RUN pnpm --filter @mission-runner/backend build
 RUN pnpm --filter @mission-runner/github-worker build
 RUN pnpm --filter @mission-runner/browser-worker build
+RUN pnpm --filter @mission-runner/mcp-gateway build
 RUN pnpm --filter @mission-runner/web build
 
 FROM workspace AS backend-runtime
@@ -24,6 +26,11 @@ FROM workspace AS github-runtime
 ENV NODE_ENV=production HOST=0.0.0.0 PORT=8791
 EXPOSE 8791
 CMD ["pnpm","--filter","@mission-runner/github-worker","start"]
+
+FROM workspace AS mcp-runtime
+ENV NODE_ENV=production HOST=0.0.0.0 PORT=8780
+EXPOSE 8780
+CMD ["pnpm","--filter","@mission-runner/mcp-gateway","start"]
 
 FROM workspace AS browser-runtime
 RUN pnpm --filter @mission-runner/browser-worker exec playwright install --with-deps chromium
