@@ -6,7 +6,7 @@ Legend: `[P1]` delivered in Package 1, `[P2]`–`[P6]` planned for later package
 - [P1] `README.md`
 - [P1] `package.json`
 - [P1] `pnpm-workspace.yaml`
-- [P1] `tsconfig.base.json`
+- [P1] `tsconfig.base.json`\n- [P1] `tsconfig.json` (root project references)\n- [P1] `.eslintrc.json`
 - [P1] `.gitignore`
 - [P1] `.env.example`
 
@@ -35,7 +35,7 @@ Legend: `[P1]` delivered in Package 1, `[P2]`–`[P6]` planned for later package
 - [P1] `shared/src/idempotency.ts`
 - [P1] `shared/src/assistant.ts`
 - [P1] `shared/schemas/mission.v1.schema.json`
-- [P1] `shared/schemas/mission.v1.example.json`
+- [P1] `shared/schemas/mission.v1.example.json`\n\n## Tooling and tests\n- [P1] `scripts/validate-example.mjs`\n- [P1] `tests/package-1.test.mjs`\n- [P1] `.github/workflows/package-1-ci.yml` (repository CI)
 
 ## backend/ (Package 2)
 - [P2] `backend/package.json`
