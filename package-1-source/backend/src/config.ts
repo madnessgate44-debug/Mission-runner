@@ -11,6 +11,7 @@ export interface AppConfig {
   browserWorkerSecret: string;
   githubWorkerUrl: string;
   githubWorkerSecret: string;
+  aiToolSecret: string;
 }
 function required(name: string): string {
   const value = process.env[name];
@@ -35,6 +36,7 @@ export function loadConfig(): AppConfig {
     browserWorkerUrl: process.env.BROWSER_WORKER_URL ?? "",
     browserWorkerSecret: process.env.BROWSER_WORKER_SHARED_SECRET ?? "",
     githubWorkerUrl: process.env.GITHUB_WORKER_URL ?? "",
-    githubWorkerSecret: process.env.GITHUB_WORKER_SHARED_SECRET ?? ""
+    githubWorkerSecret: process.env.GITHUB_WORKER_SHARED_SECRET ?? "",
+    aiToolSecret: process.env.AI_TOOL_SHARED_SECRET ?? ""
   };
 }
