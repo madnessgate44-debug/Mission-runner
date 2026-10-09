@@ -1,0 +1,39 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# build output
+dist/
+build/
+*.tsbuildinfo
+
+# env
+.env
+.env.*
+!.env.example
+
+# local dev data
+dev.db
+dev.db-journal
+.evidence/
+*.sqlite
+*.sqlite-journal
+
+# logs
+*.log
+logs/
+
+# editor / OS
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# playwright
+workers/browser/.playwright/
+workers/browser/playwright-report/
+workers/browser/test-results/
+
+# misc
+coverage/
+tmp/
