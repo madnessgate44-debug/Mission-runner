@@ -1,9 +1,8 @@
 /**
  * Risk levels and approval policy.
  *
- * The effective risk of a mission is the max of the declared risk and the risk
- * computed from its operations. Approval is forced for high-risk missions and
- * for any GitHub write operation.
+ * Effective risk is computed server-side from the declared risk and operation
+ * risks. Client declarations are hints, never authorization decisions.
  */
 
 export const RISK_LEVELS = ["low", "medium", "high"] as const;
@@ -28,6 +27,10 @@ export interface ApprovalPolicy {
   requireApprovalAtOrAbove: RiskLevel;
   /** Whether any GitHub write operation forces approval. */
   requireApprovalForGitHubWrites: boolean;
+  /** Whether browser clicks force approval (they may activate consequential UI). */
+  requireApprovalForBrowserClicks: boolean;
+  /** Whether browser typing forces approval (it may trigger live app behavior). */
+  requireApprovalForBrowserTyping: boolean;
   /** Whether any browser form submission forces approval. */
   requireApprovalForBrowserSubmits: boolean;
 }
@@ -35,5 +38,7 @@ export interface ApprovalPolicy {
 export const DEFAULT_APPROVAL_POLICY: ApprovalPolicy = {
   requireApprovalAtOrAbove: "high",
   requireApprovalForGitHubWrites: true,
+  requireApprovalForBrowserClicks: true,
+  requireApprovalForBrowserTyping: true,
   requireApprovalForBrowserSubmits: true,
 };
