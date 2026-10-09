@@ -165,6 +165,16 @@ app.post("/session/press", async (request, reply) => {
   try { await serialize(async () => { const p = await getPage(); await p.keyboard.press(body.key as string); }); return { ok: true }; }
   catch (error) { return reply.code(400).send({ error: "press_failed", message: (error as Error).message }); }
 });
+app.post("/session/inspect", async (request, reply) => {
+  if (!authorized(request.body, request.headers as Record<string, unknown>)) return reply.code(401).send({ error: "worker_auth_failed" });
+  try {
+    return await serialize(async () => {
+      const p = await getPage();
+      const text = await p.locator("body").innerText().catch(() => "");
+      return { url: p.url(), title: await p.title().catch(() => ""), text: text.slice(0, 8000) };
+    });
+  } catch (error) { return reply.code(500).send({ error: "inspect_failed", message: (error as Error).message }); }
+});
 app.post("/session/back", async (request, reply) => {
   if (!authorized(request.body, request.headers as Record<string, unknown>)) return reply.code(401).send({ error: "worker_auth_failed" });
   try { return await serialize(async () => { const p = await getPage(); await p.goBack({ waitUntil: "domcontentloaded", timeout: 10000 }).catch(() => null); return { url: p.url(), title: await p.title() }; }); }
