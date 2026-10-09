@@ -7,6 +7,10 @@ export interface AppConfig {
   sessionKey: Buffer;
   sessionCookieName: string;
   trustProxy: boolean;
+  browserWorkerUrl: string;
+  browserWorkerSecret: string;
+  githubWorkerUrl: string;
+  githubWorkerSecret: string;
 }
 function required(name: string): string {
   const value = process.env[name];
@@ -27,6 +31,10 @@ export function loadConfig(): AppConfig {
     ownerPasswordHash: required("OWNER_PASSWORD_HASH"),
     sessionKey: Buffer.from(sessionKeyHex, "hex"),
     sessionCookieName: "mr_session",
-    trustProxy: process.env.TRUST_PROXY === "true"
+    trustProxy: process.env.TRUST_PROXY === "true",
+    browserWorkerUrl: process.env.BROWSER_WORKER_URL ?? "",
+    browserWorkerSecret: process.env.BROWSER_WORKER_SHARED_SECRET ?? "",
+    githubWorkerUrl: process.env.GITHUB_WORKER_URL ?? "",
+    githubWorkerSecret: process.env.GITHUB_WORKER_SHARED_SECRET ?? ""
   };
 }
