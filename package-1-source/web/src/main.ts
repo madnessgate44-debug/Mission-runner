@@ -10,6 +10,7 @@ type MissionSummary = {
   createdAt: string;
   updatedAt: string;
   approval?: { approvalId: string; approvedAt: string } | null;
+  result?: unknown;
 };
 const root = document.querySelector<HTMLDivElement>("#app");
 if (!root) throw new Error("App root is missing");
@@ -80,7 +81,6 @@ function loginScreen() {
       tab = "browser";
       render();
     } catch (error) { setNotice((error as Error).message, "error"); }
-    finally { /* request lifecycle completed */ }
   });
 }
 function shell() {
@@ -213,7 +213,7 @@ async function loadMissions() {
       <article class="mission">
         <div class="mission-head"><div><h3>${esc(item.objective)}</h3><div class="small">${esc(item.missionId)} · ${esc(new Date(item.createdAt).toLocaleString())}</div></div><span class="pill">${esc(item.status)}</span></div>
         <p class="muted">Risk: ${esc(item.effectiveRisk)} · Approval required: ${item.approvalRequired ? "yes" : "no"}</p>
-        <div class="actions">${item.status === "awaiting_approval" ? `<button class="primary" data-approve="${esc(item.missionId)}">Approve exact mission</button>` : ""}${!["succeeded","failed","cancelled","expired"].includes(item.status) ? `<button class="danger" data-cancel="${esc(item.missionId)}">Cancel</button>` : ""}</div>
+        <div class="actions">${item.status === "awaiting_approval" ? `<button class="primary" data-approve="${esc(item.missionId)}">Approve exact mission</button>` : ""}${["validated","approved"].includes(item.status) ? `<button class="primary" data-execute="${esc(item.missionId)}">Execute mission</button>` : ""}${!["succeeded","failed","cancelled","expired"].includes(item.status) ? `<button class="danger" data-cancel="${esc(item.missionId)}">Cancel</button>` : ""}${item.result ? `<details style="margin-top:10px"><summary>Execution result</summary><pre class="small" style="white-space:pre-wrap;overflow-wrap:anywhere">${esc(JSON.stringify(item.result,null,2).slice(0,8000))}</pre></details>` : ""}</div>
       </article>`).join("") : '<p class="muted">No missions saved yet.</p>';
     container.querySelectorAll<HTMLButtonElement>("[data-approve]").forEach(button => button.addEventListener("click", async () => {
       try {
@@ -221,6 +221,16 @@ async function loadMissions() {
         setNotice("Approval recorded for the exact content hash. Status: " + result.status + ".", "success");
         await loadMissions();
       } catch (error) { setNotice((error as Error).message, "error"); }
+    }));
+    container.querySelectorAll<HTMLButtonElement>("[data-execute]").forEach(button => button.addEventListener("click", async () => {
+      if (!confirm("Run this exact mission against its declared repositories and domains?")) return;
+      button.disabled = true;
+      setNotice("Executing mission…", "");
+      try {
+        const result = await api<any>("/missions/" + encodeURIComponent(button.dataset.execute!) + "/execute", { method: "POST", body: "{}" });
+        setNotice("Mission finished with status: " + result.status + ".", result.status === "succeeded" ? "success" : "error");
+        await loadMissions();
+      } catch (error) { setNotice((error as Error).message, "error"); await loadMissions(); }
     }));
     container.querySelectorAll<HTMLButtonElement>("[data-cancel]").forEach(button => button.addEventListener("click", async () => {
       try {
