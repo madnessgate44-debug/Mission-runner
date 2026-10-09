@@ -3,7 +3,24 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "scripts": { "dev": "tsx watch src/server.ts", "build": "tsc -b", "typecheck": "tsc -b --pretty false", "test": "pnpm run build && node --test tests/*.test.mjs", "install:browser": "playwright install chromium" },
-  "dependencies": { "@fastify/helmet": "^13.1.2", "@fastify/rate-limit": "^10.2.1", "@mission-runner/shared": "workspace:*", "fastify": "^5.2.1", "playwright": "^1.52.0" },
-  "devDependencies": { "@types/node": "^20.11.30", "tsx": "^4.19.2", "typescript": "^5.4.5" }
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -b",
+    "typecheck": "tsc -b --pretty false",
+    "test": "pnpm run build && node --test tests/*.test.mjs",
+    "install:browser": "playwright install chromium",
+    "start": "node dist/server.js"
+  },
+  "dependencies": {
+    "@fastify/helmet": "^13.1.2",
+    "@fastify/rate-limit": "^10.2.1",
+    "@mission-runner/shared": "workspace:*",
+    "fastify": "^5.2.1",
+    "playwright": "^1.52.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "tsx": "^4.19.2",
+    "typescript": "^5.4.5"
+  }
 }
