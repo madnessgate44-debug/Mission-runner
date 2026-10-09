@@ -254,9 +254,11 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
       return reply.code(503).send({ error: "browser_worker_unavailable" });
     }
   });
-\n  app.addHook("onClose", async () => { await store.close(); });
+
+  app.addHook("onClose", async () => { await store.close(); });
   return app;
-  function requestLog(error: unknown): void { app.log.warn({ error: error instanceof Error ? error.message : "unknown" }, "Browser worker proxy request failed"); }\n  async function requireAuth(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  function requestLog(error: unknown): void { app.log.warn({ error: error instanceof Error ? error.message : "unknown" }, "Browser worker proxy request failed"); }
+  async function requireAuth(request: FastifyRequest, reply: FastifyReply): Promise<void> {
     if (!request.ownerId) await reply.code(401).send({ error: "authentication_required" });
   }
   function checkCsrf(request: FastifyRequest): boolean {
