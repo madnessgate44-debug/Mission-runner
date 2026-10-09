@@ -4,8 +4,6 @@
   "objective": "Read the README from example-org/example-repo and capture a screenshot of example.com.",
   "createdBy": "assistant:chatgpt",
   "createdAt": "2025-01-01T12:00:00.000Z",
-  "riskLevel": "low",
-  "requiresApproval": false,
   "limits": {
     "maxSeconds": 120,
     "maxOperations": 5,
@@ -16,8 +14,12 @@
   },
   "target": {
     "kind": "mixed",
-    "repos": ["example-org/example-repo"],
-    "domains": ["example.com"]
+    "repos": [
+      "example-org/example-repo"
+    ],
+    "domains": [
+      "example.com"
+    ]
   },
   "operations": [
     {
@@ -53,5 +55,7 @@
   "metadata": {
     "author": "assistant:chatgpt",
     "notes": "Example mission for documentation and testing."
-  }
+  },
+  "declaredRiskLevel": "low",
+  "declaredRequiresApproval": false
 }
