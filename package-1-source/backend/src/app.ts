@@ -2,7 +2,7 @@ import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest }
 import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
 import secureSession from "@fastify/secure-session";
-import { randomUUID } from "node:crypto";
+import { createHmac, randomUUID } from "node:crypto";
 import { assertMissionV1, effectiveMissionRisk, missionRequiresApproval, missionContentHash, type MissionV1, type MissionApproval } from "@mission-runner/shared";
 import { verifyPassword } from "./auth.js";
 import type { AppConfig } from "./config.js";
@@ -109,9 +109,99 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     if (!result) return reply.code(409).send({ error: "mission_cancel_race" });
     return { missionId, status: result.status };
   });
-  app.addHook("onClose", async () => { await store.close(); });
+
+  async function callBrowserWorker(path: string, body: unknown): Promise<Response> {
+    if (!config.browserWorkerUrl || config.browserWorkerSecret.length < 32) throw new Error("browser_worker_not_configured");
+    const timestamp = String(Math.floor(Date.now() / 1000));
+    const nonce = randomUUID();
+    const signature = createHmac("sha256", config.browserWorkerSecret)
+      .update(timestamp + "." + nonce + "." + (await import("@mission-runner/shared")).canonicalJson(body))
+      .digest("hex");
+    return fetch(new URL(path, config.browserWorkerUrl.endsWith("/") ? config.browserWorkerUrl : config.browserWorkerUrl + "/"), {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-worker-timestamp": timestamp, "x-worker-nonce": nonce, "x-worker-signature": signature },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(25000)
+    });
+  }
+
+  app.get("/browser/screenshot", { preHandler: requireAuth }, async (_request, reply) => {
+    try {
+      const response = await callBrowserWorker("session/screenshot", {});
+      if (!response.ok) return reply.code(response.status).send({ error: "browser_worker_error" });
+      return reply.type("image/png").header("cache-control", "no-store").send(Buffer.from(await response.arrayBuffer()));
+    } catch (error) {
+      requestLog(error);
+      return reply.code(503).send({ error: "browser_worker_unavailable" });
+    }
+  });
+
+  app.post("/browser/navigate", { preHandler: requireAuth }, async (request, reply) => {
+    if (!checkCsrf(request)) return reply.code(403).send({ error: "csrf_invalid" });
+    const body = request.body as { url?: unknown } | null;
+    if (!body || typeof body.url !== "string" || body.url.length > 2048) return reply.code(400).send({ error: "url_invalid" });
+    try {
+      const response = await callBrowserWorker("session/navigate", { url: body.url });
+      const payload = await response.json().catch(() => ({ error: "invalid_worker_response" }));
+      return reply.code(response.status).send(payload);
+    } catch (error) {
+      requestLog(error);
+      return reply.code(503).send({ error: "browser_worker_unavailable" });
+    }
+  });
+
+  app.post("/browser/click", { preHandler: requireAuth }, async (request, reply) => {
+    if (!checkCsrf(request)) return reply.code(403).send({ error: "csrf_invalid" });
+    const body = request.body as { x?: unknown; y?: unknown } | null;
+    if (!body || typeof body.x !== "number" || typeof body.y !== "number") return reply.code(400).send({ error: "coordinates_invalid" });
+    try {
+      const response = await callBrowserWorker("session/click", { x: body.x, y: body.y });
+      return reply.code(response.status).send(await response.json().catch(() => ({ error: "invalid_worker_response" })));
+    } catch (error) {
+      requestLog(error);
+      return reply.code(503).send({ error: "browser_worker_unavailable" });
+    }
+  });
+
+  app.post("/browser/type", { preHandler: requireAuth }, async (request, reply) => {
+    if (!checkCsrf(request)) return reply.code(403).send({ error: "csrf_invalid" });
+    const body = request.body as { text?: unknown } | null;
+    if (!body || typeof body.text !== "string" || body.text.length > 4000) return reply.code(400).send({ error: "text_invalid" });
+    try {
+      const response = await callBrowserWorker("session/type", { text: body.text });
+      return reply.code(response.status).send(await response.json().catch(() => ({ error: "invalid_worker_response" })));
+    } catch (error) {
+      requestLog(error);
+      return reply.code(503).send({ error: "browser_worker_unavailable" });
+    }
+  });
+
+  app.post("/browser/press", { preHandler: requireAuth }, async (request, reply) => {
+    if (!checkCsrf(request)) return reply.code(403).send({ error: "csrf_invalid" });
+    const body = request.body as { key?: unknown } | null;
+    if (!body || typeof body.key !== "string") return reply.code(400).send({ error: "key_invalid" });
+    try {
+      const response = await callBrowserWorker("session/press", { key: body.key });
+      return reply.code(response.status).send(await response.json().catch(() => ({ error: "invalid_worker_response" })));
+    } catch (error) {
+      requestLog(error);
+      return reply.code(503).send({ error: "browser_worker_unavailable" });
+    }
+  });
+
+  app.post("/browser/back", { preHandler: requireAuth }, async (request, reply) => {
+    if (!checkCsrf(request)) return reply.code(403).send({ error: "csrf_invalid" });
+    try {
+      const response = await callBrowserWorker("session/back", {});
+      return reply.code(response.status).send(await response.json().catch(() => ({ error: "invalid_worker_response" })));
+    } catch (error) {
+      requestLog(error);
+      return reply.code(503).send({ error: "browser_worker_unavailable" });
+    }
+  });
+\n  app.addHook("onClose", async () => { await store.close(); });
   return app;
-  async function requireAuth(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  function requestLog(error: unknown): void { app.log.warn({ error: error instanceof Error ? error.message : "unknown" }, "Browser worker proxy request failed"); }\n  async function requireAuth(request: FastifyRequest, reply: FastifyReply): Promise<void> {
     if (!request.ownerId) await reply.code(401).send({ error: "authentication_required" });
   }
   function checkCsrf(request: FastifyRequest): boolean {
