@@ -28,14 +28,8 @@ export interface AssistantAuthoringContext {
 }
 
 export function buildAssistantPrompt(ctx: AssistantAuthoringContext): string {
-  const repos =
-    ctx.repoAllowlist.length > 0
-      ? ctx.repoAllowlist.join(", ")
-      : "(none pre-authorized; use an empty array and let the owner fix it)";
-  const domains =
-    ctx.domainAllowlist.length > 0
-      ? ctx.domainAllowlist.join(", ")
-      : "(none pre-authorized; use an empty array and let the owner fix it)";
+  const repos = ctx.repoAllowlist.length > 0 ? ctx.repoAllowlist.join(", ") : "(no repositories supplied; ask the owner before generating a mission)";
+  const domains = ctx.domainAllowlist.length > 0 ? ctx.domainAllowlist.join(", ") : "(no domains supplied; ask the owner before generating a mission)";
 
   return [
     "You are helping author a Mission Runner mission document.",
@@ -47,15 +41,16 @@ export function buildAssistantPrompt(ctx: AssistantAuthoringContext): string {
     `- Set "createdBy" to "${ctx.createdBy}".`,
     `- Use a fresh unique string for "missionId".`,
     `- Use an ISO 8601 UTC timestamp for "createdAt".`,
-    `- Choose "riskLevel" honestly. Write operations and form submissions are high risk.`,
-    `- Set "requiresApproval" to true if any operation writes to a remote system.`,
+    `- Set "declaredRiskLevel" as an untrusted estimate; the server computes effective risk.`,
+    `- Set "declaredRequiresApproval" as an untrusted hint; the server enforces approval policy.`,
+    `- Use only targets explicitly supplied by the owner. Mission targets do not override server-side allowlists.`,
+    `- If any required target is missing or the goal cannot be expressed, ask one clarification question and do not emit a Mission object yet.`,
     `- Keep "objective" to one short sentence.`,
     `- Provide "limits" as an object; the server will clamp them.`,
     `- Provide a "target" object with kind "github", "browser", or "mixed".`,
     `- Provide a non-empty "operations" array of typed operations.`,
     `- Do not include secrets, tokens, passwords, or personal data anywhere.`,
-    `- If the goal cannot be expressed with the available operation types, output`,
-    `  a single JSON object with an "error" field explaining why, instead.`,
+
     "",
     "Available GitHub repos (owner allowlist):",
     `- ${repos}`,
