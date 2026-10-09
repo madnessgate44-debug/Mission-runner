@@ -2,4 +2,5 @@ packages:
   - "shared"
   - "backend"
   - "workers/*"
+  - "gateway/*"
   - "web"
