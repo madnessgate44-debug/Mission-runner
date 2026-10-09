@@ -3,7 +3,7 @@ import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
 import secureSession from "@fastify/secure-session";
 import { createHmac, randomUUID } from "node:crypto";
-import { assertMissionV1, effectiveMissionRisk, missionRequiresApproval, missionContentHash, type MissionV1, type MissionApproval } from "@mission-runner/shared";
+import { assertMissionV1, canonicalJson, effectiveMissionRisk, missionRequiresApproval, missionContentHash, type MissionV1, type MissionApproval } from "@mission-runner/shared";
 import { verifyPassword } from "./auth.js";
 import type { AppConfig } from "./config.js";
 import { MissionStore, type StoredMission } from "./store.js";
@@ -115,7 +115,7 @@ export async function buildApp(options: AppOptions): Promise<FastifyInstance> {
     const timestamp = String(Math.floor(Date.now() / 1000));
     const nonce = randomUUID();
     const signature = createHmac("sha256", config.browserWorkerSecret)
-      .update(timestamp + "." + nonce + "." + (await import("@mission-runner/shared")).canonicalJson(body))
+      .update(timestamp + "." + nonce + "." + canonicalJson(body))
       .digest("hex");
     return fetch(new URL(path, config.browserWorkerUrl.endsWith("/") ? config.browserWorkerUrl : config.browserWorkerUrl + "/"), {
       method: "POST",
