@@ -30,6 +30,7 @@ test("rejects legacy policy fields and unknown mission properties", () => {
   delete candidate.declaredRiskLevel;
   delete candidate.declaredRequiresApproval;
   assert.equal(validateMission(candidate).ok, false);
+  assert.equal(schemaValidate(candidate), false);
   assert.ok(validateMission(candidate).issues.some((issue) => issue.code === "field_unknown"));
 });
 
@@ -56,6 +57,13 @@ test("rejects invalid calendar timestamps and empty mixed targets", () => {
   const target = clone(example);
   target.target.repos = [];
   assert.ok(validateMission(target).issues.some((issue) => issue.path === "target.repos"));
+  assert.equal(schemaValidate(target), false);
+});
+
+test("rejects operation counts above effective limits", () => {
+  const candidate = clone(example);
+  candidate.limits.maxOperations = 2;
+  assert.ok(validateMission(candidate).issues.some((issue) => issue.code === "limit_exceeded"));
 });
 
 test("rejects operations outside declared mission targets", () => {
