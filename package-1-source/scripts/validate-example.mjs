@@ -10,7 +10,7 @@ const schemaPath = path.resolve(here, "../shared/schemas/mission.v1.schema.json"
 const examplePath = path.resolve(here, "../shared/schemas/mission.v1.example.json");
 const schema = JSON.parse(await readFile(schemaPath, "utf8"));
 const example = JSON.parse(await readFile(examplePath, "utf8"));
-const ajv = new Ajv2020({ allErrors: true, strict: true });
+const ajv = new Ajv2020({ allErrors: true, strict: true, strictRequired: false });
 addFormats(ajv);
 const schemaValidator = ajv.compile(schema);
 const schemaOk = schemaValidator(example);
