@@ -4,9 +4,7 @@ This plan is delivered in packages. Package 1 (this one) contains documentation,
 the shared mission contract, schemas, error/status types, env examples, and root
 project configuration. Later packages contain executable code.
 
-**Nothing in any package has been run, deployed, or tested by the author of these
-files. All code is source-only and must be reviewed, built, and run by the owner or
-a reviewer.**
+**Package 1 has automated CI checks for typechecking, linting, regression tests, and validating the example against JSON Schema and the runtime validator.** It has not been deployed. Packages 2–6 remain planned and are not implemented.
 
 ## Package 1 — Contracts, documentation, skeleton (this package)
 
@@ -16,14 +14,16 @@ Deliverables:
 - `shared/` package: mission contract, status FSM, errors, limits, risk, evidence,
   operations, validation, idempotency, assistant authoring contract.
 - JSON Schema + example for Mission v1.
-- `.env.example`, root `package.json`, `pnpm-workspace.yaml`, `tsconfig.base.json`,
-  `.gitignore`, `README.md`.
+- `.env.example`, root `package.json`, `pnpm-workspace.yaml`, `tsconfig.json`,
+  `tsconfig.base.json`, `.eslintrc.json`, `.gitignore`, `README.md`, CI workflow,
+  example-validation script, and regression tests.
 
 Exit criteria:
-- Mission v1 schema is complete and stable.
+- Mission v1 schema compiles under the JSON Schema 2020-12 validator and agrees with runtime validation on covered contracts.
 - Status transitions are exhaustively enumerated and enforced.
 - Error taxonomy covers schema, policy, dispatch, execution, and transport.
 - No file contains real secrets or personal data.
+- Typecheck, lint, regression tests, and example validation pass in CI.
 
 ## Package 2 — Backend API
 
@@ -40,7 +40,7 @@ Scope:
 Exit criteria:
 - A manually crafted Mission v1 JSON from `shared/schemas/mission.v1.example.json`
   can be validated, approved, dispatched (to a stub worker), and its status read back.
-- High-risk and GitHub-write missions are forced into `awaiting_approval`.
+- High-risk and GitHub-write missions, plus browser click/type/form-submit actions under the default policy, are forced into `awaiting_approval`.
 - Login is rate limited; CSRF enforced on state changes.
 
 ## Package 3 — GitHub worker
