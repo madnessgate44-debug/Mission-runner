@@ -87,7 +87,6 @@ function createMcpServer(): McpServer {
     try { return toolText(await backend("/browser/inspect")); }
     catch (error) { return toolError(error); }
   });
-  server.onerror = error => console.error("MCP server error:", error.message);
   return server;
 }
 function requireBearer(req: Request, res: Response, next: NextFunction) {
