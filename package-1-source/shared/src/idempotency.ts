@@ -7,7 +7,7 @@
  * writes, reconcile against the expected remote state before mutating again.
  */
 
-import type { IdempotencyKey, MissionId, OperationId } from "./ids.js";
+import type { IdempotencyKey, MissionId } from "./ids.js";
 import { asIdempotencyKey } from "./ids.js";
 import type { MissionOperation } from "./operations/index.js";
 import type { MissionV1 } from "./mission.js";
