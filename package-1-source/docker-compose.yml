@@ -1,0 +1,88 @@
+services:
+  database:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: mission_runner
+      POSTGRES_USER: mission_runner
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mission_runner -d mission_runner"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: backend-runtime
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3000
+      DATABASE_URL: postgres://mission_runner:${POSTGRES_PASSWORD}@database:5432/mission_runner
+      OWNER_PASSWORD_HASH: ${OWNER_PASSWORD_HASH:?Generate OWNER_PASSWORD_HASH}
+      SESSION_KEY_HEX: ${SESSION_KEY_HEX:?Generate SESSION_KEY_HEX}
+      TRUST_PROXY: "true"
+      BROWSER_WORKER_URL: http://browser-worker:8792/
+      BROWSER_WORKER_SHARED_SECRET: ${BROWSER_WORKER_SHARED_SECRET:?Set browser worker secret}
+      GITHUB_WORKER_URL: http://github-worker:8791/
+      GITHUB_WORKER_SHARED_SECRET: ${GITHUB_WORKER_SHARED_SECRET:?Set GitHub worker secret}
+    depends_on:
+      database:
+        condition: service_healthy
+    expose: ["3000"]
+
+  github-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: github-runtime
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 8791
+      GITHUB_TOKEN: ${GITHUB_TOKEN:?Set a fine-grained GitHub token}
+      GITHUB_REPO_ALLOWLIST: ${GITHUB_REPO_ALLOWLIST:?Set owner/repo allowlist}
+      GITHUB_WORKER_SHARED_SECRET: ${GITHUB_WORKER_SHARED_SECRET:?Set GitHub worker secret}
+    expose: ["8791"]
+
+  browser-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: browser-runtime
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 8792
+      BROWSER_WORKER_SHARED_SECRET: ${BROWSER_WORKER_SHARED_SECRET:?Set browser worker secret}
+      BROWSER_DOMAIN_ALLOWLIST: ${BROWSER_DOMAIN_ALLOWLIST:?Set browser domain allowlist}
+      BROWSER_PROFILE_DIR: /data/profile
+      BROWSER_EVIDENCE_DIR: /data/evidence
+      BROWSER_HEADLESS: "true"
+    volumes:
+      - browser_profile:/data/profile
+      - browser_evidence:/data/evidence
+    expose: ["8792"]
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: web-runtime
+    restart: unless-stopped
+    depends_on: ["backend"]
+    ports:
+      - "${PUBLIC_PORT:-8080}:80"
+
+volumes:
+  postgres_data:
+  browser_profile:
+  browser_evidence:
