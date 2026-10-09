@@ -37,7 +37,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 
 function isIsoTimestamp(value: unknown): value is string {
   if (typeof value !== "string") return false;
-  const match = /^(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2}):(\\d{2})(?:\\.\\d+)?(Z|[+-](?:0\\d|1\\d|2[0-3]):[0-5]\\d)$/.exec(value);
+  const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(Z|[+-](?:0\d|1\d|2[0-3]):[0-5]\d)$/.exec(value);
   if (!match || Number.isNaN(Date.parse(value))) return false;
   const year = Number(match[1]), month = Number(match[2]), day = Number(match[3]);
   const hour = Number(match[4]), minute = Number(match[5]), second = Number(match[6]);
@@ -152,7 +152,7 @@ function validateOperation(op: unknown, index: number, issues: ValidationIssue[]
   for (const key of stringKeys) if (key in op && typeof op[key] !== "string") {
     issues.push({ path: `${path}.${key}`, code: "field_invalid", message: "must be a string" });
   }
-  for (const key of ["repo"]) if (typeof op[key] === "string" && !/^[^/\\s]+\\/[^/\\s]+$/.test(op[key] as string)) {
+  for (const key of ["repo"]) if (typeof op[key] === "string" && !/^[^/\s]+\/[^/\s]+$/.test(op[key] as string)) {
     issues.push({ path: `${path}.${key}`, code: "field_invalid", message: "must be owner/repository" });
   }
   const nonEmptyStrings = ["branch", "commitMessage", "head", "base", "title", "url", "selector", "contains"];
