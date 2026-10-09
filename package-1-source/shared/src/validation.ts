@@ -179,7 +179,7 @@ function validateOperation(op: unknown, index: number, issues: ValidationIssue[]
   if ("ref" in op && !validGitHubRef(op.ref)) issues.push({ path: `${path}.ref`, code: "field_invalid", message: "invalid GitHub ref" });
   if ("fromRef" in op && !validGitHubRef(op.fromRef)) issues.push({ path: `${path}.fromRef`, code: "field_invalid", message: "invalid GitHub ref" });
   if (op.kind === "browser" && op.op === "navigate") {
-    try { const u = new URL(String(op.url)); if (u.protocol !== "https:" && u.protocol !== "http:") throw new Error(); }
+    try { const u = new URL(String(op.url)); if ((u.protocol !== "https:" && u.protocol !== "http:") || u.username || u.password) throw new Error(); }
     catch { issues.push({ path: `${path}.url`, code: "field_invalid", message: "url must be an absolute HTTP(S) URL" }); }
   }
   return true;
