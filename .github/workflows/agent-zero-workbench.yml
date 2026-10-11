@@ -16,7 +16,7 @@ permissions:
   issues: write
 
 concurrency:
-  group: a0-workbench-${${ github.event.issue.number || github.run_id }}
+  group: a0-workbench-${{ github.event.issue.number || github.run_id }}
   cancel-in-progress: false
 
 jobs:
@@ -39,8 +39,8 @@ jobs:
         id: task
         shell: bash
         env:
-          DISPATCH_TASK: ${${ inputs.task }}
-          EVENT_NAME: ${${ github.event_name }}
+          DISPATCH_TASK: ${{ inputs.task }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           set -euo pipefail
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
@@ -61,7 +61,7 @@ jobs:
       - name: Checkout workbench repository
         uses: actions/checkout@v4
         with:
-          repository: ${${ github.repository }}
+          repository: ${{ github.repository }}
           ref: main
           path: workbench
           persist-credentials: false
@@ -83,7 +83,7 @@ jobs:
       - name: Start official Agent Zero
         shell: bash
         env:
-          RUN_ID: ${${ github.run_id }}
+          RUN_ID: ${{ github.run_id }}
         run: |
           set -euo pipefail
           set +x
@@ -127,7 +127,7 @@ jobs:
         id: agent
         shell: bash
         env:
-          TASK: ${${ steps.task.outputs.task }}
+          TASK: ${{ steps.task.outputs.task }}
         run: |
           set -euo pipefail
           set +x
@@ -198,10 +198,10 @@ jobs:
         if: always()
         working-directory: workbench
         env:
-          GH_TOKEN: ${${ github.token }}
-          AGENT_COMPLETED: ${${ steps.agent.outputs.completed }}
-          TESTS_PASSED: ${${ steps.verify.outputs.tests_passed }}
-          RUN_URL: ${${ github.server_url }}/${${ github.repository }}/actions/runs/${${ github.run_id }}
+          GH_TOKEN: ${{ github.token }}
+          AGENT_COMPLETED: ${{ steps.agent.outputs.completed }}
+          TESTS_PASSED: ${{ steps.verify.outputs.tests_passed }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         shell: bash
         run: |
           set -euo pipefail
@@ -234,7 +234,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: agent-zero-evidence-${${ github.run_id }}
+          name: agent-zero-evidence-${{ github.run_id }}
           path: |
             /tmp/a0-response.json
             /tmp/a0-report.txt
