@@ -9,6 +9,8 @@ on:
         type: string
   issue_comment:
     types: [created]
+  pull_request:
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: write
@@ -25,6 +27,7 @@ jobs:
       github.repository == 'madnessgate44-debug/Mission-runner' &&
       (
         (github.event_name == 'workflow_dispatch' && github.actor == github.repository_owner) ||
+        (github.event_name == 'pull_request' && github.actor == github.repository_owner) ||
         (
           github.event_name == 'issue_comment' &&
           github.event.issue.pull_request == null &&
@@ -45,8 +48,10 @@ jobs:
           set -euo pipefail
           if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             TASK="$DISPATCH_TASK"
-          else
+          elif [ "$EVENT_NAME" = "issue_comment" ]; then
             TASK="$(jq -r '.comment.body' "$GITHUB_EVENT_PATH" | sed 's#^/company agent-zero ##')"
+          else
+            TASK="READ-ONLY SMOKE TEST: inspect the repository and report its structure and current git status. Do not modify any files, create commits, or attempt repairs."
           fi
           if [ -z "$(printf '%s' "$TASK" | tr -d '[:space:]')" ]; then
             echo "::error::Task is empty."
